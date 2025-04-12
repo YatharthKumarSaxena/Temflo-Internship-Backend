@@ -51,7 +51,10 @@ router
     ),
     catchErrors(settingController.updateBySettingKey)
   );
-router.route('/setting/updateManySetting').patch(catchErrors(settingController.updateManySetting));
+
+  router.route('/setting/updateCompanyInfo').patch(catchErrors(settingController.updateManySetting));
+
+
 
 // //____________________________________________ API for Email Templates _________________
 router.route('/email/create').post(catchErrors(emailController.create));
