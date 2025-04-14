@@ -5,7 +5,7 @@ const create = async (Model, req, res) => {
   req.body.removed = false;
   const result = await new Model({
     ...req.body,
-    
+    company: req.admin._id
   }).save();
 
   // Returning successfull response

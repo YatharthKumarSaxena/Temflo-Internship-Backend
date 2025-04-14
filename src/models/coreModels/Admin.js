@@ -60,24 +60,23 @@ const adminSchema = new Schema({
     match: [/^\d{10}$/, 'Phone number must be 10 digits'],
     required:true
   },
+  isDetailUpdated:{
+    type: Boolean,
+    default: false,
+  },
   legalStatus: {
     type: String,
-    enum: ['Individual', 'Partnership', 'AOP', 'BOI', 'Company', 'LLP'],
-    immutable: true
   },
   tan: {
     type: String,
-    immutable: true
   },
   pan: {
     type: String,
     match: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
-    immutable: true
   },
   year: {
     type: String,
     enum: ['Financial', 'Calendar'],
-    immutable: true
   },
   created: {
     type: Date,

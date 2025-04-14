@@ -52,8 +52,8 @@ router
     catchErrors(settingController.updateBySettingKey)
   );
 
-  router.route('/setting/updateCompanyInfo').patch(catchErrors(settingController.updateManySetting));
-
+router.route('/setting/updateCompanyInfo').patch(catchErrors(settingController.updateManySetting));
+router.route('/setting/updateCompanyDetails').patch(catchErrors(settingController.updateCompanyDetails))
 
 
 // //____________________________________________ API for Email Templates _________________
