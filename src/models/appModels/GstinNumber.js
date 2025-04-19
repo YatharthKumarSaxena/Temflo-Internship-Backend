@@ -9,8 +9,10 @@ const GstinNumberSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
       },
-      company:{type: mongoose.Schema.ObjectId, ref: 'Admin' },
-      
+      companyId:{
+        type: String,
+        required: true,
+        immutable: true },      
       stateCode:{
         type: String,   
       },

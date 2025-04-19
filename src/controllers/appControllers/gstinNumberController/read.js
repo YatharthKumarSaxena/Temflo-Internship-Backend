@@ -4,10 +4,9 @@ const read = async (Model, req, res) => {
     // Find document by id
     const result = await Model.findOne({
       _id: req.params.id,
-      company:req.admin.id,
+      companyId:req.admin.companyId,
       removed: false,
     })
-      .populate('company')
       .exec();
     // If no results found, return document not found
     if (!result) {

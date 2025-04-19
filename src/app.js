@@ -6,6 +6,7 @@ const compression = require('compression');
 const cookieParser = require('cookie-parser');
 
 const coreAuthRouter = require('./routes/coreRoutes/coreAuth');
+const userAuthRouter = require('./routes/userRoutes/userAuth')
 const coreApiRouter = require('./routes/coreRoutes/coreApi');
 const coreDownloadRouter = require('./routes/coreRoutes/coreDownloadRouter');
 const corePublicRouter = require('./routes/coreRoutes/corePublicRouter');
@@ -37,8 +38,10 @@ app.use(compression());
 // Here our API Routes
 
 app.use('/api', coreAuthRouter);
+app.use('/api/user',userAuthRouter)
 app.use('/api', adminAuth.isValidAuthToken, coreApiRouter);
 app.use('/api', adminAuth.isValidAuthToken, erpApiRouter);
+
 app.use('/download', coreDownloadRouter);
 app.use('/public', corePublicRouter);
 

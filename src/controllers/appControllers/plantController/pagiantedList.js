@@ -19,13 +19,13 @@ const paginatedList = async (Model, req, res) => {
     const resultsPromise = Model.find({
       removed: false,
       companyId:req.admin.companyId,
-  
       [filter]: equal,
       ...fields,
     })
       .skip(skip)
       .limit(limit)
       .sort({ [sortBy]: sortValue })
+      .populate('businessArea','gstinNumber')
       .exec();
   
     // Counting the total documents

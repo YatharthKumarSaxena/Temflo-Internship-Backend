@@ -9,13 +9,17 @@ const BusinessAreaSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
       },
-      company:{type: mongoose.Schema.ObjectId, ref: 'Admin' },
+      companyId:{
+        type: String,
+        required: true,
+        immutable: true },
+        
       businessArea:{
         type: String,
         // required: true,
         match: /^\d{4}$/, // 4 digit code
         immutable: true ,  // Not editable
-        unique: true    
+            
       },
       description:{
         type: String,

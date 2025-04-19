@@ -1,20 +1,20 @@
 const update= async (Model, req, res) => {
   try {
-    const  id  = req.admin.companyId; // Admin ID passed in URL
+    const  id  = req.admin._id; // Admin ID passed in URL
     const {
-      description
+      name,address,city,state,postalCode,country,phone,email
     } = req.body;
 
     const updatedBusinessArea = await Model.findOneAndUpdate(
-        { _id: req.params.id, companyId: id }, 
-        { description },                
+        { _id: req.params.id,companyId:req.admin.companyId }, 
+        { name,address,city,state,postalCode,country,phone,email },                
         { new: true }                   
       );
 
     if (!updatedBusinessArea) {
       return res.status(404).json({
         success: false,
-        message: 'Business Area not found or you do not have access to this business area.',
+        message: 'Plant not found or you do not have access to this Plant.',
       });
     }
 
@@ -22,7 +22,7 @@ const update= async (Model, req, res) => {
     return res.status(200).json({
       success: true,
       result: updatedBusinessArea,
-      message: 'Business Area updated successfully',
+      message: 'Plant updated successfully',
     });
   } catch (error) {
     console.error('Update Admin Error:', error);

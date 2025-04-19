@@ -47,9 +47,8 @@ const isValidAuthToken = async (req, res, next, { userModel, jwtSecret = 'JWT_SE
         jwtExpired: true,
       });
     else {
-      const reqUserName = userModel.toLowerCase();
-      console
-      req[reqUserName] = user;
+      
+      req['admin'] = user;
       next();
     }
   } catch (error) {

@@ -1,12 +1,12 @@
 const update= async (Model, req, res) => {
     try {
-      const  id  = req.admin._id; // Admin ID passed in URL
+      const  id  = req.admin.companyId; // Admin ID passed in URL
       const {
         stateCode,gstinNumber
       } = req.body;
   
       const updatedBusinessArea = await Model.findOneAndUpdate(
-          { _id: req.params.id, company: id }, 
+          { _id: req.params.id, companyId: id }, 
           { stateCode,gstinNumber },                
           { new: true }                   
         );

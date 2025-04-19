@@ -7,7 +7,7 @@ const router = express.Router();
 const adminController = require('@/controllers/coreControllers/adminController');
 const settingController = require('@/controllers/coreControllers/settingController');
 const emailController = require('@/controllers/coreControllers/emailController');
-
+const userController = require('@/controllers/coreControllers/userController')
 const { singleStorageUpload } = require('@/middlewares/uploadMiddleware');
 
 // //_______________________________ Admin management_______________________________
@@ -52,6 +52,7 @@ router
     catchErrors(settingController.updateBySettingKey)
   );
 
+
 router.route('/setting/updateCompanyInfo').patch(catchErrors(settingController.updateManySetting));
 router.route('/setting/updateCompanyDetails').patch(catchErrors(settingController.updateCompanyDetails))
 
@@ -64,5 +65,9 @@ router.route('/email/search').get(catchErrors(emailController.search));
 router.route('/email/list').get(catchErrors(emailController.list));
 router.route('/email/listAll').get(catchErrors(emailController.listAll));
 router.route('/email/filter').get(catchErrors(emailController.filter));
+
+
+// ------------------------------API to create User in Company---------------------------
+router.route('/user/create').post(catchErrors(userController.create));
 
 module.exports = router;

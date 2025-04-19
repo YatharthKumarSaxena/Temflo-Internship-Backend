@@ -18,7 +18,7 @@ const paginatedList = async (Model, req, res) => {
     //  Query the database for a list of all results
     const resultsPromise = Model.find({
       removed: false,
-      company:req.admin.id,
+      companyId:req.admin.companyId,
   
       [filter]: equal,
       ...fields,
@@ -26,7 +26,6 @@ const paginatedList = async (Model, req, res) => {
       .skip(skip)
       .limit(limit)
       .sort({ [sortBy]: sortValue })
-      .populate('company')
       .exec();
   
     // Counting the total documents

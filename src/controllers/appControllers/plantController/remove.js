@@ -1,9 +1,9 @@
 const remove= async (Model, req, res) => {
     try {
-      const  id  = req.admin.companyId; 
+      const  id  = req.admin._id; 
        
       const updatedBusinessArea = await Model.findOneAndUpdate(
-          { _id: req.params.id, companyId: id }, 
+          { _id: req.params.id, companyId:req.admin.companyId }, 
           { removed:true },                
           { new: true }                   
         );
@@ -11,14 +11,14 @@ const remove= async (Model, req, res) => {
       if (!updatedBusinessArea) {
         return res.status(404).json({
           success: false,
-          message: 'Business Area not found or you do not have access to delete this business area.',
+          message: 'Plant not found or you do not have access to delete this Plant.',
         });
       }
   
   
       return res.status(200).json({
         success: true,
-        message: 'Business Area Deleted successfully',
+        message: 'Plant Deleted successfully',
       });
     } catch (error) {
       console.error('Update Admin Error:', error);

@@ -6,21 +6,23 @@ const read = async (Model, req, res) => {
       _id: req.params.id,
       companyId:req.admin.companyId,
       removed: false,
+      
     })
+      .populate('businessArea','gstinNumber')
       .exec();
     // If no results found, return document not found
     if (!result) {
       return res.status(404).json({
         success: false,
         result: null,
-        message: 'No Business Area found ',
+        message: 'No Plant found ',
       });
     } else {
       // Return success resposne
       return res.status(200).json({
         success: true,
         result,
-        message: 'We found this Business Area ',
+        message: 'We found this Plant ',
       });
     }
   };

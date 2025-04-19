@@ -1,9 +1,9 @@
 const remove= async (Model, req, res) => {
     try {
-      const  id  = req.admin._id; 
+      const  id  = req.admin.companyId; 
        
       const updatedBusinessArea = await Model.findOneAndUpdate(
-          { _id: req.params.id, company: id }, 
+          { _id: req.params.id, companyId: id }, 
           { removed:true },                
           { new: true }                   
         );

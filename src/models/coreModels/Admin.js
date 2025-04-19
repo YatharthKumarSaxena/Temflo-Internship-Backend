@@ -10,7 +10,6 @@ const adminSchema = new Schema({
     type: Boolean,
     default: false,
   },
-
   email: {
     type: String,
     lowercase: true,
@@ -20,13 +19,13 @@ const adminSchema = new Schema({
   code: {
     type: String,
     required: true,
-    match: /^\d{4}$/, // 4 digit code
-    immutable: true   // Not editable
+    match: /^\d{4}$/,
+    immutable: true
   },
   name: {
     type: String,
     required: true,
-    immutable: true   // Not editable
+    immutable: true
   },
   address: {
     type: String,
@@ -48,19 +47,18 @@ const adminSchema = new Schema({
     type: String,
     validate: {
       validator: function (val) {
-        // Use master list or regex pattern, placeholder below
         return /^\d{6}$/.test(val);
       },
-      required:true,
+      required: true,
       message: 'Invalid pin code'
     }
   },
   phoneNumber: {
     type: String,
     match: [/^\d{10}$/, 'Phone number must be 10 digits'],
-    required:true
+    required: true
   },
-  isDetailUpdated:{
+  isDetailUpdated: {
     type: Boolean,
     default: false,
   },
@@ -87,8 +85,32 @@ const adminSchema = new Schema({
     default: 'owner',
     enum: ['owner'],
   },
-  
- 
+  companyId: {
+    type: String,
+    unique: true,
+    required: true,
+    immutable: true
+  }
 });
+
+adminSchema.pre('validate', async function (next) {
+  if (!this.companyId) {
+    const { nanoid } = await import('nanoid');
+    
+    let newCompanyId;
+    let exists = true;
+
+    while (exists) {
+      newCompanyId = nanoid(12);
+      const existingAdmin = await mongoose.models.Admin.findOne({ companyId: newCompanyId });
+      exists = !!existingAdmin;
+    }
+
+    this.companyId = newCompanyId;
+  }
+  next();
+});
+
+
 
 module.exports = mongoose.model('Admin', adminSchema);
