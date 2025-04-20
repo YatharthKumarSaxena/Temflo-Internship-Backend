@@ -10,17 +10,19 @@ const UserSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  companyId:{
+        type: String,
+        required: true,
+        immutable: true },
   email:{
         type:String,
         required:[true,'Enter Email Address'],
-        unique:[true,'Email Already Exist'],
         trim:true,
         required: true,
     },
     employeeCode:{
         type:String,
         required:true,
-        unique:true,
         minlength:4,
         maxlength:15,
         trim:true
@@ -51,10 +53,6 @@ const UserSchema = new Schema({
         type:String,
         required:false,
         default:'user.png'
-    },
-    companyId:{
-        type:Schema.Types.ObjectId,
-        ref:'Company'
     },
     name: {
         type: String,

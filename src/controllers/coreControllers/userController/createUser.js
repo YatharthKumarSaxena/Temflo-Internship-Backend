@@ -12,7 +12,12 @@ const createUser = async (req, res) => {
             return res.status(400).json({ success:false, message: 'All fields required' });
     }
 
-    const existingUser = await User.findOne({ email });
+    const existingEmpId = await User.findOne({ employeeCode,companyId:req.admin.companyId });
+        if (existingEmpId) {
+            return res.status(400).json({ success:false, message: 'Employee Code already exists' });
+        }
+
+    const existingUser = await User.findOne({ email,companyId:req.admin.companyId });
         if (existingUser) {
             return res.status(400).json({ success:false, message: 'Email already exists' });
         }
@@ -23,7 +28,7 @@ const createUser = async (req, res) => {
     const passwordHash = newUserPassword.generateHash(salt, password);
 
     const newuser={
-        email,employeeCode
+        email,employeeCode,companyId:req.admin.companyId
     }
 
     const userResult = await new User(newuser).save();
