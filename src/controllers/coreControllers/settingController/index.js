@@ -6,6 +6,7 @@ const readBySettingKey = require('./readBySettingKey');
 const updateBySettingKey = require('./updateBySettingKey');
 const updateManySetting = require('./updateManySetting');
 const updateCompanyDetails = require('./updateCompanyDetails')
+const getCompanyDetails = require('./getCompanyDetails')
 
 const listAll = require('./listAll');
 
@@ -21,7 +22,8 @@ const settingMethods = {
   readBySettingKey,
   updateBySettingKey,
   updateManySetting,
-  updateCompanyDetails
+  updateCompanyDetails,
+  getCompanyDetails
 };
 
 module.exports = settingMethods;

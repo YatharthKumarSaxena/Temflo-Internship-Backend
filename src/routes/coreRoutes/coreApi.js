@@ -29,7 +29,6 @@ router
 // //____________________________________________ API for Global Setting _________________
 
 router.route('/setting/create').post(catchErrors(settingController.create));
-router.route('/setting/read/:id').get(catchErrors(settingController.read));
 router.route('/setting/update/:id').patch(catchErrors(settingController.update));
 //router.route('/setting/delete/:id).delete(catchErrors(settingController.delete));
 router.route('/setting/search').get(catchErrors(settingController.search));
@@ -52,7 +51,7 @@ router
     catchErrors(settingController.updateBySettingKey)
   );
 
-
+router.route('/setting/CompanyInfo').get(catchErrors(settingController.getCompanyDetails));
 router.route('/setting/updateCompanyInfo').patch(catchErrors(settingController.updateManySetting));
 router.route('/setting/updateCompanyDetails').patch(catchErrors(settingController.updateCompanyDetails))
 
