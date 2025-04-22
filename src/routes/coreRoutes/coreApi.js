@@ -73,4 +73,14 @@ router.route('/user/read/:id').get(catchErrors(userController.read));
 // router.route('/user/update/:id').patch(catchErrors(userController.update));
 router.route('/user/delete/:id').delete(catchErrors(userController.remove));
 
+// ---------------------------API to Update User Information----------------------------
+router.route('/user/update-info/:id').patch(catchErrors(userController.UpdateController.updateInfo))
+router.route('/user/update-address/:id').patch(catchErrors(userController.UpdateController.updateAddress))
+router.route('/user/update-emergency-contact/:id').patch(catchErrors(userController.UpdateController.updateEmergencyContact))
+router.route('/user/update-bank-details/:id').patch(catchErrors(userController.UpdateController.updateBankDetail))
+router.route('/user/update-degree-info/:id').patch(catchErrors(userController.UpdateController.updateDegreeInfo))
+router.route('/user/update-pan/:id').patch(catchErrors(userController.UpdateController.updatePan))
+router.route('/user/update-aadhar/:id').patch(catchErrors(userController.UpdateController.updateAadhar))
+
+
 module.exports = router;
