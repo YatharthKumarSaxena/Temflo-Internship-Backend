@@ -3,7 +3,7 @@ const express = require('express');
 const { catchErrors } = require('@/handlers/errorHandlers');
 
 const router = express.Router();
-
+const upload = require('../../services/file-upload')
 const adminController = require('@/controllers/coreControllers/adminController');
 const settingController = require('@/controllers/coreControllers/settingController');
 const emailController = require('@/controllers/coreControllers/emailController');
@@ -78,9 +78,9 @@ router.route('/user/update-info/:id').patch(catchErrors(userController.UpdateCon
 router.route('/user/update-address/:id').patch(catchErrors(userController.UpdateController.updateAddress))
 router.route('/user/update-emergency-contact/:id').patch(catchErrors(userController.UpdateController.updateEmergencyContact))
 router.route('/user/update-bank-details/:id').patch(catchErrors(userController.UpdateController.updateBankDetail))
-router.route('/user/update-degree-info/:id').patch(catchErrors(userController.UpdateController.updateDegreeInfo))
-router.route('/user/update-pan/:id').patch(catchErrors(userController.UpdateController.updatePan))
-router.route('/user/update-aadhar/:id').patch(catchErrors(userController.UpdateController.updateAadhar))
+router.route('/user/update-degree-info/:id').patch(upload.single('document'),catchErrors(userController.UpdateController.updateDegreeInfo))
+router.route('/user/update-pan/:id').patch(upload.single('pan'),catchErrors(userController.UpdateController.updatePan))
+router.route('/user/update-aadhar/:id').patch(upload.single('aadhar'),catchErrors(userController.UpdateController.updateAadhar))
 
 
 module.exports = router;

@@ -147,7 +147,7 @@ class UpdateController{
 
             const { degree, institute, year, percentage } = req.body;
 
-            // if (!degree || !institute || !year || !percentage || !file) return next(ErrorHandler.badRequest('All Fields Required'));
+            if (!degree || !institute || !year || !percentage || !file) return res.status(404).json({ success: false, message: 'All field requireed' });
 
 
             const user = await UserModel.findUser({ _id, companyId:req.admin.companyId });
@@ -193,7 +193,7 @@ class UpdateController{
             const file = req.file;
             const filename = file && file.filename;
            
-            if(!file) return next(ErrorHandler.badRequest('All Fields Required'));
+            if(!file) return res.status(404).json({ success: false, message: 'All field required' });
 
 
             const _id =  req.params.id 
@@ -229,7 +229,7 @@ class UpdateController{
             const file = req.file;
             const filename = file && file.filename;
            
-            if(!file) return next(ErrorHandler.badRequest('All Fields Required'));
+            if(!file) return res.status(404).json({ success: false, message: 'All field Required' }) ;
 
 
             const _id =  req.params.id ;
