@@ -165,7 +165,7 @@ const UserSchema = new Schema({
     type: Date,
     default: Date.now,
   },
-  role: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
+role: { type: String, enum: ['owner', 'admin', 'employee'], default:"employee" }
  
 });
 
