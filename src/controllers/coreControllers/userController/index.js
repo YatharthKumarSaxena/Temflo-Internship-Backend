@@ -5,13 +5,15 @@ const read = require('./read');
 const remove = require('./remove');
 const UpdateController = require('./update');
 const paginatedList = require('./paginatedList');
+const createBulk = require('./createBulk.js')
 
 const UserMethods = {
   create: createUser,
   read,
   remove,
   UpdateController,
-  paginatedList
+  paginatedList,
+  createBulk
 };
 
 module.exports = UserMethods;

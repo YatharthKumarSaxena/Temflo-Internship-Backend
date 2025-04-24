@@ -70,8 +70,8 @@ router.route('/email/filter').get(catchErrors(emailController.filter));
 router.route('/user/create').post(catchErrors(userController.create));
 router.route('/user/list').get(catchErrors(userController.paginatedList));
 router.route('/user/read/:id').get(catchErrors(userController.read));
-// router.route('/user/update/:id').patch(catchErrors(userController.update));
 router.route('/user/delete/:id').delete(catchErrors(userController.remove));
+router.route('/user/create-in-bulk').post(catchErrors(userController.createBulk))
 
 // ---------------------------API to Update User Information----------------------------
 router.route('/user/update-info/:id').patch(catchErrors(userController.UpdateController.updateInfo))
