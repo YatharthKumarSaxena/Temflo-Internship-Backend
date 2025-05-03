@@ -3,14 +3,14 @@ const express = require('express');
 const router = express.Router();
 
 const { catchErrors } = require('@/handlers/errorHandlers');
-const userAuth = require('@/controllers/userControllers/userAuth');
+const adminAuth = require('@/controllers/coreControllers/adminAuth');
 
 
-router.route('/login').post(catchErrors(userAuth.login));
+// router.route('/login').post(catchErrors(adminAuth('Admin').login));
 
-router.route('/forgetpassword').post(catchErrors(userAuth.forgetPassword));
-router.route('/resetpassword').post(catchErrors(userAuth.resetPassword));
+router.route('/forgetpassword').post(catchErrors(adminAuth.forgetPassword));
+router.route('/resetpassword').post(catchErrors(adminAuth.resetPassword));
 
-router.route('/logout').post(userAuth.isValidAuthToken, catchErrors(userAuth.logout));
+router.route('/logout').post(adminAuth.isValidAuthToken, catchErrors(adminAuth.logout));
 
 module.exports = router;

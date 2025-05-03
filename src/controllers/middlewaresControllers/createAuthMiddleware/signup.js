@@ -13,7 +13,7 @@ const signUp = async (req, res, { userModel }) => {
             return res.status(400).json({ success:false, message: 'All fields required' });
  
         }
-
+        console.log(code)
         // Check if email already exists
         const existingAdmin = await Admin.findOne({ email });
         if (existingAdmin) {

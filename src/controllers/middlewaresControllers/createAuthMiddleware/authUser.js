@@ -59,6 +59,7 @@ const authUser = async (req, res, { user, databasePassword, password, UserPasswo
       message: 'Invalid credentials.',
     });
   }
+
 };
 
 module.exports = authUser;

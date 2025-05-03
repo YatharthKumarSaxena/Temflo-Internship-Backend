@@ -103,8 +103,8 @@ class UpdateController{
 
     updateBankDetail = async (req, res, next) => {
         try {
-            // const file = req.file;
-            // const filename = file && file.filename;
+            const file = req.file;
+            const filename = file && file.filename;
 
 
             const _id = req.params.id 
@@ -118,7 +118,7 @@ class UpdateController{
                     "bankDetail.ifscCode": ifscCode,
                     "bankDetail.accountType": accountType,
                     "bankDetail.accountHolder": accountHolder,
-                    // "bankDetail.document": filename
+                    "bankDetail.document": filename
                 }
             }, { new: true });
 
@@ -150,7 +150,8 @@ class UpdateController{
             if (!degree || !institute || !year || !percentage || !file) return res.status(404).json({ success: false, message: 'All field requireed' });
 
 
-            const user = await UserModel.findUser({ _id, companyId:req.admin.companyId });
+            const user = await UserModel.findOne({ _id, companyId:req.admin.companyId });
+            console.log(user)
 
             if (!user) {
                 return res.status(404).json({ success: false, message: 'User not found' });
@@ -164,7 +165,8 @@ class UpdateController{
                 percentage,
                 document: filename // Add file path (if uploaded)
             };
-
+            
+            
             // Push new degree to the degreeInfo array
             user.degreeInfo.push(newDegree);
 

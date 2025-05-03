@@ -6,18 +6,18 @@ const createUser = async (req, res) => {
     const User = mongoose.model('User');
     const UserPassword = mongoose.model('UserPassword');
 
-    const {email,password,employeeCode} = req.body
+    const {email,password,employeeCode,name,plantId,mobile} = req.body
     
-    if(!email || !password || !employeeCode) {
+    if(!email || !password || !employeeCode || !name || !plantId || !mobile) {
             return res.status(400).json({ success:false, message: 'All fields required' });
     }
 
-    const existingEmpId = await User.findOne({ employeeCode,companyId:req.admin.companyId });
+    const existingEmpId = await User.findOne({ employeeCode,companyId:req.admin.companyId,removed:false });
         if (existingEmpId) {
             return res.status(400).json({ success:false, message: 'Employee Code already exists' });
         }
 
-    const existingUser = await User.findOne({ email,companyId:req.admin.companyId });
+    const existingUser = await User.findOne({ email,companyId:req.admin.companyId,removed:false });
         if (existingUser) {
             return res.status(400).json({ success:false, message: 'Email already exists' });
         }
@@ -28,7 +28,7 @@ const createUser = async (req, res) => {
     const passwordHash = newUserPassword.generateHash(salt, password);
 
     const newuser={
-        email,employeeCode,companyId:req.admin.companyId
+        email,employeeCode,companyId:req.admin.companyId,name,plantId,mobile,role:"employee"
     }
 
     const userResult = await new User(newuser).save();

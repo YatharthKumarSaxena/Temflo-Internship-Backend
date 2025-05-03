@@ -22,6 +22,7 @@ const paginatedList = async (req, res) => {
     const resultsPromise = User.find({
       removed: false,
       companyId:req.admin.companyId,
+      role: { $in: ['admin', 'employee']},
   
       [filter]: equal,
       ...fields,
@@ -29,6 +30,7 @@ const paginatedList = async (req, res) => {
       .skip(skip)
       .limit(limit)
       .sort({ [sortBy]: sortValue })
+      .populate('plantId')
       .exec();
   
     // Counting the total documents

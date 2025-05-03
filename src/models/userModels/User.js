@@ -10,163 +10,205 @@ const UserSchema = new Schema({
     type: Boolean,
     default: false,
   },
-  companyId:{
-        type: String,
-        required: true,
-        immutable: true },
-  email:{
-        type:String,
-        required:[true,'Enter Email Address'],
-        trim:true,
-        required: true,
+  companyId: {
+    type: String,
+    required: true,
+    immutable: true
+  },
+  plantId: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Plant',
+    required: function () {
+      return this.role === 'employee';
+    }
+  },
+  email: {
+    type: String,
+    required: [true, 'Enter Email Address'],
+    trim: true,
+  },
+  employeeCode: {
+    type: String,
+    minlength: 4,
+    maxlength: 15,
+    trim: true,
+    required: function () {
+      return this.role === 'employee';
+    }
+  },
+  mobile: {
+    type: Number,
+    minlength: 10,
+    maxlength: 13,
+    required: function () {
+      return this.role === 'employee';
+    }
+  },
+  type: {
+    type: String,
+    enum: ['employee']
+  },
+  status: {
+    type: String,
+    enum: ['active', 'banned'],
+    default: 'active'
+  },
+  team: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Team'
+  }],
+  leadTeam: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Team'
+  }],
+  image: {
+    type: String,
+    required: false,
+    default: 'user.png'
+  },
+  name: {
+    type: String,
+    trim: true
+  },
+  employeeInfo: {
+    firstName: { type: String, trim: true },
+    middleName: { type: String, trim: true },
+    lastName: { type: String, trim: true },
+    bloodGroup: { type: String, trim: true },
+    gender: { type: String, enum: ['Male', 'Female', 'Other'] },
+    dob: { type: Date },
+    emailPersonal: { type: String, trim: true },
+    department: { type: String, trim: true },
+    dateOfJoining: { type: Date },
+    designation: { type: String, trim: true }
+  },
+  address: {
+    type: String,
+    required: function () {
+      return this.role === 'admin' || this.role === 'owner';
+    }
+  },
+  city: {
+    type: String,
+    required: function () {
+      return this.role === 'admin' || this.role === 'owner';
+    }
+  },
+  state: {
+    type: String,
+    required: function () {
+      return this.role === 'admin' || this.role === 'owner';
+    }
+  },
+  country: {
+    type: String,
+    required: function () {
+      return this.role === 'admin' || this.role === 'owner';
+    }
+  },
+  pinCode: {
+    type: String,
+    required: function () {
+      return this.role === 'admin' || this.role === 'owner';
     },
-    employeeCode:{
-        type:String,
-        required:true,
-        minlength:4,
-        maxlength:15,
-        trim:true
+    validate: {
+      validator: function (val) {
+        return /^\d{6}$/.test(val);
+      },
+      message: 'Invalid pin code'
+    }
+  },
+  phoneNumber: {
+    type: String,
+    required: function () {
+      return this.role === 'admin' || this.role === 'owner';
     },
-    mobile:{
-        type:Number,
-        minlength:10,
-        maxlength:13,
-    },
-    type:{
-        type:String,
-        enum:['admin','employee','leader']
-    },
-    status:{
-        type:String,
-        enum:['active','banned'],
-        default:'active'
-    },
-    team:[{
-        type:Schema.Types.ObjectId,
-        ref:'Team'
-    }],
-    leadTeam:[{
-        type:Schema.Types.ObjectId,
-        ref:'Team'
-    }],
-    image:{
-        type:String,
-        required:false,
-        default:'user.png'
-    },
-    name: {
-        type: String,
-        trim: true
-    },
-    employeeInfo: {
-        firstName: {
-            type: String,
-           
-            trim: true
-        },
-        middleName: {
-            type: String,
-            trim: true
-        },
-        lastName: {
-            type: String,
-           
-            trim: true
-        },
-        bloodGroup: {
-            type: String,
-            trim: true
-        },
-        gender: {
-            type: String,
-            enum: ['Male', 'Female', 'Other'],
-          
-        },
-        dob: {
-            type: Date,
-           
-        },
-      
-        emailPersonal: {
-            type: String,
-            trim: true,
-           
-        },
-        department: {
-            type: String,
-            trim: true
-        },
-        dateOfJoining: {
-            type: Date,
-          
-        },
-    
-        designation: {
-            type: String,
-            trim: true
-        },
-        // supervisor: {
-        //     type: Schema.Types.ObjectId,
-        //     ref: 'User' // Reference to another user (supervisor)
-        // }
-    },
-    address: {
-        permanentAddress: {
-            address: String,
-            country: String,
-            state: String,
-            city: String
-        },
-        presentAddress: {
-            address: String,
-            country: String,
-            state: String,
-            city: String
-        }
-    },
-    emergencyContact:{
-        name: String,
-        address: String,
-        number: String,
-        email: String
-    },
-    degreeInfo:[
-        {
-        degree: String,
-        institute: String,
-        year:String,
-        percentage: String,
-        document: String
-        }
-    ],
-    experience:[
-        {
-        company: String,
-        position: String,
-        dateOfEntry: String,
-        dateOfExit: String,
-        document: String
-        }
-    ],
-    bankDetail:{
+    match: [/^\d{10}$/, 'Phone number must be 10 digits']
+  },
+  emergencyContact: {
+    name: String,
+    address: String,
+    number: String,
+    email: String
+  },
+  degreeInfo: [{
+    degree: String,
+    institute: String,
+    year: String,
+    percentage: String,
+    document: String
+  }],
+  experience: [{
+    company: String,
+    position: String,
+    dateOfEntry: String,
+    dateOfExit: String,
+    document: String
+  }],
+  bankDetail: {
     accountNumber: String,
     bankName: String,
     ifscCode: String,
     accountType: String,
     accountHolder: String,
     document: String
-    },
-    panaddhar:{
-        panCard: String,
-        aadharCard: String
-    },
-
+  },
+  panaddhar: {
+    panCard: String,
+    aadharCard: String
+  },
+  isDetailUpdated: {
+    type: Boolean,
+    default: false,
+  },
+  legalStatus: {
+    type: String,
+  },
+  tan: {
+    type: String,
+  },
+  pan: {
+    type: String,
+    match: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
+  },
+  year: {
+    type: String,
+    enum: ['Financial', 'Calendar'],
+  },
   created: {
     type: Date,
     default: Date.now,
   },
-role: { type: String, enum: ['owner', 'admin', 'employee'], default:"employee" }
- 
+  code: {
+    type: String,
+    match: /^\d{4}$/,
+    immutable: true,
+    required: function () {
+      return this.role === 'admin' || this.role === 'owner';
+    },
+  },
+  role: {
+    type: String,
+    enum: ['owner', 'admin', 'employee'],
+    default: 'owner'
+  }
+});
+
+UserSchema.pre('validate', async function (next) {
+  if (!this.companyId) {
+    const { nanoid } = await import('nanoid');
+    let newCompanyId;
+    let exists = true;
+
+    while (exists) {
+      newCompanyId = nanoid(12);
+      const existingUser = await mongoose.models.User.findOne({ companyId: newCompanyId });
+      exists = !!existingUser;
+    }
+
+    this.companyId = newCompanyId;
+  }
+  next();
 });
 
 module.exports = mongoose.model('User', UserSchema);

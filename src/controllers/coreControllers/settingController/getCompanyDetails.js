@@ -1,8 +1,8 @@
-const Admin = require("../../../models/coreModels/Admin")
+const User = require("../../../models/userModels/User")
 
 const getCompanyDetails = async (req,res) => {
     try{
-        const result = await Admin.findOne({
+        const result = await User.findOne({
     _id: req.admin.id,
     removed: false,
   }).exec();

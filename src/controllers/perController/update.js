@@ -1,10 +1,10 @@
 const update = async (Model, req, res) => {
     try {
       const  id  = req.admin.companyId; 
-      const { features } = req.body;
+      const { employeeId,plantId,features } = req.body;
        
       const permission = await Model.findOneAndUpdate(
-          { _id: req.params.id, companyId: id }, 
+          { employeeId,plantId, companyId: id }, 
           { features },                
           { new: true }                   
         );

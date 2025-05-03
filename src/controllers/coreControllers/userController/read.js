@@ -8,7 +8,8 @@ const read = async (req, res) => {
       _id: req.params.id,
       companyId:req.admin.companyId,
       removed: false,
-    })
+      role: { $in: ['admin', 'employee']},
+    }).populate('plantId')
       .exec();
     // If no results found, return document not found
     if (!result) {

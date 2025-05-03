@@ -6,7 +6,7 @@ const compression = require('compression');
 const cookieParser = require('cookie-parser');
 
 const coreAuthRouter = require('./routes/coreRoutes/coreAuth');
-const userAuthRouter = require('./routes/userRoutes/userAuth')
+// const userAuthRouter = require('./routes/userRoutes/userAuth')
 const coreApiRouter = require('./routes/coreRoutes/coreApi');
 const coreDownloadRouter = require('./routes/coreRoutes/coreDownloadRouter');
 const corePublicRouter = require('./routes/coreRoutes/corePublicRouter');
@@ -15,6 +15,7 @@ const permissionRouter = require('./routes/perRoutes/perApi')
 
 const errorHandlers = require('./handlers/errorHandlers');
 const erpApiRouter = require('./routes/appRoutes/appApi');
+const isAdminOrOwner = require('./middlewares/access/AdminOwner')
 
 const fileUpload = require('express-fileupload');
 // create our Express app
@@ -39,10 +40,10 @@ app.use(compression());
 // Here our API Routes
 
 app.use('/api', coreAuthRouter);
-app.use('/api/user',userAuthRouter)
-app.use('/api', adminAuth.isValidAuthToken, coreApiRouter);
+// app.use('/api/employee',userAuthRouter)
+app.use('/api', adminAuth.isValidAuthToken, isAdminOrOwner, coreApiRouter);
+app.use('/api/permission',adminAuth.isValidAuthToken,isAdminOrOwner,permissionRouter)
 app.use('/api', adminAuth.isValidAuthToken, erpApiRouter);
-app.use('/api/permission',adminAuth.isValidAuthToken,permissionRouter)
 
 app.use('/download', coreDownloadRouter);
 app.use('/public', corePublicRouter);

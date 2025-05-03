@@ -1,35 +1,40 @@
 
-const Admin = require("../../../models/coreModels/Admin")
+const User = require("../../../models/userModels/User")
 
 const updateCompanyDetails= async (req, res) => {
   try {
     const  id  = req.admin._id; // Admin ID passed in URL
     const {
       legalStatus,
-      tan,
-      pan,
-      year,
+        tan,
+        pan,
+        year,
+        name,
+        address,
+        city,
+        state,
+        country,
+        pinCode,
+        phoneNumber
     } = req.body;
 
-    const checkIsDetailUpdated = await Admin.findById(id);
+   
 
-    if(checkIsDetailUpdated.isDetailUpdated){
-
-        return res.status(404).json({
-            success: false,
-            message: 'Details already Up to Date. You can not update right now.',
-          });
-
-    }
-
-    const updatedAdmin = await Admin.findByIdAndUpdate(
+    const updatedAdmin = await User.findByIdAndUpdate(
       id,
       {
         legalStatus,
         tan,
         pan,
         year,
-        isDetailUpdated:true
+        name,
+        address,
+        city,
+        state,
+        country,
+        pinCode,
+        phoneNumber
+        
       },
       { new: true } // Return the updated document
     );

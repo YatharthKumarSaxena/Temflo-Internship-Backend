@@ -17,14 +17,13 @@ const schema = new mongoose.Schema({
   plantCode:{
     type: String,
     required: true,
-    unique:true,
     match: /^\d{4}$/, // 4 digit code
     immutable: true   // Not editable
   },
   businessArea:{
     type: mongoose.Schema.ObjectId, ref: 'BusinessArea',
     immutable: true,
-    required: true,
+    // required: true,
   },
   name: {
     type: String,

@@ -17,13 +17,12 @@ const search = async (Model, req, res) => {
   for (const field of fieldsArray) {
     fields.$or.push({ [field]: { $regex: new RegExp(req.query.q, 'i') } });
   }
-  // console.log(fields)
 
   let results = await Model.find({
     ...fields,
+    removed: false,
+    companyId: req.admin.companyId,
   })
-
-    .where('removed', false)
     .limit(20)
     .exec();
 

@@ -7,6 +7,7 @@ const createBulk = async (req, res) => {
   try {
     const User = mongoose.model('User');
     const UserPassword = mongoose.model('UserPassword');
+    const Plant = mongoose.model('Plant');
 
     const file = req.file;
     if (!file) return res.status(400).json({ success: false, message: 'Excel file is required' });
@@ -15,12 +16,36 @@ const createBulk = async (req, res) => {
     const sheet = workbook.Sheets['Employees'];
     const employeesData = xlsx.utils.sheet_to_json(sheet);
 
+
     const companyId = req.admin.companyId;
+
+    // 1. Extract all PlantCodes from Excel
+    const plantCodes = [
+      ...new Set(
+        employeesData
+          .map(emp => (emp.PlantCode || '').toString().trim().toUpperCase())
+          .filter(Boolean)
+      )
+    ];
+
+    // 2. Query all matching Plant documents for this company
+    const plantDocs = await Plant.find({
+      companyId,
+      plantCode: { $in: plantCodes },
+    });
+
+    // 3. Create a map of PlantCode -> Plant _id
+    const plantCodeMap = {};
+    for (const plant of plantDocs) {
+      plantCodeMap[plant.plantCode] = plant._id;
+    }
+
     const emails = employeesData.map(emp => emp.Email?.toLowerCase());
-    const employeeCodes = employeesData.map(emp => emp.EmployeeID);
+    const employeeCodes = employeesData.map(emp => emp.EmployeeCode);
 
     const existingUsers = await User.find({
       companyId,
+      removed:false,
       $or: [
         { email: { $in: emails } },
         { employeeCode: { $in: employeeCodes } },
@@ -36,15 +61,23 @@ const createBulk = async (req, res) => {
 
     for (const emp of employeesData) {
       const email = emp.Email?.toLowerCase();
-      const employeeCode = emp.EmployeeID;
+      const employeeCode = emp.EmployeeCode;
+      const plantCode = (emp.PlantCode || '').toString().trim().toUpperCase();
 
-      if (!email || !emp.Password || !employeeCode) {
-        failed.push({ ...emp, reason: 'Missing required fields' });
+
+      if (!email || !emp.Password || !employeeCode || !plantCode) {
+        failed.push({ ...emp, reason: 'Missing required fields (Email, Password, EmployeeCode, PlantCode)' });
         continue;
       }
 
       if (existingEmailSet.has(email) || existingCodeSet.has(employeeCode)) {
         duplicates.push({ ...emp, reason: 'Duplicate email or employeeCode' });
+        continue;
+      }
+
+      const plantId = plantCodeMap[plantCode];
+      if (!plantId) {
+        failed.push({ ...emp, reason: `PlantCode '${plantCode}' not found in company` });
         continue;
       }
 
@@ -58,7 +91,10 @@ const createBulk = async (req, res) => {
           employeeCode,
           companyId,
           name: emp.Name,
-          type: emp.Type?.toLowerCase(),
+          mobile: emp.Mobile,
+          plantId,
+          enabled:true,
+          role:"employee"
         });
 
         const savedUser = await newUser.save();
@@ -81,7 +117,7 @@ const createBulk = async (req, res) => {
       }
     }
 
-    fs.unlinkSync(file.path); // Cleanup file
+    fs.unlinkSync(file.path); // Cleanup uploaded Excel file
 
     return res.status(200).json({
       success: true,

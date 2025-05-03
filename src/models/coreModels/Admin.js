@@ -76,6 +76,12 @@ const adminSchema = new Schema({
     type: String,
     enum: ['Financial', 'Calendar'],
   },
+   companyId: {
+    type: String,
+    unique: true,
+    required: true,
+    immutable: true
+  },
   created: {
     type: Date,
     default: Date.now,
@@ -85,12 +91,7 @@ const adminSchema = new Schema({
     default: 'owner',
     enum: ['owner'],
   },
-  companyId: {
-    type: String,
-    unique: true,
-    required: true,
-    immutable: true
-  }
+ 
 });
 
 adminSchema.pre('validate', async function (next) {

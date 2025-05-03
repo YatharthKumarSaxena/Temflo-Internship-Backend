@@ -67,20 +67,20 @@ router.route('/email/filter').get(catchErrors(emailController.filter));
 
 
 // ------------------------------API to create User in Company---------------------------
-router.route('/user/create').post(catchErrors(userController.create));
-router.route('/user/list').get(catchErrors(userController.paginatedList));
-router.route('/user/read/:id').get(catchErrors(userController.read));
-router.route('/user/delete/:id').delete(catchErrors(userController.remove));
-router.route('/user/create-in-bulk').post(catchErrors(userController.createBulk))
+router.route('/employee/create').post(catchErrors(userController.create));
+router.route('/employee/list').get(catchErrors(userController.paginatedList));
+router.route('/employee/read/:id').get(catchErrors(userController.read));
+router.route('/employee/delete/:id').delete(catchErrors(userController.remove));
+router.route('/employee/create-in-bulk').post(upload.single('excelsheet'),catchErrors(userController.createBulk))
 
 // ---------------------------API to Update User Information----------------------------
-router.route('/user/update-info/:id').patch(catchErrors(userController.UpdateController.updateInfo))
-router.route('/user/update-address/:id').patch(catchErrors(userController.UpdateController.updateAddress))
-router.route('/user/update-emergency-contact/:id').patch(catchErrors(userController.UpdateController.updateEmergencyContact))
-router.route('/user/update-bank-details/:id').patch(catchErrors(userController.UpdateController.updateBankDetail))
-router.route('/user/update-degree-info/:id').patch(upload.single('document'),catchErrors(userController.UpdateController.updateDegreeInfo))
-router.route('/user/update-pan/:id').patch(upload.single('pan'),catchErrors(userController.UpdateController.updatePan))
-router.route('/user/update-aadhar/:id').patch(upload.single('aadhar'),catchErrors(userController.UpdateController.updateAadhar))
-
+router.route('/employee/update-info/:id').patch(catchErrors(userController.UpdateController.updateInfo))
+router.route('/employee/update-address/:id').patch(catchErrors(userController.UpdateController.updateAddress))
+router.route('/employee/update-emergency-contact/:id').patch(catchErrors(userController.UpdateController.updateEmergencyContact))
+router.route('/employee/update-bank-details/:id').patch(upload.single('bank'),catchErrors(userController.UpdateController.updateBankDetail))
+router.route('/employee/update-degree-info/:id').patch(upload.single('document'),catchErrors(userController.UpdateController.updateDegreeInfo))
+router.route('/employee/update-pan/:id').patch(upload.single('pan'),catchErrors(userController.UpdateController.updatePan))
+router.route('/employee/update-aadhar/:id').patch(upload.single('aadhar'),catchErrors(userController.UpdateController.updateAadhar))
+router.route('/employee/update-experience-info/:id').patch(upload.single('document'),catchErrors(userController.UpdateController.updateDegreeInfo))
 
 module.exports = router;
