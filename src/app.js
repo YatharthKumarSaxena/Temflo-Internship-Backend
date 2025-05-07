@@ -8,8 +8,8 @@ const cookieParser = require('cookie-parser');
 const coreAuthRouter = require('./routes/coreRoutes/coreAuth');
 // const userAuthRouter = require('./routes/userRoutes/userAuth')
 const coreApiRouter = require('./routes/coreRoutes/coreApi');
-const coreDownloadRouter = require('./routes/coreRoutes/coreDownloadRouter');
-const corePublicRouter = require('./routes/coreRoutes/corePublicRouter');
+// const coreDownloadRouter = require('./routes/coreRoutes/coreDownloadRouter');
+// const corePublicRouter = require('./routes/coreRoutes/corePublicRouter');
 const adminAuth = require('./controllers/coreControllers/adminAuth');
 const permissionRouter = require('./routes/perRoutes/perApi')
 
@@ -41,12 +41,12 @@ app.use(compression());
 
 app.use('/api', coreAuthRouter);
 // app.use('/api/employee',userAuthRouter)
-app.use('/api', adminAuth.isValidAuthToken, isAdminOrOwner, coreApiRouter);
+app.use('/api', adminAuth.isValidAuthToken, coreApiRouter);
 app.use('/api/permission',adminAuth.isValidAuthToken,isAdminOrOwner,permissionRouter)
 app.use('/api', adminAuth.isValidAuthToken, erpApiRouter);
 
-app.use('/download', coreDownloadRouter);
-app.use('/public', corePublicRouter);
+// app.use('/download', coreDownloadRouter);
+// app.use('/public', corePublicRouter);
 
 // If that above routes didnt work, we 404 them and forward to error handler
 app.use(errorHandlers.notFound);

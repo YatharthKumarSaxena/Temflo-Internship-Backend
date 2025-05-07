@@ -1,29 +1,13 @@
-const createCRUDController = require('@/controllers/middlewaresControllers/createCRUDController');
-const crudController = createCRUDController('Setting');
-
-const listBySettingKey = require('./listBySettingKey');
-const readBySettingKey = require('./readBySettingKey');
-const updateBySettingKey = require('./updateBySettingKey');
-const updateManySetting = require('./updateManySetting');
 const updateCompanyDetails = require('./updateCompanyDetails')
 const getCompanyDetails = require('./getCompanyDetails')
+const updatePassword = require('./updatePassword')
 
-const listAll = require('./listAll');
 
 const settingMethods = {
-  read: crudController.read,
-  create: crudController.create,
-  update: crudController.update,
-  list: crudController.list,
-  filter: crudController.filter,
-  search: crudController.search,
-  listAll: listAll,
-  listBySettingKey,
-  readBySettingKey,
-  updateBySettingKey,
-  updateManySetting,
   updateCompanyDetails,
-  getCompanyDetails
+  getCompanyDetails,
+  updatePassword
+
 };
 
 module.exports = settingMethods;

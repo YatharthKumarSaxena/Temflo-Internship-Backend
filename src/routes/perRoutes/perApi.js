@@ -10,6 +10,6 @@ router.route('/get-employee-permission/:id').get(catchErrors(perApi.read));
 router.route('/create-employee-permission').post(catchErrors(perApi.create))
 router.route('/update-employee-permission').patch(catchErrors(perApi.update))
 router.route('/delete-employee-permission/:id').delete(catchErrors(perApi.delete))
-
+router.route('/add-feature/:id').patch(catchErrors(perApi.feature))
 
 module.exports = router

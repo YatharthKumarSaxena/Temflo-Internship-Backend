@@ -6,7 +6,7 @@ class UpdateController{
         try {
 
         // Check the type and get _id accordingly
-        const _id = req.params.id 
+        const _id = req.admin.id 
         const { firstName, middleName, lastName, bloodGroup, gender, dob, contactNumber, emailPersonal, department, dateOfJoining, designation, supervisor } = req.body
 
         const updatedUser = await UserModel.findByIdAndUpdate({_id,companyId:req.admin.companyId}, {
@@ -40,7 +40,7 @@ class UpdateController{
 
     updateAddress = async (req, res, next) => {
         try {
-            const _id =  req.params.id 
+            const _id =  req.admin.id 
 
             const { permanentAddress, presentAddress } = req.body
             
@@ -72,7 +72,7 @@ class UpdateController{
     updateEmergencyContact = async (req, res, next) => {
         try {
 
-            const _id = req.params.id 
+            const _id = req.admin.id 
 
             const { name, address, number, email } = req.body
 
@@ -107,7 +107,7 @@ class UpdateController{
             const filename = file && file.filename;
 
 
-            const _id = req.params.id 
+            const _id = req.admin.id 
 
             const { accountNumber, bankName, ifscCode, accountType, accountHolder } = req.body
 
@@ -143,7 +143,7 @@ class UpdateController{
             const file = req.file;
             const filename = file && file.filename;
 
-            const _id = req.params.id ;
+            const _id = req.admin.id ;
 
             const { degree, institute, year, percentage } = req.body;
 
@@ -193,7 +193,7 @@ class UpdateController{
             const file = req.file;
             const filename = file && file.filename;
 
-            const _id = req.params.id ;
+            const _id = req.admin.id ;
 
             const { company,position,dateOfEntry,dateOfExit } = req.body;
 
@@ -248,7 +248,7 @@ class UpdateController{
             if(!file) return res.status(404).json({ success: false, message: 'All field required' });
 
 
-            const _id =  req.params.id 
+            const _id =  req.admin.id 
 
             const updatedUser = await UserModel.findByIdAndUpdate({_id,companyId:req.admin.companyId}, {
                 $set: {
@@ -284,7 +284,7 @@ class UpdateController{
             if(!file) return res.status(404).json({ success: false, message: 'All field Required' }) ;
 
 
-            const _id =  req.params.id ;
+            const _id =  req.admin.id ;
             const updatedUser = await UserModel.findByIdAndUpdate({_id,companyId:req.admin.companyId}, {
                 $set: {
                     "panaddhar.aadharCard": filename,

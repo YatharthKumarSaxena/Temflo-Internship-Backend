@@ -187,6 +187,10 @@ const UserSchema = new Schema({
       return this.role === 'admin' || this.role === 'owner';
     },
   },
+  permissions: {
+    type: [String],
+    default: [],
+  },
   role: {
     type: String,
     enum: ['owner', 'admin', 'employee'],

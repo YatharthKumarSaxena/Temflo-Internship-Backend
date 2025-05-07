@@ -49,6 +49,7 @@ const authUser = async (req, res, { user, databasePassword, password, UserPasswo
           role: user.role,
           email: user.email,
           photo: user.photo,
+          permissions:user.permissions
         },
         message: 'Successfully login user',
       });
