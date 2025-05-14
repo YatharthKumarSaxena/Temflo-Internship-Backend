@@ -8,10 +8,12 @@ const cookieParser = require('cookie-parser');
 const coreAuthRouter = require('./routes/coreRoutes/coreAuth');
 // const userAuthRouter = require('./routes/userRoutes/userAuth')
 const coreApiRouter = require('./routes/coreRoutes/coreApi');
+const corePolicyRouter = require('./routes/coreRoutes/corePolicy')
 // const coreDownloadRouter = require('./routes/coreRoutes/coreDownloadRouter');
 // const corePublicRouter = require('./routes/coreRoutes/corePublicRouter');
 const adminAuth = require('./controllers/coreControllers/adminAuth');
 const permissionRouter = require('./routes/perRoutes/perApi')
+const AttendanceRouter = require('./routes/AttendanceRoutes/attendanceApi')
 
 const errorHandlers = require('./handlers/errorHandlers');
 const erpApiRouter = require('./routes/appRoutes/appApi');
@@ -44,6 +46,9 @@ app.use('/api', coreAuthRouter);
 app.use('/api', adminAuth.isValidAuthToken, coreApiRouter);
 app.use('/api/permission',adminAuth.isValidAuthToken,isAdminOrOwner,permissionRouter)
 app.use('/api', adminAuth.isValidAuthToken, erpApiRouter);
+app.use('/api',adminAuth.isValidAuthToken,corePolicyRouter)
+app.use('/api/attendance',adminAuth.isValidAuthToken,AttendanceRouter)
+
 
 // app.use('/download', coreDownloadRouter);
 // app.use('/public', corePublicRouter);

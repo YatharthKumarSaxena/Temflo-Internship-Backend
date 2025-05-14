@@ -1,11 +1,12 @@
 const listAll = async (Model, req, res) => {
   const sort = req.query.sort || 'desc';
-  const enabled = req.query.enabled || undefined;
+  // const enabled = req.query.enabled || undefined;
+  const plantId = req.query.plantId || undefined;
 
   //  Query the database for a list of all results
 
   let result;
-  if (enabled === undefined) {
+  if (plantId === undefined) {
     result = await Model.find({
       removed: false,
     })
@@ -15,7 +16,7 @@ const listAll = async (Model, req, res) => {
   } else {
     result = await Model.find({
       removed: false,
-      enabled: enabled,
+      plantId,
     })
       .sort({ created: sort })
       .populate()

@@ -12,8 +12,8 @@ const requireWriteAccess = require('@/middlewares/access/requireWriteAccess')
 const checkPermission = require('@/middlewares/access/checkMiddleware')
 const isAdminOrOwner = require('@/middlewares/access/AdminOwner')
 
-router.route('/setting/CompanyInfo').get(catchErrors(isAdminOrOwner,settingController.getCompanyDetails));
-router.route('/setting/updateCompanyDetails').patch(catchErrors(isAdminOrOwner,settingController.updateCompanyDetails))
+router.route('/setting/CompanyInfo').get(isAdminOrOwner, catchErrors(settingController.getCompanyDetails));
+router.route('/setting/updateCompanyDetails').patch(isAdminOrOwner,catchErrors(settingController.updateCompanyDetails))
 router.route('/setting/updatePassword').patch(catchErrors(settingController.updatePassword))
 
 
@@ -35,7 +35,8 @@ router.route('/employee/update-degree-info/:id').patch(upload.single('document')
 router.route('/employee/update-pan/:id').patch(upload.single('pan'),catchErrors(userController.UpdateController.updatePan))
 router.route('/employee/update-aadhar/:id').patch(upload.single('aadhar'),catchErrors(userController.UpdateController.updateAadhar))
 router.route('/employee/update-experience-info/:id').patch(upload.single('document'),catchErrors(userController.UpdateController.updateExperienceInfo))
-
+router.route('/employee/:directory/:filename').get(catchErrors(userController.downloadFile))
+router.route('/employee/delete/:infoType/:id/:deleteId').delete(catchErrors(userController.deleteInfo))
 // --------------------------- API Profile ----------------------------------------------
 router.route('/profile-me').get(catchErrors(profileController.read));
 router.route('/profile/update-info').patch(catchErrors(profileController.UpdateController.updateInfo))
@@ -46,5 +47,7 @@ router.route('/profile/update-degree-info').patch(upload.single('document'),catc
 router.route('/profile/update-pan').patch(upload.single('pan'),catchErrors(profileController.UpdateController.updatePan))
 router.route('/profile/update-aadhar').patch(upload.single('aadhar'),catchErrors(profileController.UpdateController.updateAadhar))
 router.route('/profile/update-experience-info').patch(upload.single('document'),catchErrors(profileController.UpdateController.updateExperienceInfo))
+// router.route('/profile/:directory/:filename').get(catchErrors(userController.downloadFile))
+router.route('/profile/delete/:infoType/:deleteId').delete(catchErrors(profileController.deleteInfo))
 
 module.exports = router;

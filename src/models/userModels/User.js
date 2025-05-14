@@ -82,7 +82,7 @@ const UserSchema = new Schema({
     dateOfJoining: { type: Date },
     designation: { type: String, trim: true }
   },
-  address: {
+  cAddress: {
     type: String,
     required: function () {
       return this.role === 'admin' || this.role === 'owner';
@@ -136,14 +136,30 @@ const UserSchema = new Schema({
     institute: String,
     year: String,
     percentage: String,
-    document: String
+    document: String,
+    key:String
   }],
+  address: {
+        permanentAddress: {
+            address: String,
+            country: String,
+            state: String,
+            city: String
+        },
+        presentAddress: {
+            address: String,
+            country: String,
+            state: String,
+            city: String
+        }
+    },
   experience: [{
     company: String,
     position: String,
     dateOfEntry: String,
     dateOfExit: String,
-    document: String
+    document: String,
+    key:String
   }],
   bankDetail: {
     accountNumber: String,

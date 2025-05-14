@@ -34,10 +34,10 @@ const storageEngine = multer.diskStorage({
         uploadPath = './storage/document';
         break;
       case 'aadhar':
-        uploadPath = './storage/degree/aadhar';
+        uploadPath = './storage/aadhar';
         break;
       case 'pan':
-        uploadPath = './storage/degree/pan';
+        uploadPath = './storage/pan';
         break;
       case 'bank':
         uploadPath = './storage/bank';

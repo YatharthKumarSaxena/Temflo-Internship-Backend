@@ -6,6 +6,8 @@ const remove = require('./remove');
 const UpdateController = require('./update');
 const paginatedList = require('./paginatedList');
 const createBulk = require('./createBulk.js')
+const downloadFile = require('./downloadFile')
+const deleteInfo = require('./deleteInfo')
 const {countUsers,countPlants} = require('./count')
 
 const UserMethods = {
@@ -16,7 +18,9 @@ const UserMethods = {
   paginatedList,
   createBulk,
   countUsers,
-  countPlants
+  countPlants,
+  downloadFile,
+  deleteInfo
 };
 
 module.exports = UserMethods;

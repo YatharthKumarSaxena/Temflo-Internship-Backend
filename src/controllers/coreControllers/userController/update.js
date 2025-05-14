@@ -13,7 +13,7 @@ class UpdateController{
                 $set: {
                     "mobile": contactNumber,
                     "employeeInfo.firstName": firstName,
-                    "employeeInfo.middlename": middleName,
+                    "employeeInfo.middleName": middleName,
                     "employeeInfo.lastName": lastName,
                     "employeeInfo.bloodGroup": bloodGroup,
                     "employeeInfo.gender": gender,
@@ -21,7 +21,7 @@ class UpdateController{
                     "employeeInfo.emailPersonal": emailPersonal,
                     "employeeInfo.department": department,
                     "employeeInfo.dateOfJoining": dateOfJoining,
-                    "employeeInfo.designamtion": designation,
+                    "employeeInfo.designation": designation,
                     // "employeeInfo.supervisor":supervisor
                 }
             }, { new: true });
@@ -145,7 +145,7 @@ class UpdateController{
 
             const _id = req.params.id ;
 
-            const { degree, institute, year, percentage } = req.body;
+            const { degree, institute, year, percentage, key } = req.body;
 
             if (!degree || !institute || !year || !percentage || !file) return res.status(404).json({ success: false, message: 'All field requireed' });
 
@@ -162,6 +162,7 @@ class UpdateController{
                 institute,
                 year,
                 percentage,
+                key,
                 document: filename // Add file path (if uploaded)
             };
             
@@ -195,7 +196,7 @@ class UpdateController{
 
             const _id = req.params.id ;
 
-            const { company,position,dateOfEntry,dateOfExit } = req.body;
+            const { company,position,dateOfEntry,dateOfExit, key } = req.body;
 
             if (!company || !position || !dateOfEntry || !dateOfExit || !file) return res.status(404).json({ success: false, message: 'All field requireed' });
 
@@ -212,6 +213,7 @@ class UpdateController{
                 position,
                 dateOfEntry,
                 dateOfExit,
+                key,
                 document: filename // Add file path (if uploaded)
             };
             
@@ -225,7 +227,7 @@ class UpdateController{
             return res.status(200).json({
                 success: true,
                 message: 'Experience information updated successfully',
-                degreeInfo: user.experience
+                experienceInfo: user.experience
             });
 
 
