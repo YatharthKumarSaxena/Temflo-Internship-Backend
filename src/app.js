@@ -14,10 +14,13 @@ const corePolicyRouter = require('./routes/coreRoutes/corePolicy')
 const adminAuth = require('./controllers/coreControllers/adminAuth');
 const permissionRouter = require('./routes/perRoutes/perApi')
 const AttendanceRouter = require('./routes/AttendanceRoutes/attendanceApi')
+const LeaveRouter = require('./routes/LeaveRoutes/leaveApi')
 
 const errorHandlers = require('./handlers/errorHandlers');
 const erpApiRouter = require('./routes/appRoutes/appApi');
 const isAdminOrOwner = require('./middlewares/access/AdminOwner')
+
+const runCrons = require('./cron')
 
 const fileUpload = require('express-fileupload');
 // create our Express app
@@ -36,6 +39,8 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(compression());
 
+runCrons()
+
 // // default options
 // app.use(fileUpload());
 
@@ -48,7 +53,7 @@ app.use('/api/permission',adminAuth.isValidAuthToken,isAdminOrOwner,permissionRo
 app.use('/api', adminAuth.isValidAuthToken, erpApiRouter);
 app.use('/api',adminAuth.isValidAuthToken,corePolicyRouter)
 app.use('/api/attendance',adminAuth.isValidAuthToken,AttendanceRouter)
-
+app.use('/api/leave',adminAuth.isValidAuthToken,LeaveRouter)
 
 // app.use('/download', coreDownloadRouter);
 // app.use('/public', corePublicRouter);

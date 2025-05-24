@@ -14,7 +14,8 @@ const paginatedList = async (req, res) => {
   for (const field of fieldsArray) {
     fields.$or.push({ [field]: { $regex: new RegExp(req.query.q, 'i') } });
   }
-
+  
+  console.log(filter)
   // Base query
   const baseQuery = {
     removed: false,

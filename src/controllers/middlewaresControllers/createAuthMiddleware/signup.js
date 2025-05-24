@@ -30,7 +30,7 @@ const signUp = async (req, res, { userModel }) => {
             email,
             code,
             name,
-            address,
+            cAddress:address,
             city,
             state,
             country,
