@@ -30,13 +30,12 @@ const authUser = async (req, res, { user, databasePassword, password, UserPasswo
     ).exec();
 
     const cookieOptions = {
-      maxAge: req.body.remember ? 365 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000, // 1 year or 1 day
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // only send over HTTPS in production
-      sameSite: 'Strict', // CSRF protection
-      domain: req.hostname,
-      path: '/',
-    };
+    maxAge: req.body.remember ? 365 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000, // 1 year or 1 day
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production', // required when sameSite is 'None'
+    sameSite: 'None', // allow cookies to be sent in cross-origin requests
+    path: '/',
+  };
 
     return res
       .status(200)

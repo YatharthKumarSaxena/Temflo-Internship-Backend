@@ -29,15 +29,16 @@ const fileUpload = require('express-fileupload');
 // create our Express app
 const app = express();
 
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow all origins, including http and https
-      callback(null, origin || '*');
+      callback(null, origin || '*'); // dynamically allow all origins
     },
-    credentials: true,
+    credentials: true, // allow cookies to be sent
   })
 );
+
 
 app.use(cookieParser());
 app.use(express.json());
