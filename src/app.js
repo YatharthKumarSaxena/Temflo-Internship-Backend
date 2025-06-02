@@ -15,10 +15,13 @@ const adminAuth = require('./controllers/coreControllers/adminAuth');
 const permissionRouter = require('./routes/perRoutes/perApi')
 const AttendanceRouter = require('./routes/AttendanceRoutes/attendanceApi')
 const LeaveRouter = require('./routes/LeaveRoutes/leaveApi')
+const AssetRouter = require('./routes/AssetRoutes/assetApi')
 
 const errorHandlers = require('./handlers/errorHandlers');
 const erpApiRouter = require('./routes/appRoutes/appApi');
 const isAdminOrOwner = require('./middlewares/access/AdminOwner')
+
+const coreNoticeRouter = require('./routes/coreRoutes/coreNotice')
 
 const runCrons = require('./cron')
 
@@ -51,9 +54,12 @@ app.use('/api', coreAuthRouter);
 app.use('/api', adminAuth.isValidAuthToken, coreApiRouter);
 app.use('/api/permission',adminAuth.isValidAuthToken,isAdminOrOwner,permissionRouter)
 app.use('/api', adminAuth.isValidAuthToken, erpApiRouter);
-app.use('/api',adminAuth.isValidAuthToken,corePolicyRouter)
+app.use('/api/policy',adminAuth.isValidAuthToken,corePolicyRouter)
+app.use('/api/notice',adminAuth.isValidAuthToken,coreNoticeRouter)
 app.use('/api/attendance',adminAuth.isValidAuthToken,AttendanceRouter)
 app.use('/api/leave',adminAuth.isValidAuthToken,LeaveRouter)
+app.use('/api/asset', adminAuth.isValidAuthToken,AssetRouter)
+
 
 // app.use('/download', coreDownloadRouter);
 // app.use('/public', corePublicRouter);

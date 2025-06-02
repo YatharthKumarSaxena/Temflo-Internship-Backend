@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const PolicySchema = new mongoose.Schema({
+const NoticeSchema = new mongoose.Schema({
     companyId: {
         type: String,
         required: true,
@@ -12,7 +12,7 @@ const PolicySchema = new mongoose.Schema({
         default: false,
     },
 
-    policies:[
+    notices:[
         {
           file: {
             type: String,
@@ -38,5 +38,5 @@ const PolicySchema = new mongoose.Schema({
   
 });
 
-module.exports = mongoose.model('Policy', PolicySchema);
+module.exports = mongoose.model('Notice', NoticeSchema);
 

@@ -9,7 +9,7 @@ const downloadFile = async (req, res, next) => {
     const safeDirectory = path.basename(directory);
     const safeFilename = path.basename(filename);
 
-    const filePath = path.join(__dirname, '../../../../storage', safeDirectory, safeFilename);
+    const filePath = path.join(__dirname, '../../../storage', safeDirectory, safeFilename);
 
     // Optional: check if file exists
     if (!fs.existsSync(filePath)) {

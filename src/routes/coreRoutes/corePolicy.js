@@ -1,15 +1,15 @@
 const express = require('express');
 
 const router = express.Router();
+const upload = require('../../services/file-upload')
 
 const { catchErrors } = require('@/handlers/errorHandlers');
+const PolicyController = require('@/controllers/policyControllers')
 
-// router.post('/add-policy',upload.single('policy'),asyncMiddleware(PolicyController.createPolicy)) //Add Policy
-// router.put('/edit-policy',asyncMiddleware(PolicyController.updatePolicy)) //Edit Policy
-// router.get('/get-policies',asyncMiddleware(PolicyController.getPolicy))  //Get Policies
-// router.delete('/delete-policy/:policyId',asyncMiddleware(PolicyController.deletePolicy)) //Delete Policy
+router.route('/add-policy').post(upload.single('policy'),catchErrors(PolicyController.UpdateController.updatePolicy)) //Add Policy
+router.route('/get-policies').get(catchErrors(PolicyController.read))  //Get Policies
+router.route('/delete-policy/:policyId').delete(catchErrors(PolicyController.remove)) //Delete Policy
+router.route('/download-policy/:directory/:filename').get(catchErrors(PolicyController.downloadFile))
 
-
-// router.route('/add-polic')\
 
 module.exports = router

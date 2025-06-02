@@ -14,8 +14,9 @@ const requests = await AttendanceRequest.find({
         $gte: new Date(summaryDate.setHours(0, 0, 0, 0)),
         $lte: new Date(summaryDate.setHours(23, 59, 59, 999))
       }
-    }).populate('userId', 'name email employeeId') // populate basic user details
-    .populate('approver', 'name email');      
+    }).populate('userId', 'name email employeeCode') // populate basic user details
+    .populate('approver', 'name email')
+    .populate('plantId', 'name')      
     const pending = requests.filter(r => r.status === 'pending');
     const approved = requests.filter(r => r.status === 'approved');
     const rejected = requests.filter(r => r.status === 'rejected');
