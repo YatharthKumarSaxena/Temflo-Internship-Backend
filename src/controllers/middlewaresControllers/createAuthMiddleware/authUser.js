@@ -2,44 +2,45 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const authUser = async (req, res, { user, databasePassword, password, UserPasswordModel }) => {
-  const isMatch = await bcrypt.compare(databasePassword.salt + password, databasePassword.password);
+  try {
+    const isMatch = await bcrypt.compare(databasePassword.salt + password, databasePassword.password);
 
-  if (!isMatch)
-    return res.status(403).json({
-      success: false,
-      result: null,
-      message: 'Invalid credentials.',
+    if (!isMatch) {
+      return res.status(403).json({
+        success: false,
+        result: null,
+        message: 'Invalid credentials.',
+      });
+    }
+
+    const payload = {
+      id: user._id,
+      companyId: user.companyId,
+    };
+
+    const tokenExpiryHours = req.body.remember ? 365 * 24 : 24;
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: `${tokenExpiryHours}h`,
     });
-
-  if (isMatch === true) {
-    const token = jwt.sign(
-      {
-        id: user._id,
-        companyId: user.companyId, 
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: req.body.remember ? 365 * 24 + 'h' : '24h' }
-    );
 
     await UserPasswordModel.findOneAndUpdate(
       { user: user._id },
       { $push: { loggedSessions: token } },
-      {
-        new: true,
-      }
+      { new: true }
     ).exec();
 
-    res
+    const cookieOptions = {
+      maxAge: req.body.remember ? 365 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000, // 1 year or 1 day
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // only send over HTTPS in production
+      sameSite: 'Strict', // CSRF protection
+      domain: req.hostname,
+      path: '/',
+    };
+
+    return res
       .status(200)
-      .cookie('token', token, {
-        maxAge: req.body.remember ? 365 * 24 * 60 * 60 * 1000 : null,
-        sameSite: 'Lax',
-        httpOnly: true,
-        secure: false,
-        domain: req.hostname,
-        path: '/',
-        Partitioned: true,
-      })
+      .cookie('token', token, cookieOptions)
       .json({
         success: true,
         result: {
@@ -49,18 +50,19 @@ const authUser = async (req, res, { user, databasePassword, password, UserPasswo
           role: user.role,
           email: user.email,
           photo: user.photo,
-          permissions:user.permissions
+          permissions: user.permissions,
         },
-        message: 'Successfully login user',
+        message: 'User logged in successfully.',
       });
-  } else {
-    return res.status(403).json({
+
+  } catch (error) {
+    console.error('Auth Error:', error);
+    return res.status(500).json({
       success: false,
       result: null,
-      message: 'Invalid credentials.',
+      message: 'Server error during authentication.',
     });
   }
-
 };
 
 module.exports = authUser;

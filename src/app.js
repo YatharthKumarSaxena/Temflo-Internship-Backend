@@ -31,7 +31,10 @@ const app = express();
 
 app.use(
   cors({
-    origin: true,
+    origin: (origin, callback) => {
+      // Allow all origins, including http and https
+      callback(null, origin || '*');
+    },
     credentials: true,
   })
 );
