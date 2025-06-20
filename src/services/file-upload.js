@@ -1,88 +1,66 @@
 const multer = require('multer');
-const fs = require('fs');
-const path = require('path');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('./cloudinary'); // the file above
 
-// Dynamically ensure upload path exists
-const ensureDirExists = (dirPath) => {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
-  }
-};
-
-const storageEngine = multer.diskStorage({
-  destination: (req, file, cb) => {
-    let uploadPath;
-
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    let folderName;
 
     switch (file.fieldname) {
       case 'profile':
-        uploadPath = './storage/images/profile/';
+        folderName = 'erpica/profile';
         break;
       case 'image':
-        uploadPath = './storage/images/teams';
+        folderName = 'erpica/teams';
         break;
       case 'policy':
-        uploadPath = './storage/policies';
+        folderName = 'erpica/policies';
         break;
       case 'notice':
-        uploadPath = './storage/notices';
+        folderName = 'erpica/notices';
         break;
       case 'excelsheet':
-        uploadPath = './storage/excelsheet';
+        folderName = 'erpica/excelsheets';
         break;
       case 'document':
-        uploadPath = './storage/document';
+        folderName = 'erpica/documents';
         break;
       case 'aadhar':
-        uploadPath = './storage/aadhar';
+        folderName = 'erpica/aadhar';
         break;
       case 'pan':
-        uploadPath = './storage/pan';
+        folderName = 'erpica/pan';
         break;
       case 'bank':
-        uploadPath = './storage/bank';
+        folderName = 'erpica/bank';
         break;
       default:
-        return cb(new Error('Unsupported field name'), false);
+        folderName = 'erpica/others';
     }
 
-
-    ensureDirExists(uploadPath);
-    cb(null, uploadPath);
-  },
-
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const safeName = file.originalname.replace(/\s+/g, '_'); // Replace spaces
-    cb(null, `${file.fieldname}-${uniqueSuffix}-${safeName}`);
+    return {
+      folder: folderName,
+      public_id: `${file.fieldname}-${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`,
+    };
   }
 });
 
 const fileFilter = (req, file, cb) => {
-  if (!file) {
+  if (!file) return cb(null, false);
+
+  if (file.fieldname === 'image' &&
+    !['image/png', 'image/jpg', 'image/jpeg'].includes(file.mimetype)) {
     return cb(null, false);
   }
 
-  if (file.fieldname === 'image') {
-    if (['image/png', 'image/jpg', 'image/jpeg'].includes(file.mimetype)) {
-      return cb(null, true);
-    } else {
-      return cb(null, false);
-    }
+  if (file.fieldname === 'video' && file.mimetype !== 'video/mp4') {
+    return cb(null, false);
   }
 
-  if (file.fieldname === 'video') {
-    if (file.mimetype === 'video/mp4') {
-      return cb(null, true);
-    } else {
-      return cb(null, false);
-    }
-  }
-
-  // Accept all other file types (e.g., PDFs, docs)
-  cb(null, true);
+  cb(null, true); // accept all others
 };
 
-const upload = multer({ storage: storageEngine, fileFilter });
+const upload = multer({ storage, fileFilter });
 
 module.exports = upload;

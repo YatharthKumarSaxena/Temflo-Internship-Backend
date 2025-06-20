@@ -36,6 +36,10 @@ const UserSchema = new Schema({
       return this.role === 'employee';
     }
   },
+  supervisor:{
+    type: mongoose.Schema.ObjectId,
+    ref: 'User',
+  },
   mobile: {
     type: Number,
     minlength: 10,

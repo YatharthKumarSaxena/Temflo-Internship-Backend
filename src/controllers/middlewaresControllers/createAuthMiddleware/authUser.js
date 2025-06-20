@@ -2,44 +2,44 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const authUser = async (req, res, { user, databasePassword, password, UserPasswordModel }) => {
-  try {
-    const isMatch = await bcrypt.compare(databasePassword.salt + password, databasePassword.password);
+  const isMatch = await bcrypt.compare(databasePassword.salt + password, databasePassword.password);
 
-    if (!isMatch) {
-      return res.status(403).json({
-        success: false,
-        result: null,
-        message: 'Invalid credentials.',
-      });
-    }
-
-    const payload = {
-      id: user._id,
-      companyId: user.companyId,
-    };
-
-    const tokenExpiryHours = req.body.remember ? 365 * 24 : 24;
-    const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: `${tokenExpiryHours}h`,
+  if (!isMatch)
+    return res.status(403).json({
+      success: false,
+      result: null,
+      message: 'Invalid credentials.',
     });
+
+  if (isMatch === true) {
+    const token = jwt.sign(
+      {
+        id: user._id,
+        companyId: user.companyId, 
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: req.body.remember ? 365 * 24 + 'h' : '24h' }
+    );
 
     await UserPasswordModel.findOneAndUpdate(
       { user: user._id },
       { $push: { loggedSessions: token } },
-      { new: true }
+      {
+        new: true,
+      }
     ).exec();
 
-    const cookieOptions = {
-    maxAge: req.body.remember ? 365 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000, // 1 year or 1 day
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', // required when sameSite is 'None'
-    sameSite: 'None', // allow cookies to be sent in cross-origin requests
-    path: '/',
-  };
-
-    return res
+    res
       .status(200)
-      .cookie('token', token, cookieOptions)
+      .cookie('token', token, {
+        maxAge: req.body.remember ? 365 * 24 * 60 * 60 * 1000 : null,
+        sameSite: 'Lax',
+        httpOnly: true,
+        secure: false,
+        domain: req.hostname,
+        path: '/',
+        Partitioned: true,
+      })
       .json({
         success: true,
         result: {
@@ -49,19 +49,18 @@ const authUser = async (req, res, { user, databasePassword, password, UserPasswo
           role: user.role,
           email: user.email,
           photo: user.photo,
-          permissions: user.permissions,
+          permissions:user.permissions
         },
-        message: 'User logged in successfully.',
+        message: 'Successfully login user',
       });
-
-  } catch (error) {
-    console.error('Auth Error:', error);
-    return res.status(500).json({
+  } else {
+    return res.status(403).json({
       success: false,
       result: null,
-      message: 'Server error during authentication.',
+      message: 'Invalid credentials.',
     });
   }
+
 };
 
 module.exports = authUser;

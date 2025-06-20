@@ -7,11 +7,10 @@ class UpdateController{
 
         // Check the type and get _id accordingly
         const _id = req.admin.id 
-        const { firstName, middleName, lastName, bloodGroup, gender, dob, contactNumber, emailPersonal, department, dateOfJoining, designation, supervisor } = req.body
+        const { firstName, middleName, lastName, bloodGroup, gender, dob, mobile, emailPersonal } = req.body
 
         const updatedUser = await UserModel.findByIdAndUpdate({_id,companyId:req.admin.companyId}, {
                 $set: {
-                    "mobile": contactNumber,
                     "employeeInfo.firstName": firstName,
                     "employeeInfo.middlename": middleName,
                     "employeeInfo.lastName": lastName,
@@ -19,10 +18,7 @@ class UpdateController{
                     "employeeInfo.gender": gender,
                     "employeeInfo.dob": dob,
                     "employeeInfo.emailPersonal": emailPersonal,
-                    "employeeInfo.department": department,
-                    "employeeInfo.dateOfJoining": dateOfJoining,
-                    "employeeInfo.designamtion": designation,
-                    // "employeeInfo.supervisor":supervisor
+                    "mobile":mobile
                 }
             }, { new: true });
 
@@ -104,7 +100,7 @@ class UpdateController{
     updateBankDetail = async (req, res, next) => {
         try {
             const file = req.file;
-            const filename = file && file.filename;
+            const filename = req.file.path;
 
 
             const _id = req.admin.id 
@@ -141,7 +137,7 @@ class UpdateController{
         try {
 
             const file = req.file;
-            const filename = file && file.filename;
+            const filename = req.file.path;
 
             const _id = req.admin.id ;
 
@@ -191,7 +187,7 @@ class UpdateController{
         try {
 
             const file = req.file;
-            const filename = file && file.filename;
+            const filename = req.file.path;
 
             const _id = req.admin.id ;
 
@@ -243,7 +239,7 @@ class UpdateController{
         try{
 
             const file = req.file;
-            const filename = file && file.filename;
+            const filename = req.file.path;
            
             if(!file) return res.status(404).json({ success: false, message: 'All field required' });
 
@@ -279,7 +275,7 @@ class UpdateController{
         try{
 
             const file = req.file;
-            const filename = file && file.filename;
+            const filename = req.file.path;
            
             if(!file) return res.status(404).json({ success: false, message: 'All field Required' }) ;
 

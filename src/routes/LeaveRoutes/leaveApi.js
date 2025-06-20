@@ -28,5 +28,7 @@ router.route('/my-requests').get(catchErrors(leaveApi.employeeLeaveController.ge
 router.route('/cancel/:requestId').delete(catchErrors(leaveApi.employeeLeaveController.cancelLeaveRequest))
 
 
+router.route('/employee-on-leave').get(catchErrors(leaveApi.adminLeaveController.getEmployeeOnLeave))
+
 
 module.exports = router

@@ -8,6 +8,7 @@ const paginatedList = require('./paginatedList');
 const createBulk = require('./createBulk.js')
 const downloadFile = require('./downloadFile')
 const deleteInfo = require('./deleteInfo')
+const dashboardInfoController = require('./dashboardInfo')
 const {countUsers,countPlants} = require('./count')
 
 const UserMethods = {
@@ -15,6 +16,7 @@ const UserMethods = {
   read,
   remove,
   UpdateController,
+  dashboardInfoController,
   paginatedList,
   createBulk,
   countUsers,

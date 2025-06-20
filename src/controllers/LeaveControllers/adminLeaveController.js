@@ -318,3 +318,32 @@ exports.createLeaveBalance = async (req,res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 }
+
+
+exports.getEmployeeOnLeave = async (req,res) =>{
+  try {
+    const queryDate = req.query.date ? new Date(req.query.date) : new Date();
+
+    const approvedLeaves = await LeaveRequest.find({
+      companyId: req.admin.companyId,
+      status: 'Approved',
+      fromDate: { $lte: queryDate },
+      toDate: { $gte: queryDate }
+    })
+      .populate('userId', 'name email image') // adjust fields as needed
+      .populate('leaveTypeId', 'name')        // if you want leave type info
+      .sort({ fromDate: 1 });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Approved leaves fetched successfully',
+      data: approvedLeaves
+    });
+  } catch (error) {
+    console.error('Error fetching approved leaves:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error fetching approved leaves'
+    });
+  }
+}

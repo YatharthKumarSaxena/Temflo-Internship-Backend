@@ -5,7 +5,7 @@ class UpdateController{
     updatePolicy = async (req, res, next) => {
     try {
     const file = req.file;
-    const filename = file && file.filename;
+    const filename = req.file.path;
 
     const { description, publishedDate } = req.body;
 

@@ -1,4 +1,7 @@
 const UserModel = require('../../../models/userModels/User')
+const UserPassword = require('../../../models/userModels/UserPassword')
+const bcrypt = require('bcryptjs');
+const { generate: uniqueId } = require('shortid');
 
 class UpdateController{
 
@@ -22,7 +25,7 @@ class UpdateController{
                     "employeeInfo.department": department,
                     "employeeInfo.dateOfJoining": dateOfJoining,
                     "employeeInfo.designation": designation,
-                    // "employeeInfo.supervisor":supervisor
+                    "supervisor":supervisor
                 }
             }, { new: true });
 
@@ -104,7 +107,7 @@ class UpdateController{
     updateBankDetail = async (req, res, next) => {
         try {
             const file = req.file;
-            const filename = file && file.filename;
+            const filename = req.file.path;
 
 
             const _id = req.params.id 
@@ -141,7 +144,7 @@ class UpdateController{
         try {
 
             const file = req.file;
-            const filename = file && file.filename;
+            const filename = req.file.path;
 
             const _id = req.params.id ;
 
@@ -192,7 +195,7 @@ class UpdateController{
         try {
 
             const file = req.file;
-            const filename = file && file.filename;
+            const filename = req.file.path;
 
             const _id = req.params.id ;
 
@@ -245,7 +248,7 @@ class UpdateController{
         try{
 
             const file = req.file;
-            const filename = file && file.filename;
+            const filename = req.file.path;
            
             if(!file) return res.status(404).json({ success: false, message: 'All field required' });
 
@@ -281,7 +284,7 @@ class UpdateController{
         try{
 
             const file = req.file;
-            const filename = file && file.filename;
+            const filename = req.file.path;
            
             if(!file) return res.status(404).json({ success: false, message: 'All field Required' }) ;
 
@@ -306,6 +309,63 @@ class UpdateController{
             return res.status(500).json({ success: false, message: 'Error updating employee information' });
 
         }
+
+    }
+
+    updatePassword = async (req,res,next) =>{
+
+        const { password, confirmPassword } = req.body;
+        const id = req.params.id;
+
+        if (!id) {
+            return res.status(400).json({ msg: 'User ID is required in query.' });
+        }
+
+        if (!password || !confirmPassword) {
+            return res.status(400).json({ msg: 'New password and confirm password are required.' });
+        }
+
+        if (password.length < 8) {
+            return res.status(400).json({ msg: 'The new password must be at least 8 characters long.' });
+        }
+
+        if (password !== confirmPassword) {
+            return res.status(400).json({ msg: 'New password and confirm password do not match.' });
+        }
+
+        // Step 1: Fetch existing password entry
+        const existingPasswordDoc = await UserPassword.findOne({
+            user: id,
+            removed: false,
+        });
+
+        if (!existingPasswordDoc) {
+            return res.status(404).json({ msg: 'Password record not found.' });
+        }
+
+        // Step 2: Generate and update new password
+        const salt = uniqueId();
+        const passwordHash = bcrypt.hashSync(salt + password);
+
+        const resultPassword = await UserPassword.findOneAndUpdate(
+            { user: id, removed: false },
+            { $set: { password: passwordHash, salt } },
+            { new: true }
+        ).exec();
+
+        if (!resultPassword) {
+            return res.status(403).json({
+            success: false,
+            result: null,
+            message: "User password couldn't be updated correctly.",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            result: {},
+            message: 'Password updated successfully',
+        });
 
     }
 
