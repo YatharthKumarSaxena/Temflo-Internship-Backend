@@ -9,7 +9,7 @@ const createBulk = require('./createBulk.js')
 const downloadFile = require('./downloadFile')
 const deleteInfo = require('./deleteInfo')
 const dashboardInfoController = require('./dashboardInfo')
-const {countUsers,countPlants} = require('./count')
+const {countUsers,countPlants,countAssets} = require('./count')
 
 const UserMethods = {
   create: createUser,
@@ -22,7 +22,8 @@ const UserMethods = {
   countUsers,
   countPlants,
   downloadFile,
-  deleteInfo
+  deleteInfo,
+  countAssets
 };
 
 module.exports = UserMethods;

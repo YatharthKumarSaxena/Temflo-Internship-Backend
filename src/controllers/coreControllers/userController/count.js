@@ -49,7 +49,30 @@ const countPlants = async (req, res) => {
   }
 };
 
+const countAssets = async (req, res) => {
+  try {
+    const Asset = mongoose.model('Asset');
+
+    const count = await Asset.countDocuments({
+      companyId: req.admin.companyId
+    });
+
+    return res.status(200).json({
+      success: true,
+      result: count,
+      message: 'Asset count retrieved successfully',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      result: null,
+      message: 'Server error while counting assets',
+    });
+  }
+};
+
 module.exports = {
   countUsers,
   countPlants,
+  countAssets
 };

@@ -27,6 +27,7 @@ const AssetSchema = new mongoose.Schema({
   assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   purchaseDate: Date,
   expiryDate: Date, 
+  responsible: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   createdAt: { type: Date, default: Date.now },
 });
 

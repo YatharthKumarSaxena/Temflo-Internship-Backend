@@ -25,6 +25,7 @@ router.route('/employee/delete/:id').delete(catchErrors(userController.remove));
 router.route('/employee/create-in-bulk').post(upload.single('excelsheet'),catchErrors(userController.createBulk))
 router.route('/employee/count').get(catchErrors(userController.countUsers))
 router.route('/plant/count').get(catchErrors(userController.countPlants))
+router.route('/asset/count').get(catchErrors(userController.countAssets))
 
 // ---------------------------API to Update User Information----------------------------
 router.route('/employee/update-info/:id').patch(checkPermission("employee"),requireWriteAccess,catchErrors(userController.UpdateController.updateInfo))
