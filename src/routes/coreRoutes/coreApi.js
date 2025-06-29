@@ -4,6 +4,7 @@ const { catchErrors } = require('@/handlers/errorHandlers');
 
 const router = express.Router();
 const upload = require('../../services/file-upload')
+const uploadExcel = require('../../services/uploadExcel')
 const settingController = require('@/controllers/coreControllers/settingController');
 const userController = require('@/controllers/coreControllers/userController')
 const profileController = require('@/controllers/coreControllers/profileController')
@@ -22,7 +23,7 @@ router.route('/employee/create').post(catchErrors(userController.create));
 router.route('/employee/list').get(catchErrors(userController.paginatedList));
 router.route('/employee/read/:id').get(catchErrors(userController.read));
 router.route('/employee/delete/:id').delete(catchErrors(userController.remove));
-router.route('/employee/create-in-bulk').post(upload.single('excelsheet'),catchErrors(userController.createBulk))
+router.route('/employee/create-in-bulk').post(uploadExcel.single('excelsheet'),catchErrors(userController.createBulk))
 router.route('/employee/count').get(catchErrors(userController.countUsers))
 router.route('/plant/count').get(catchErrors(userController.countPlants))
 router.route('/asset/count').get(catchErrors(userController.countAssets))
