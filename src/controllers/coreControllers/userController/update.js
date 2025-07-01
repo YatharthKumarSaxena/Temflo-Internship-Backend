@@ -106,39 +106,75 @@ class UpdateController{
 
     updateBankDetail = async (req, res, next) => {
         try {
-            const file = req.file;
-            const filename = req.file.path;
-
-
-            const _id = req.params.id 
-
-            const { accountNumber, bankName, ifscCode, accountType, accountHolder } = req.body
-
-            const updatedUser = await UserModel.findByIdAndUpdate({_id,comapanyId:req.admin.companyId}, {
-                $set: {
-                    "bankDetail.accountNumber": accountNumber,
-                    "bankDetail.bankName": bankName,
-                    "bankDetail.ifscCode": ifscCode,
-                    "bankDetail.accountType": accountType,
-                    "bankDetail.accountHolder": accountHolder,
-                    "bankDetail.document": filename
-                }
-            }, { new: true });
-
-            if (!updatedUser) {
-                return res.status(404).json({ success: false, message: 'Employee not found' });
+          const file = req.file;
+          const _id = req.params.id;
+          const {
+            accountNumber,
+            bankName,
+            ifscCode,
+            accountType,
+            accountHolder,
+            documentPresent,
+          } = req.body;
+      
+          let filename = '';
+      
+          if (file) {
+            filename = file.path; // New file uploaded
+          } else if (documentPresent === 'true' || documentPresent === true) {
+            const existingUser = await UserModel.findOne({
+              _id,
+              companyId: req.admin.companyId,
+            });
+      
+            if (!existingUser) {
+              return res
+                .status(404)
+                .json({ success: false, message: 'Employee not found' });
             }
-
-            return res.status(200).json({ success: true, message: 'Employee information updated successfully', employee: updatedUser });
-
-
+      
+            filename = existingUser.bankDetail?.document || '';
+          } else {
+            return res.status(400).json({
+              success: false,
+              message: 'No document uploaded or marked as present',
+            });
+          }
+      
+          const updatedUser = await UserModel.findByIdAndUpdate(
+            { _id, companyId: req.admin.companyId },
+            {
+              $set: {
+                'bankDetail.accountNumber': accountNumber,
+                'bankDetail.bankName': bankName,
+                'bankDetail.ifscCode': ifscCode,
+                'bankDetail.accountType': accountType,
+                'bankDetail.accountHolder': accountHolder,
+                'bankDetail.document': filename,
+              },
+            },
+            { new: true }
+          );
+      
+          if (!updatedUser) {
+            return res
+              .status(404)
+              .json({ success: false, message: 'Employee not found' });
+          }
+      
+          return res.status(200).json({
+            success: true,
+            message: 'Employee information updated successfully',
+            employee: updatedUser,
+          });
         } catch (error) {
-            console.error(error);
-            return res.status(500).json({ success: false, message: 'Error updating employee information' });
-
-
+          console.error(error);
+          return res
+            .status(500)
+            .json({ success: false, message: 'Error updating employee information' });
         }
-    }
+      };
+      
 
     updateDegreeInfo = async (req, res, next) => {
         try {

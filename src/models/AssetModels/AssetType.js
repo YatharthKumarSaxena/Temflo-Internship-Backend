@@ -7,7 +7,7 @@ const AssetTypeSchema = new mongoose.Schema({
       required: true,
       immutable: true
     },
-  name: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
   description: String,
   createdAt: { type: Date, default: Date.now },
 });

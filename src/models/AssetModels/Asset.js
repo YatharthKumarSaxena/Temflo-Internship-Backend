@@ -15,7 +15,7 @@ const AssetSchema = new mongoose.Schema({
     },
   name: { type: String, required: true },
   assetType: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetType', required: true },
-  serialNumber: { type: String, unique: true },
+  serialNumber: { type: String },
   description: String,
   status: {
     type: String,

@@ -1,5 +1,6 @@
 const AssetType = require('../../models/AssetModels/AssetType')
 const Asset = require('../../models/AssetModels/Asset')
+const User = require('../../models/userModels/User')
 const mongoose = require('mongoose');
 const xlsx = require('xlsx');
 const fs = require('fs');
@@ -66,83 +67,144 @@ exports.updateAssetType = async (req, res) => {
 };
 
 
-exports.addAsset = async (req,res) =>{
+exports.addAsset = async (req, res) => {
+  try {
+    const {
+      plantId,
+      name,
+      assetType,
+      serialNumber,
+      description,
+      status,
+      assignedTo,
+      purchaseDate,
+      expiryDate,
+      location,
+      manufacturer,
+      responsible
+    } = req.body;
 
-try{
-
-    const {plantId, name, assetType,serialNumber, description, status, assignedTo,purchaseDate,expiryDate,location,manufacturer,responsible} = req.body;
-
-    if(!plantId || !name || !assetType || !serialNumber){
-        res.status(500).json({ success: false, message: "All field Required" });
-
+    // Check required fields
+    if (!plantId || !name || !assetType || !serialNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Plant ID, Name, Asset Type, and Serial Number are required.",
+      });
     }
 
-        const asset = new Asset({companyId:req.admin.companyId,plantId, name, assetType,serialNumber, description, status, assignedTo,purchaseDate,expiryDate,location,manufacturer,responsible});
-        await asset.save();
-    
-        res.status(200).json({ success: true, message:"Asset Added successfully"});
-    
+    const companyId = req.admin.companyId;
 
-}
-catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-}
+    // Check if serialNumber is already used under the same company
+    const existingAsset = await Asset.findOne({ companyId, serialNumber });
+    if (existingAsset) {
+      return res.status(409).json({
+        success: false,
+        message: "Asset with this serial number already exists in the company.",
+      });
+    }
 
-}
+    // Auto-update status to 'Assigned' if assignedTo is not null
+    const finalStatus = assignedTo ? 'Assigned' : status || 'Available';
+
+    // Create asset
+    const asset = new Asset({
+      companyId,
+      plantId,
+      name,
+      assetType,
+      serialNumber,
+      description,
+      status: finalStatus,
+      assignedTo: assignedTo || null,
+      purchaseDate,
+      expiryDate,
+      location,
+      manufacturer,
+      responsible: responsible || null,
+    });
+
+    await asset.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Asset added successfully.",
+    });
+
+  } catch (err) {
+    console.error('Add Asset Error:', err);
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+
 
 exports.getAssets = async (req, res) => {
   try {
     const page = req.query.page || 1;
     const limit = parseInt(req.query.items) || 10;
     const skip = page * limit - limit;
-  
-    const { sortBy = 'enabled', sortValue = -1, filter, equal } = req.query;
-  
-    const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
-  
-    let fields;
-  
-    fields = fieldsArray.length === 0 ? {} : { $or: [] };
-  
-    for (const field of fieldsArray) {
-      fields.$or.push({ [field]: { $regex: new RegExp(req.query.q, 'i') } });
-    }
-  
-    //  Query the database for a list of all results
-    const resultsPromise = Asset.find({
-  companyId: req.admin.companyId,
-  plantId:req.params.plantId,
-  [filter]: equal,
-  ...fields,
-})
-  .populate({
-    path: 'plantId',
-    select: 'name',
-  })
-  .populate({
-    path: 'assignedTo',
-    select: 'employeeCode email',
-  })
-  .populate({
-    path: 'assetType',
-    select: 'name',
-  })
-  .populate({
-    path: 'responsible',
-    select: 'employeeCode email',
-  })
-  .skip(skip)
-  .limit(limit)
-  .sort({ [sortBy]: sortValue })
-  .exec();
-  
-    // Counting the total documents
-    const countPromise = Asset.countDocuments({  
-      [filter]: equal,
-      ...fields,
-    });
 
-    // Summary counts for status categories
+    const { sortBy = 'enabled', sortValue = -1, filter, equal } = req.query;
+
+    const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
+    const searchQuery = req.query.q || '';
+
+    let fields = [];
+
+    let assignedToIds = [];
+    let responsibleIds = [];
+
+    if (searchQuery && fieldsArray.length > 0) {
+      for (const field of fieldsArray) {
+        if (field === 'assignedTo.employeeCode') {
+          assignedToIds = await User.find({
+            employeeCode: { $regex: new RegExp(searchQuery, 'i') },
+          }).distinct('_id');
+        } else if (field === 'responsible.employeeCode') {
+          responsibleIds = await User.find({
+            employeeCode: { $regex: new RegExp(searchQuery, 'i') },
+          }).distinct('_id');
+        } else {
+          fields.push({ [field]: { $regex: new RegExp(searchQuery, 'i') } });
+        }
+      }
+    }
+
+    const query = {
+      companyId: req.admin.companyId,
+      plantId: req.params.plantId,
+    };
+
+    if (filter && equal) {
+      query[filter] = equal;
+    }
+
+    if (fields.length > 0) {
+      query.$or = fields;
+    }
+
+    if (assignedToIds.length > 0 || responsibleIds.length > 0) {
+      query.$or = [
+        ...(query.$or || []),
+        ...(assignedToIds.length ? [{ assignedTo: { $in: assignedToIds } }] : []),
+        ...(responsibleIds.length ? [{ responsible: { $in: responsibleIds } }] : []),
+      ];
+    }
+
+    const resultsPromise = Asset.find(query)
+      .populate('plantId', 'name')
+      .populate('assignedTo', 'employeeCode email')
+      .populate('responsible', 'employeeCode email')
+      .populate('assetType', 'name')
+      .skip(skip)
+      .limit(limit)
+      .sort({ [sortBy]: sortValue });
+
+    const countPromise = Asset.countDocuments(query);
+
     const totalCountPromise = Asset.countDocuments({
       companyId: req.admin.companyId,
       plantId: req.params.plantId,
@@ -163,45 +225,42 @@ exports.getAssets = async (req, res) => {
       },
     ]);
 
-
     const [result, count, totalCount, statusCounts] = await Promise.all([
       resultsPromise,
       countPromise,
       totalCountPromise,
       statusCountsPromise,
     ]);
-  
-    // Convert statusCounts array to key-value object
-    const statusSummary = {
-  Available: 0,
-  Assigned: 0,
-  'Under Maintenance': 0,
-  Disposed: 0,
-  Expired: 0,
-};
 
-statusCounts.forEach(({ _id, count }) => {
-  if (statusSummary.hasOwnProperty(_id)) {
-    statusSummary[_id] = count;
-  }
-})  
-    // Calculating total pages
+    const statusSummary = {
+      Available: 0,
+      Assigned: 0,
+      'Under Maintenance': 0,
+      Disposed: 0,
+      Expired: 0,
+    };
+
+    statusCounts.forEach(({ _id, count }) => {
+      if (statusSummary.hasOwnProperty(_id)) {
+        statusSummary[_id] = count;
+      }
+    });
+
     const pages = Math.ceil(count / limit);
-  
-    // Getting Pagination Object
     const pagination = { page, pages, count };
+
     if (count > 0) {
       return res.status(200).json({
         success: true,
         result,
         summary: {
-  totalAssets: totalCount,
-  available: statusSummary['Available'],
-  assigned: statusSummary['Assigned'],
-  underMaintenance: statusSummary['Under Maintenance'],
-  disposed: statusSummary['Disposed'],
-  expired: statusSummary['Expired'],
-},
+          totalAssets: totalCount,
+          available: statusSummary['Available'],
+          assigned: statusSummary['Assigned'],
+          underMaintenance: statusSummary['Under Maintenance'],
+          disposed: statusSummary['Disposed'],
+          expired: statusSummary['Expired'],
+        },
         pagination,
         message: 'Successfully found all documents',
       });
@@ -212,7 +271,8 @@ statusCounts.forEach(({ _id, count }) => {
         pagination,
         message: 'Collection is Empty',
       });
-    }  } catch (err) {
+    }
+  } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
