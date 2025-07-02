@@ -30,11 +30,10 @@ const authUser = async (req, res, { user, databasePassword, password, UserPasswo
   res
     .status(200)
     .cookie('token', token, {
-      maxAge: req.body.remember ? 365 * 24 * 60 * 60 * 1000 : null, // 1 year
       httpOnly: true,
-      secure: false,             // false so localhost frontend can receive it (no HTTPS on localhost)
-      sameSite: 'Lax',           // Lax works fine for typical frontend/backend setup
-      path: '/',
+      secure: true,           // must be true since Render uses HTTPS
+      sameSite: 'None',       // must be 'None' for cross-site cookies
+      maxAge: 24 * 60 * 60 * 1000, // optional
     })
     .json({
       success: true,

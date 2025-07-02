@@ -30,14 +30,10 @@ const fileUpload = require('express-fileupload');
 const app = express();
 
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      callback(null, origin || '*'); // dynamically allow all origins
-    },
-    credentials: true, // allow cookies to be sent
-  })
-);
+app.use(cors({
+  origin: 'http://localhost:3000',  // your local frontend
+  credentials: true,                // allow cookies
+}));
 
 
 app.use(cookieParser());
