@@ -1,4 +1,3 @@
-// models/LeavePolicy.js
 const mongoose = require('mongoose');
 
 const leavePolicySchema = new mongoose.Schema({
@@ -7,38 +6,65 @@ const leavePolicySchema = new mongoose.Schema({
     required: true,
     immutable: true
   },
+  plantId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+    ref: 'Plant'
+  },
   name: {
     type: String,
-    required: true, // e.g. "Casual", "Sick"
+    required: true
   },
   count: {
     type: Number,
-    required: true // Number of days to credit each period
+    required: true,
+    min: 0.1 // ✅ Accepts fractional leave like 0.5
   },
-  frequency: {
-    type: String,
-    enum: ['monthly', 'quarterly', 'yearly'],
-    required: true
+  credit: {
+    frequency: {
+      type: String,
+      enum: ['monthly', 'quarterly', 'yearly', 'custom'],
+      required: true
+    },
+    dayOfMonth: {
+      type: Number,
+      min: 1,
+      max: 31
+    },
+    customDates: [{
+      type: Date
+    }]
   },
-  creditDay: {
-    type: Number, // Day of month (e.g. 30), or day of quarter start (e.g. 1)
-    default: 1
-  },
-  expiryType: {
-    type: String,
-    enum: ['never', 'end_of_month', 'end_of_quarter', 'end_of_year', 'custom'],
-    default: 'end_of_year'
-  },
-  expiryDate: {
-    type: Date, // used if expiryType = custom
+  expiry: {
+    frequency: {
+      type: String,
+      enum: ['never', 'monthly', 'quarterly', 'yearly', 'custom'],
+      required: true
+    },
+    dayOfMonth: {
+      type: Number,
+      min: 1,
+      max: 31
+    },
+    customDate: {
+      type: Date
+    }
   },
   isActive: {
     type: Boolean,
     default: true
   },
-   creditOnCreation:{
-    type:Boolean,
-    default:false
+  creditOnCreation: {
+    type: Boolean,
+    default: false
+  },
+  isAdvanceAllowed: {
+    type: Boolean,
+    default: false
+  },
+  applyToAll: {
+    type: Boolean,
+    default: true
   }
 }, { timestamps: true });
 

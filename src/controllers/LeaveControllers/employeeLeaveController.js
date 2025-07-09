@@ -17,6 +17,31 @@ exports.getMyLeaveBalances = async (req, res) => {
   }
 };
 
+exports.getLeaveBalancesByEmployeeId = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    if (!employeeId) {
+      return res.status(400).json({ success: false, message: 'Employee ID is required' });
+    }
+
+    const balances = await LeaveBalance.find({
+      userId: employeeId,
+      companyId: req.admin.companyId
+    }).populate({
+      path: 'leaveTypeId',
+      match: { isActive: true }  // ✅ only active leave types
+    });
+
+    const activeBalances = balances.filter(b => b.leaveTypeId);
+
+    res.status(200).json({ success: true, balances: activeBalances });
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 
 // 3. Apply for leave
 exports.applyForLeave = async (req, res) => {
@@ -137,6 +162,8 @@ exports.cancelLeaveRequest = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+
 
 
 

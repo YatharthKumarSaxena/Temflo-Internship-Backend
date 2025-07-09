@@ -16,7 +16,7 @@ const permissionRouter = require('./routes/perRoutes/perApi')
 const AttendanceRouter = require('./routes/AttendanceRoutes/attendanceApi')
 const LeaveRouter = require('./routes/LeaveRoutes/leaveApi')
 const AssetRouter = require('./routes/AssetRoutes/assetApi')
-
+const ExpenseRouter = require('./routes/expenseRoutes/expenseApi')
 const errorHandlers = require('./handlers/errorHandlers');
 const erpApiRouter = require('./routes/appRoutes/appApi');
 const isAdminOrOwner = require('./middlewares/access/AdminOwner')
@@ -30,14 +30,10 @@ const fileUpload = require('express-fileupload');
 const app = express();
 
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      callback(null, origin || '*'); // dynamically allow all origins
-    },
-    credentials: true, // allow cookies to be sent
-  })
-);
+app.use(cors({
+  origin: 'http://localhost:3000',  // your local frontend
+  credentials: true,                // allow cookies
+}));
 
 
 app.use(cookieParser());
@@ -63,6 +59,7 @@ app.use('/api/notice',adminAuth.isValidAuthToken,coreNoticeRouter)
 app.use('/api/attendance',adminAuth.isValidAuthToken,AttendanceRouter)
 app.use('/api/leave',adminAuth.isValidAuthToken,LeaveRouter)
 app.use('/api/asset', adminAuth.isValidAuthToken,AssetRouter)
+app.use('/api/expenses',adminAuth.isValidAuthToken,ExpenseRouter)
 
 
 // app.use('/download', coreDownloadRouter);

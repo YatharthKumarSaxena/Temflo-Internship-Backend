@@ -2,57 +2,166 @@ const LeavePolicy = require('../../models/LeaveModels/leavePolicy');
 const LeaveBalance = require('../../models/LeaveModels/LeaveBalanace');
 const LeaveRequest = require('../../models/LeaveModels/LeaveRequest');
 const User = require('../../models/userModels/User')
+const mongoose = require('mongoose');
 
-// 1. Create Leave Policy
-exports.createLeavePolicy = async (req, res) => {
-  try {
-      
-    const {name,count,frequency,creditDay,expiryType,expiryDate,creditOnCreation} = req.body
+const getPeriodString = (policy, date = new Date()) => {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
 
-    if(!name || !count || !frequency || !creditDay || !expiryType){
-        res.status(500).json({ success: false, message: "All field Required" });
-    }
-
-    const policy = new LeavePolicy({companyId:req.admin.companyId,name,count,frequency,creditDay,expiryType,expiryDate,creditOnCreation});
-    await policy.save();
-
-    res.status(200).json({ success: true, message:"Leave Policy created successfully",policy });
-  } catch (err) {
-    console.error('Error creating Leav Policy:', err);
-    res.status(500).json({ success: false, message: err.message });
+  switch (policy.credit.frequency) {
+    case 'monthly':
+      return `${year}-${month.toString().padStart(2, '0')}`;
+    case 'quarterly':
+      return `${year}-Q${Math.ceil(month / 3)}`;
+    case 'yearly':
+      return `${year}`;
+    default:
+      return `${year}-${month.toString().padStart(2, '0')}`; // fallback
   }
 };
+
+exports.createLeavePolicy = async (req, res) => {
+  try {
+    const {
+      name,
+      count,
+      credit,       // { frequency, dayOfMonth?, customDates? }
+      expiry,       // { frequency, dayOfMonth?, customDate? }
+      creditOnCreation,
+      isAdvanceAllowed,
+      applyToAll,
+      plantId
+    } = req.body;
+
+    // Basic required field check
+    if (!name || !count || !credit?.frequency || !expiry?.frequency || !plantId) {
+      return res.status(400).json({ success: false, message: "Required fields are missing" });
+    }
+
+    // Validate credit day (if not custom)
+    if (credit.frequency !== 'custom' && (typeof credit.dayOfMonth !== 'number' || credit.dayOfMonth < 1 || credit.dayOfMonth > 31)) {
+      return res.status(400).json({ success: false, message: "Invalid credit day" });
+    }
+
+    // Validate expiry day (if not custom and not never)
+    if (
+      expiry.frequency !== 'custom' &&
+      expiry.frequency !== 'never' &&
+      (typeof expiry.dayOfMonth !== 'number' || expiry.dayOfMonth < 1 || expiry.dayOfMonth > 31)
+    ) {
+      return res.status(400).json({ success: false, message: "Invalid expiry day" });
+    }
+
+    const policy = new LeavePolicy({
+      companyId: req.admin.companyId,
+      plantId,
+      name,
+      count,
+      credit,
+      expiry,
+      creditOnCreation: creditOnCreation ?? false,
+      isAdvanceAllowed: isAdvanceAllowed ?? false,
+      applyToAll: applyToAll ?? true
+    });
+
+    await policy.save();
+
+    return res.status(200).json({ success: true, message: "Leave Policy created successfully", policy });
+
+  } catch (err) {
+    console.error('Error creating Leave Policy:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 
 // 2. Update Leave Policy
 exports.updateLeavePolicy = async (req, res) => {
   try {
+    const {
+      name,
+      count,
+      credit,
+      expiry,
+      creditOnCreation,
+      isAdvanceAllowed,
+      applyToAll,
+      plantId,
+    } = req.body;
 
-    const {name,count,frequency,creditDay,expiryType,expiryDate,creditOnCreation} = req.body
-
-    if(!name || !count || !frequency || !creditDay || !expiryType){
-        res.status(500).json({ success: false, message: "All field Required" });
+    // Validate required fields
+    if (
+      !name ||
+      count === undefined ||
+      !credit?.frequency ||
+      (credit.frequency !== 'custom' && !credit.dayOfMonth) ||
+      (credit.frequency === 'custom' && (!credit.customDates || !credit.customDates.length)) ||
+      !expiry?.frequency ||
+      (expiry.frequency !== 'never' && expiry.frequency !== 'custom' && !expiry.dayOfMonth) ||
+      (expiry.frequency === 'custom' && !expiry.customDate)
+    ) {
+      return res.status(400).json({ success: false, message: 'All required fields must be filled' });
     }
 
-    const policy = await LeavePolicy.findOneAndUpdate({companyId:req.admin.companyId,_id:req.params.id},
-    {name,count,frequency,creditDay,expiryType,expiryDate,creditOnCreation}, 
-    { new: true });
+    const updatedData = {
+      name,
+      count,
+      credit,
+      expiry,
+      creditOnCreation: creditOnCreation || false,
+      isAdvanceAllowed: isAdvanceAllowed || false,
+      applyToAll: applyToAll ?? true,
+      plantId,
+    };
 
-    if (!policy) return res.status(404).json({ success: false, message: 'Policy not found' });
-    res.status(200).json({ success: true, policy });
+    const policy = await LeavePolicy.findOneAndUpdate(
+      { companyId: req.admin.companyId, _id: req.params.id },
+      updatedData,
+      { new: true }
+    );
+
+    if (!policy) {
+      return res.status(404).json({ success: false, message: 'Policy not found' });
+    }
+
+    return res.status(200).json({ success: true, policy });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error(err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 // 3. Delete Leave Policy
 exports.deleteLeavePolicy = async (req, res) => {
   try {
-    await LeavePolicy.findOneAndDelete({companyId:req.admin.companyId, _id:req.params.id});
-    res.json({ success: true, message: 'Policy deleted' });
+    // First, find the policy by companyId and _id
+    const policy = await LeavePolicy.findOne({
+      companyId: req.admin.companyId,
+      _id: req.params.id
+    });
+
+    if (!policy) {
+      return res.status(404).json({ success: false, message: 'Policy not found' });
+    }
+
+    // Toggle isActive status
+    const updated = await LeavePolicy.findByIdAndUpdate(
+      policy._id,
+      { isActive: !policy.isActive },
+      { new: true }
+    );
+
+    res.json({
+      success: true,
+      message: `Policy marked as ${updated.isActive ? 'active' : 'inactive'}`,
+      policy: updated
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 // 4. Get all policies for a company
 exports.getCompanyLeavePolicies = async (req, res) => {
@@ -63,6 +172,91 @@ exports.getCompanyLeavePolicies = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed To Fetch Policies" });
   }
 };
+
+exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
+  const { plantId, employeeIds, policyId } = req.body;
+  const companyId = req.admin.companyId;
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  const alreadyApplied = [];
+  const now = new Date();
+
+  try {
+    const policy = await LeavePolicy.findOne({
+      _id: policyId,
+      plantId,
+      companyId
+    }).session(session);
+
+    if (!policy) {
+      throw new Error('Leave policy not found for this company and plant');
+    }
+
+    const period = getPeriodString(policy, now);
+
+    const users = await User.find({
+      _id: { $in: employeeIds }
+    }).select('_id name employeeCode').lean();
+
+    for (const user of users) {
+      const existingBalance = await LeaveBalance.findOne({
+        userId: user._id,
+        leaveTypeId: policy._id
+      }).session(session);
+
+      if (existingBalance && existingBalance.lastCreditedPeriod === period) {
+        alreadyApplied.push({
+          name: user.name,
+          employeeCode: user.employeeCode
+        });
+        continue;
+      }
+
+      if (existingBalance) {
+        existingBalance.balance += policy.count;
+        existingBalance.lastCredited = now;
+        existingBalance.lastCreditedPeriod = period;
+        await existingBalance.save({ session });
+      } else {
+        await LeaveBalance.create(
+          [{
+            userId: user._id,
+            companyId,
+            leaveTypeId: policy._id,
+            leaveTypeName: policy.name,
+            balance: policy.count,
+            lastCredited: now,
+            lastCreditedPeriod: period
+          }],
+          { session }
+        );
+      }
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Leave policy applied successfully to selected employees.',
+      alreadyApplied // List of users who already had leave applied
+    });
+
+  } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
+    return res.status(500).json({
+      success: false,
+      message: err.message || 'Failed to apply leave policy.'
+    });
+  }
+};
+
+
+
+
 
 // 5. View all leave balances
 exports.getCompanyLeaveBalances = async (req, res) => {
@@ -154,79 +348,150 @@ exports.markLeave = async (req,res) =>{
 }
 
 // 6. View all leave requests
+
 exports.getLeaveRequests = async (req, res) => {
   try {
-  const page = req.query.page || 1;
-    const limit = parseInt(req.query.items) || 10;
-    const skip = page * limit - limit;
-  
-    const { sortBy = 'enabled', sortValue = -1, filter, equal } = req.query;
-  
+    const page = parseInt(req.query.page || 1);
+    const limit = parseInt(req.query.items || 10);
+    const skip = (page - 1) * limit;
+
+    const { sortBy = 'createdAt', sortValue = -1, filter, equal, leaveTypeId } = req.query;
+
     const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
-  
-    let fields;
-  
-    fields = fieldsArray.length === 0 ? {} : { $or: [] };
-  
-    for (const field of fieldsArray) {
-      fields.$or.push({ [field]: { $regex: new RegExp(req.query.q, 'i') } });
+    const searchQuery = req.query.q || '';
+
+    let fields = [];
+    let userIds = [];
+
+    // Search logic
+    if (searchQuery && fieldsArray.length > 0) {
+      for (const field of fieldsArray) {
+        if (field === 'userId.employeeCode') {
+          const matched = await User.find({
+            employeeCode: { $regex: new RegExp(searchQuery, 'i') }
+          }).distinct('_id');
+          userIds.push(...matched);
+        } else if (field === 'userId.email') {
+          const matched = await User.find({
+            email: { $regex: new RegExp(searchQuery, 'i') }
+          }).distinct('_id');
+          userIds.push(...matched);
+        } else {
+          fields.push({ [field]: { $regex: new RegExp(searchQuery, 'i') } });
+        }
+      }
     }
-  
-    //  Query the database for a list of all results
-    const resultsPromise = LeaveRequest.find({
-  companyId: req.admin.companyId,
-  [filter]: equal,
-  ...fields,
-})
-  .populate({
-    path: 'plantId',
-    select: 'name',
-  })
-  .populate({
-    path: 'userId',
-    select: 'employeeCode email',
-  })
-  .populate({
-    path: 'leaveTypeId',
-    select: 'name',
-  })
-  .skip(skip)
-  .limit(limit)
-  .sort({ [sortBy]: sortValue })
-  .exec();
-  
-    // Counting the total documents
-    const countPromise = LeaveRequest.countDocuments({  
-      [filter]: equal,
-      ...fields,
+
+    // Main filtered query
+    const query = {
+      companyId: req.admin.companyId,
+      plantId: req.params.plantId,
+    };
+
+    if (filter && equal) {
+      query[filter] = equal;
+    }
+
+    if (leaveTypeId) {
+      query.leaveTypeId = leaveTypeId;
+    }
+
+    if (fields.length > 0) {
+      query.$or = fields;
+    }
+
+    if (userIds.length > 0) {
+      query.$or = [...(query.$or || []), { userId: { $in: userIds } }];
+    }
+
+    // Date range filter
+    if (req.query.startDate && req.query.endDate) {
+      query.fromDate = { $gte: new Date(req.query.startDate) };
+      query.toDate = { $lte: new Date(req.query.endDate) };
+    }
+
+    // Paginated + Filtered Results
+    const resultsPromise = LeaveRequest.find(query)
+      .populate('plantId', 'name')
+      .populate('userId', 'employeeCode email')
+      .populate('leaveTypeId', 'name')
+      .skip(skip)
+      .limit(limit)
+      .sort({ [sortBy]: sortValue });
+
+    const countPromise = LeaveRequest.countDocuments(query);
+
+    // Global Summary (Unfiltered except by company & plant)
+    const summaryQuery = {
+      companyId: req.admin.companyId,
+      plantId: mongoose.Types.ObjectId.isValid(req.params.plantId)
+        ? new mongoose.Types.ObjectId(req.params.plantId)
+        : req.params.plantId,
+    };
+
+    const totalCountPromise = LeaveRequest.countDocuments(summaryQuery);
+
+    const statusCountsPromise = LeaveRequest.aggregate([
+      { $match: summaryQuery },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Await all promises
+    const [result, count, totalCount, statusCounts] = await Promise.all([
+      resultsPromise,
+      countPromise,
+      totalCountPromise,
+      statusCountsPromise,
+    ]);
+
+    // Build Summary
+    const statusSummary = {
+      Approved: 0,
+      Pending: 0,
+      Rejected: 0,
+    };
+
+    statusCounts.forEach(({ _id, count }) => {
+      if (statusSummary.hasOwnProperty(_id)) {
+        statusSummary[_id] = count;
+      }
     });
-  
-    // Resolving both promises
-    const [result, count] = await Promise.all([resultsPromise, countPromise]);
-  
-    // Calculating total pages
-    const pages = Math.ceil(count / limit);
-  
-    // Getting Pagination Object
-    const pagination = { page, pages, count };
-    if (count > 0) {
-      return res.status(200).json({
-        success: true,
-        result,
-        pagination,
-        message: 'Successfully found all documents',
-      });
-    } else {
-      return res.status(203).json({
-        success: true,
-        result: [],
-        pagination,
-        message: 'Collection is Empty',
-      });
-    }  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+
+    const pagination = {
+      page,
+      pages: Math.ceil(count / limit),
+      count,
+    };
+
+    return res.status(200).json({
+      success: true,
+      result,
+      pagination,
+      summary: {
+        total: totalCount,
+        approved: statusSummary['Approved'],
+        pending: statusSummary['Pending'],
+        rejected: statusSummary['Rejected'],
+      },
+      message:
+        count > 0
+          ? 'Successfully found leave requests'
+          : 'No matching leave requests found',
+    });
+  } catch (err) {
+    console.error('Leave request error:', err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || 'Internal server error',
+    });
   }
 };
+
 
 // 7. Approve/Reject a leave request
 exports.updateLeaveRequestStatus = async (req, res) => {
@@ -347,3 +612,76 @@ exports.getEmployeeOnLeave = async (req,res) =>{
     });
   }
 }
+
+
+exports.getLeaveRequestsByEmployee = async (req, res) => {
+  try {
+    const employeeId = req.params.employeeId;
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.items) || 10;
+    const skip = (page - 1) * limit;
+
+    const {
+      sortBy = 'fromDate',
+      sortValue = -1,
+      month,
+      year,
+      q,
+      fields: fieldsRaw
+    } = req.query;
+
+    const query = {
+      userId: employeeId,
+      companyId: req.admin.companyId
+    };
+
+    // Search filter
+    const fieldsArray = fieldsRaw ? fieldsRaw.split(',') : [];
+    if (q && fieldsArray.length > 0) {
+      query.$or = fieldsArray.map(field => ({
+        [field]: { $regex: new RegExp(q, 'i') }
+      }));
+    }
+
+    // Month-year filter on fromDate
+    if (month && year) {
+      const start = new Date(`${year}-${month}-01T00:00:00Z`);
+      const end = new Date(start);
+      end.setMonth(end.getMonth() + 1);
+
+      query.fromDate = {
+        $gte: start,
+        $lt: end
+      };
+    }
+
+    // Query + pagination
+    const [result, count] = await Promise.all([
+      LeaveRequest.find(query)
+        .populate({ path: 'plantId', select: 'name' })
+        .populate({ path: 'userId', select: 'employeeCode email' })
+        .populate({ path: 'leaveTypeId', select: 'name' })
+        .skip(skip)
+        .limit(limit)
+        .sort({ [sortBy]: parseInt(sortValue) }),
+
+      LeaveRequest.countDocuments(query)
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      result,
+      pagination: {
+        page,
+        pages: Math.ceil(count / limit),
+        count
+      },
+      message: count > 0 ? 'Leave requests found' : 'No leave requests'
+    });
+
+  } catch (err) {
+    console.error('Error fetching leave requests by employee:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

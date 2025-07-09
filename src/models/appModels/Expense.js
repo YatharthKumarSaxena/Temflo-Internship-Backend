@@ -95,4 +95,4 @@ const schema = new mongoose.Schema({
 });
 
 schema.plugin(require('mongoose-autopopulate'));
-module.exports = mongoose.model('Expense', schema);
+module.exports = mongoose.model('Expenses', schema);
