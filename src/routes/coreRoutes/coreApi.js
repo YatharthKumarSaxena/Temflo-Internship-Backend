@@ -27,6 +27,8 @@ router.route('/employee/create-in-bulk').post(uploadExcel.single('excelsheet'),c
 router.route('/employee/count').get(catchErrors(userController.countUsers))
 router.route('/plant/count').get(catchErrors(userController.countPlants))
 router.route('/asset/count').get(catchErrors(userController.countAssets))
+router.route('/employee/search-employee-list').get(catchErrors(userController.employeeList))
+router.route('/employee/download-excel-list').get(catchErrors(userController.downloadFile))
 
 // ---------------------------API to Update User Information----------------------------
 router.route('/employee/update-info/:id').patch(checkPermission("employee"),requireWriteAccess,catchErrors(userController.UpdateController.updateInfo))

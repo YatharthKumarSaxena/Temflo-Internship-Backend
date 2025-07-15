@@ -93,7 +93,6 @@ const createBulk = async (req, res) => {
           name: emp.Name,
           mobile: emp.Mobile,
           plantId,
-          enabled:true,
           role:"employee"
         });
 

@@ -10,7 +10,7 @@ class UpdateController{
 
         // Check the type and get _id accordingly
         const _id = req.params.id 
-        const { firstName, middleName, lastName, bloodGroup, gender, dob, contactNumber, emailPersonal, department, dateOfJoining, designation, supervisor } = req.body
+        const { firstName, middleName, lastName, bloodGroup, gender, dob, contactNumber, emailPersonal, department, dateOfJoining, designation, supervisor,role,status } = req.body
 
         const updatedUser = await UserModel.findByIdAndUpdate({_id,companyId:req.admin.companyId}, {
                 $set: {
@@ -25,7 +25,9 @@ class UpdateController{
                     "employeeInfo.department": department,
                     "employeeInfo.dateOfJoining": dateOfJoining,
                     "employeeInfo.designation": designation,
-                    "supervisor":supervisor
+                    "supervisor":supervisor,
+                    "status":status,
+                    "role":role
                 }
             }, { new: true });
 

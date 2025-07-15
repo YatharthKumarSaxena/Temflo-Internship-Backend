@@ -15,16 +15,34 @@ const leavePolicySchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  type: {
+    type: String,
+    enum: ['leave', 'wfh'],
+    default: 'leave',
+    required: true
+  },
+
   count: {
     type: Number,
-    required: true,
-    min: 0.1 // ✅ Accepts fractional leave like 0.5
+    min: 0.1,
+    validate: {
+      validator: function (v) {
+        return this.type === 'WFH' ? true : v !== undefined;
+      },
+      message: 'Count is required for Leave type'
+    }
   },
+
   credit: {
     frequency: {
       type: String,
       enum: ['monthly', 'quarterly', 'yearly', 'custom'],
-      required: true
+      validate: {
+        validator: function (v) {
+          return this.type === 'WFH' ? true : v !== undefined;
+        },
+        message: 'Credit frequency is required for Leave type'
+      }
     },
     dayOfMonth: {
       type: Number,
@@ -35,11 +53,17 @@ const leavePolicySchema = new mongoose.Schema({
       type: Date
     }]
   },
+
   expiry: {
     frequency: {
       type: String,
       enum: ['never', 'monthly', 'quarterly', 'yearly', 'custom'],
-      required: true
+      validate: {
+        validator: function (v) {
+          return this.type === 'WFH' ? true : v !== undefined;
+        },
+        message: 'Expiry frequency is required for Leave type'
+      }
     },
     dayOfMonth: {
       type: Number,
@@ -50,10 +74,7 @@ const leavePolicySchema = new mongoose.Schema({
       type: Date
     }
   },
-  isActive: {
-    type: Boolean,
-    default: true
-  },
+
   creditOnCreation: {
     type: Boolean,
     default: false
@@ -63,6 +84,10 @@ const leavePolicySchema = new mongoose.Schema({
     default: false
   },
   applyToAll: {
+    type: Boolean,
+    default: true
+  },
+  isActive: {
     type: Boolean,
     default: true
   }

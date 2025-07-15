@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-
 const bcrypt = require('bcryptjs');
 
 const UserPasswordSchema = new Schema({
@@ -12,6 +11,12 @@ const UserPasswordSchema = new Schema({
   password: {
     type: String,
     required: true,
+    validate: {
+      validator: function (v) {
+        return v && v.length >= 8;
+      },
+      message: 'Password must be at least 8 characters long.',
+    },
   },
   salt: {
     type: String,
@@ -33,7 +38,6 @@ const UserPasswordSchema = new Schema({
   },
 });
 
-// AdminPasswordSchema.index({ user: 1 });
 // generating a hash
 UserPasswordSchema.methods.generateHash = function (salt, password) {
   return bcrypt.hashSync(salt + password);

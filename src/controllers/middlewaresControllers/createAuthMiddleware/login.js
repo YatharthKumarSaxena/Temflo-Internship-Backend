@@ -48,11 +48,11 @@ const login = async (req, res, { userModel }) => {
 
   const databasePassword = await UserPasswordModel.findOne({ user: user._id, removed: false });
 
-  if (!user.enabled)
+  if (user.removed)
     return res.status(409).json({
       success: false,
       result: null,
-      message: 'Your account is disabled, contact your account adminstrator',
+      message: 'Your account is deleted, contact your account adminstrator',
     });
 
   //  authUser if your has correct password

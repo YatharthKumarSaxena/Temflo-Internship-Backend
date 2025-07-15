@@ -6,10 +6,6 @@ const UserSchema = new Schema({
     type: Boolean,
     default: false,
   },
-  enabled: {
-    type: Boolean,
-    default: false,
-  },
   companyId: {
     type: String,
     required: true,
@@ -24,6 +20,7 @@ const UserSchema = new Schema({
   },
   email: {
     type: String,
+    unique:true,
     required: [true, 'Enter Email Address'],
     trim: true,
   },
@@ -48,13 +45,9 @@ const UserSchema = new Schema({
       return this.role === 'employee';
     }
   },
-  type: {
-    type: String,
-    enum: ['employee']
-  },
   status: {
     type: String,
-    enum: ['active', 'banned'],
+    enum: ['active', 'inactive'],
     default: 'active'
   },
   team: [{

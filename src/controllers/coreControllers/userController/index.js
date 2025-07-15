@@ -10,6 +10,7 @@ const downloadFile = require('./downloadFile')
 const deleteInfo = require('./deleteInfo')
 const dashboardInfoController = require('./dashboardInfo')
 const {countUsers,countPlants,countAssets} = require('./count')
+const employeeList = require('./employeeList')
 
 const UserMethods = {
   create: createUser,
@@ -23,7 +24,8 @@ const UserMethods = {
   countPlants,
   downloadFile,
   deleteInfo,
-  countAssets
+  countAssets,
+  employeeList
 };
 
 module.exports = UserMethods;

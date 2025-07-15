@@ -22,6 +22,11 @@ const createUser = async (req, res) => {
             return res.status(400).json({ success:false, message: 'Email already exists' });
         }
     
+    const deletedUser = await User.findOne({ email,companyId:req.admin.companyId,removed:true });
+        if (deletedUser) {
+            return res.status(400).json({ success:false, message: 'User with this email is removed, contact adminstrator' });
+    } 
+
     // Create salt and hash password
     const newUserPassword = new UserPassword();
     const salt = uniqueId();

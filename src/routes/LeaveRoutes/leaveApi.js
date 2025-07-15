@@ -10,7 +10,7 @@ const upload = require('../../services/file-upload')
 router.route('/leave-policy').post(catchErrors(leaveApi.adminLeaveController.createLeavePolicy))
 router.route('/leave-policy/:id').patch(catchErrors(leaveApi.adminLeaveController.updateLeavePolicy))
 router.route('/leave-policy/:id').delete(catchErrors(leaveApi.adminLeaveController.deleteLeavePolicy))
-router.route('/leave-policy').get(catchErrors(leaveApi.adminLeaveController.getCompanyLeavePolicies))
+router.route('/leave-policy/:plantId').get(catchErrors(leaveApi.adminLeaveController.getCompanyLeavePolicies))
 router.route('/create-leave-balance/selected').post(catchErrors(leaveApi.adminLeaveController.applyLeavePolicyToSelectedEmployees))
 
 router.route('/leave-balance/:employeeId').get(catchErrors(leaveApi.employeeLeaveController.getLeaveBalancesByEmployeeId))

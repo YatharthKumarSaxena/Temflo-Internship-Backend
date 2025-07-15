@@ -25,48 +25,87 @@ exports.createLeavePolicy = async (req, res) => {
     const {
       name,
       count,
-      credit,       // { frequency, dayOfMonth?, customDates? }
-      expiry,       // { frequency, dayOfMonth?, customDate? }
+      credit,
+      expiry,
       creditOnCreation,
       isAdvanceAllowed,
       applyToAll,
-      plantId
+      plantId,
+      type = 'leave' // Default to 'leave' (lowercase for consistency)
     } = req.body;
 
     // Basic required field check
-    if (!name || !count || !credit?.frequency || !expiry?.frequency || !plantId) {
+    if (!name || !plantId) {
       return res.status(400).json({ success: false, message: "Required fields are missing" });
     }
 
-    // Validate credit day (if not custom)
-    if (credit.frequency !== 'custom' && (typeof credit.dayOfMonth !== 'number' || credit.dayOfMonth < 1 || credit.dayOfMonth > 31)) {
-      return res.status(400).json({ success: false, message: "Invalid credit day" });
+    // Validate type
+    const normalizedType = type.toLowerCase();
+    if (!['leave', 'wfh'].includes(normalizedType)) {
+      return res.status(400).json({ success: false, message: "Invalid policy type. Must be 'leave' or 'wfh'" });
     }
 
-    // Validate expiry day (if not custom and not never)
-    if (
-      expiry.frequency !== 'custom' &&
-      expiry.frequency !== 'never' &&
-      (typeof expiry.dayOfMonth !== 'number' || expiry.dayOfMonth < 1 || expiry.dayOfMonth > 31)
-    ) {
-      return res.status(400).json({ success: false, message: "Invalid expiry day" });
+    // For regular leave or WFH with policy, do validations
+    const isWFH = normalizedType === 'wfh';
+    const isWFHWithoutPolicy = isWFH && (count == null || credit == null || expiry == null);
+
+    if (!isWFHWithoutPolicy) {
+      if (
+        count == null ||
+        !credit?.frequency ||
+        !expiry?.frequency
+      ) {
+        return res.status(400).json({ success: false, message: "Required fields are missing" });
+      }
+
+      if (
+        credit.frequency !== 'custom' &&
+        (typeof credit.dayOfMonth !== 'number' || credit.dayOfMonth < 1 || credit.dayOfMonth > 31)
+      ) {
+        return res.status(400).json({ success: false, message: "Invalid credit day" });
+      }
+
+      if (
+        expiry.frequency !== 'custom' &&
+        expiry.frequency !== 'never' &&
+        (typeof expiry.dayOfMonth !== 'number' || expiry.dayOfMonth < 1 || expiry.dayOfMonth > 31)
+      ) {
+        return res.status(400).json({ success: false, message: "Invalid expiry day" });
+      }
+    }
+
+    // Check if WFH policy already exists (one per plant)
+    if (isWFH) {
+      const existingWFH = await LeavePolicy.findOne({
+        companyId: req.admin.companyId,
+        plantId,
+        type: 'wfh'
+      });
+      if (existingWFH) {
+        return res.status(400).json({ success: false, message: "WFH policy already exists for this plant" });
+      }
     }
 
     const policy = new LeavePolicy({
       companyId: req.admin.companyId,
       plantId,
       name,
-      count,
-      credit,
-      expiry,
-      creditOnCreation: creditOnCreation ?? false,
-      isAdvanceAllowed: isAdvanceAllowed ?? false,
-      applyToAll: applyToAll ?? true
+      type: normalizedType,
+      count: isWFHWithoutPolicy ? null : count,
+      credit: isWFHWithoutPolicy ? null : credit,
+      expiry: isWFHWithoutPolicy ? null : expiry,
+      creditOnCreation: isWFHWithoutPolicy ? false : (creditOnCreation ?? false),
+      isAdvanceAllowed: isWFHWithoutPolicy ? false : (isAdvanceAllowed ?? false),
+      applyToAll: isWFHWithoutPolicy ? false : (applyToAll ?? true)
     });
 
     await policy.save();
 
-    return res.status(200).json({ success: true, message: "Leave Policy created successfully", policy });
+    return res.status(200).json({
+      success: true,
+      message: `${normalizedType === 'wfh' ? 'WFH' : 'Leave'} policy created successfully`,
+      policy
+    });
 
   } catch (err) {
     console.error('Error creating Leave Policy:', err);
@@ -75,7 +114,7 @@ exports.createLeavePolicy = async (req, res) => {
 };
 
 
-// 2. Update Leave Policy
+
 exports.updateLeavePolicy = async (req, res) => {
   try {
     const {
@@ -87,31 +126,43 @@ exports.updateLeavePolicy = async (req, res) => {
       isAdvanceAllowed,
       applyToAll,
       plantId,
+      type = 'leave' // default to leave if not provided
     } = req.body;
 
-    // Validate required fields
-    if (
-      !name ||
-      count === undefined ||
-      !credit?.frequency ||
-      (credit.frequency !== 'custom' && !credit.dayOfMonth) ||
-      (credit.frequency === 'custom' && (!credit.customDates || !credit.customDates.length)) ||
-      !expiry?.frequency ||
-      (expiry.frequency !== 'never' && expiry.frequency !== 'custom' && !expiry.dayOfMonth) ||
-      (expiry.frequency === 'custom' && !expiry.customDate)
-    ) {
-      return res.status(400).json({ success: false, message: 'All required fields must be filled' });
+    if (!name || !plantId) {
+      return res.status(400).json({ success: false, message: 'Name and plantId are required' });
+    }
+
+    const normalizedType = type.toLowerCase();
+    const isWFH = normalizedType === 'wfh';
+    const isWFHWithoutPolicy = isWFH && (count == null || credit == null || expiry == null);
+
+    if (!isWFHWithoutPolicy) {
+      // Validate fields only if policy is required
+      if (
+        count == null ||
+        !credit?.frequency ||
+        (credit.frequency !== 'custom' && (typeof credit.dayOfMonth !== 'number' || credit.dayOfMonth < 1 || credit.dayOfMonth > 31)) ||
+        (credit.frequency === 'custom' && (!Array.isArray(credit.customDates) || credit.customDates.length === 0)) ||
+        !expiry?.frequency ||
+        (expiry.frequency !== 'never' && expiry.frequency !== 'custom' &&
+          (typeof expiry.dayOfMonth !== 'number' || expiry.dayOfMonth < 1 || expiry.dayOfMonth > 31)) ||
+        (expiry.frequency === 'custom' && !expiry.customDate)
+      ) {
+        return res.status(400).json({ success: false, message: 'All required fields must be filled correctly' });
+      }
     }
 
     const updatedData = {
       name,
-      count,
-      credit,
-      expiry,
-      creditOnCreation: creditOnCreation || false,
-      isAdvanceAllowed: isAdvanceAllowed || false,
-      applyToAll: applyToAll ?? true,
+      type: normalizedType,
       plantId,
+      count: isWFHWithoutPolicy ? null : count,
+      credit: isWFHWithoutPolicy ? null : credit,
+      expiry: isWFHWithoutPolicy ? null : expiry,
+      creditOnCreation: isWFHWithoutPolicy ? false : (creditOnCreation || false),
+      isAdvanceAllowed: isWFHWithoutPolicy ? false : (isAdvanceAllowed || false),
+      applyToAll: isWFHWithoutPolicy ? false : (applyToAll ?? true)
     };
 
     const policy = await LeavePolicy.findOneAndUpdate(
@@ -126,7 +177,7 @@ exports.updateLeavePolicy = async (req, res) => {
 
     return res.status(200).json({ success: true, policy });
   } catch (err) {
-    console.error(err);
+    console.error('Error updating policy:', err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -163,15 +214,27 @@ exports.deleteLeavePolicy = async (req, res) => {
 };
 
 
-// 4. Get all policies for a company
+// 4. Get leave policies by company and plantId
 exports.getCompanyLeavePolicies = async (req, res) => {
   try {
-    const policies = await LeavePolicy.find({ companyId: req.admin.companyId });
+    const { plantId } = req.params;
+
+    if (!plantId) {
+      return res.status(400).json({ success: false, message: "plantId is required in URL params" });
+    }
+
+    const policies = await LeavePolicy.find({
+      companyId: req.admin.companyId,
+      plantId
+    });
+
     res.json({ success: true, policies });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed To Fetch Policies" });
+    console.error('Error fetching policies:', err);
+    res.status(500).json({ success: false, message: "Failed to fetch policies" });
   }
 };
+
 
 exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
   const { plantId, employeeIds, policyId } = req.body;
@@ -192,6 +255,13 @@ exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
 
     if (!policy) {
       throw new Error('Leave policy not found for this company and plant');
+    }
+
+    if(!policy.isActive){
+      return res.status(200).json({
+        success: false,
+        message:'Please Active Leave Policy To Apply'
+      })
     }
 
     const period = getPeriodString(policy, now);

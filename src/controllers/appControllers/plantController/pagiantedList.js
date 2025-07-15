@@ -31,7 +31,7 @@ const paginatedList = async (Model, req, res) => {
     // Counting the total documents
     const countPromise = Model.countDocuments({
       removed: false,
-  
+      companyId:req.admin.companyId,
       [filter]: equal,
       ...fields,
     });
