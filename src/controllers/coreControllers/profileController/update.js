@@ -221,7 +221,7 @@ class UpdateController{
             return res.status(200).json({
                 success: true,
                 message: 'Experience information updated successfully',
-                degreeInfo: user.experience
+                experienceInfo: user.experience
             });
 
 

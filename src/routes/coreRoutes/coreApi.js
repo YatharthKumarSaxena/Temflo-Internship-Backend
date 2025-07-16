@@ -41,7 +41,7 @@ router.route('/employee/update-aadhar/:id').patch(checkPermission("employee"),re
 router.route('/employee/update-experience-info/:id').patch(checkPermission("employee"),requireWriteAccess,upload.single('document'),catchErrors(userController.UpdateController.updateExperienceInfo))
 router.route('/employee/:directory/:filename').get(checkPermission("employee"),requireWriteAccess,catchErrors(userController.downloadFile))
 router.route('/employee/delete/:infoType/:id/:deleteId').delete(checkPermission("employee"),requireWriteAccess,catchErrors(userController.deleteInfo))
-router.route('/employee/update-password/:id').patch(catchErrors(checkPermission("employee"),requireWriteAccess,userController.UpdateController.updatePassword))
+router.route('/employee/update-password/:id').patch(checkPermission("employee"),requireWriteAccess,catchErrors(userController.UpdateController.updatePassword))
 
 
 
