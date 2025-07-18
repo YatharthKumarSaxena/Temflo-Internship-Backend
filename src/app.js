@@ -31,7 +31,7 @@ const app = express();
 
 
 app.use(cors({
-  origin: 'http://localhost:3000',  // your local frontend
+  origin: 'https://erpica.in',  // your local frontend
   credentials: true,                // allow cookies
 }));
 
