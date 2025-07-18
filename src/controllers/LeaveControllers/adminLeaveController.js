@@ -1,6 +1,8 @@
 const LeavePolicy = require('../../models/LeaveModels/leavePolicy');
 const LeaveBalance = require('../../models/LeaveModels/LeaveBalanace');
 const LeaveRequest = require('../../models/LeaveModels/LeaveRequest');
+const Permission = require('../../models/userModels/Permission');
+const LeaveBalanace = require('../../models/LeaveModels/LeaveBalanace')
 const User = require('../../models/userModels/User')
 const mongoose = require('mongoose');
 
@@ -324,6 +326,114 @@ exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
   }
 };
 
+exports.getPolicyEmployees = async (req,res) =>{
+
+  // try {
+
+  //   const page = parseInt(req.query.page) || 1;
+  //   const limit = parseInt(req.query.items) || 10;
+  //   const skip = (page - 1) * limit;
+
+  //   const {
+  //     sortBy = 'enabled',
+  //     sortValue = -1,
+  //     filter,
+  //     equal,
+  //     q: searchQuery = '',
+  //     plantId
+  //   } = req.query;
+
+  //   const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
+  //   const searchFields = [];
+  //   let plantIds = [];
+
+  //   if (searchQuery && fieldsArray.length > 0) {
+  //     for (const field of fieldsArray) {
+  //       if (field === 'plantId.name') {
+  //         const matchedPlants = await Plant.find({
+  //           name: { $regex: new RegExp(searchQuery, 'i') },
+  //           companyId: req.admin.companyId,
+  //         }).select('_id');
+
+  //         plantIds = matchedPlants.map(p => p._id);
+  //       } else {
+  //         searchFields.push({ [field]: { $regex: new RegExp(searchQuery, 'i') } });
+  //       }
+  //     }
+  //   }
+
+  //   const baseQuery = {
+  //     removed: false,
+  //     companyId: req.admin.companyId,
+  //     plantId,
+  //     role: { $in: ['admin', 'employee'] },
+  //     ...(filter && equal ? { [filter]: equal } : {}),
+  //   };
+
+  //   if (req.admin.role === 'employee') {
+  //     const permissions = await Permission.find({ employeeId: req.admin._id });
+  //     const allowedPlantIds = permissions.map(p => p.plantId);
+  //     if (!allowedPlantIds.length) {
+  //       return res.status(403).json({ message: 'No plant permissions found' });
+  //     }
+  //     baseQuery.plantId = { $in: allowedPlantIds };
+  //   }
+
+  //   if (plantIds.length > 0) {
+  //     baseQuery.$or = [
+  //       ...(searchFields.length > 0 ? searchFields : []),
+  //       { plantId: { $in: plantIds } },
+  //     ];
+  //   } else if (searchFields.length > 0) {
+  //     baseQuery.$or = searchFields;
+  //   }
+
+  //   // Fetch users (projecting only needed fields)
+  //   const users = await User.find(baseQuery)
+  //     .skip(skip)
+  //     .limit(limit)
+  //     .sort({ [sortBy]: sortValue, _id: 1 })
+  //     .select('name email employeeCode') // ✅ Only return these fields
+  //     .lean();
+
+  //   // Fetch all employeeIds with active policies
+  //   const employeeIds = users.map(u => u._id);
+
+  //   const activePolicyMap = await LeaveBalance.find({
+  //     userId: { $in: employeeIds },
+  //     isActive: true,
+  //   }).select('employeeId').lean();
+
+  //   const activeEmployeeSet = new Set(activePolicyMap.map(p => String(p.employeeId)));
+
+  //   // Append isPolicyApplied to each user
+  //   const result = users.map(user => ({
+  //     ...user,
+  //     isPolicyApplied: activeEmployeeSet.has(String(user._id)),
+  //   }));
+
+  //   const count = await User.countDocuments(baseQuery);
+  //   const pages = Math.ceil(count / limit);
+
+  //   return res.status(count ? 200 : 203).json({
+  //     success: true,
+  //     result,
+  //     pagination: {
+  //       page,
+  //       pages,
+  //       count
+  //     },
+  //     message: count ? 'Successfully found all employees' : 'Collection is Empty',
+  //   });
+  // } catch (err) {
+  //   console.error('Error in paginatedList:', err);
+  //   return res.status(500).json({
+  //     success: false,
+  //     message: 'Server Error',
+  //     error: err.message,
+  //   });
+  // }
+}
 
 
 
@@ -693,7 +803,7 @@ exports.getLeaveRequestsByEmployee = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const {
-      sortBy = 'fromDate',
+      sortBy = 'appliedAt',
       sortValue = -1,
       month,
       year,

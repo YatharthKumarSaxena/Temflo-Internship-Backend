@@ -12,8 +12,11 @@ router.route('/leave-policy/:id').patch(catchErrors(leaveApi.adminLeaveControlle
 router.route('/leave-policy/:id').delete(catchErrors(leaveApi.adminLeaveController.deleteLeavePolicy))
 router.route('/leave-policy/:plantId').get(catchErrors(leaveApi.adminLeaveController.getCompanyLeavePolicies))
 router.route('/create-leave-balance/selected').post(catchErrors(leaveApi.adminLeaveController.applyLeavePolicyToSelectedEmployees))
-
 router.route('/leave-balance/:employeeId').get(catchErrors(leaveApi.employeeLeaveController.getLeaveBalancesByEmployeeId))
+router.route('/leave-policy/employee-list/:id').get(catchErrors(leaveApi.adminLeaveController.getPolicyEmployees))
+
+
+
 
 // Leave Balance & Requests
 router.route('/leave-balance').get(catchErrors(leaveApi.adminLeaveController.getCompanyLeaveBalances))

@@ -27,7 +27,7 @@ const leavePolicySchema = new mongoose.Schema({
     min: 0.1,
     validate: {
       validator: function (v) {
-        return this.type === 'WFH' ? true : v !== undefined;
+        return this.type === 'wfh' ? true : v !== undefined;
       },
       message: 'Count is required for Leave type'
     }
@@ -39,7 +39,7 @@ const leavePolicySchema = new mongoose.Schema({
       enum: ['monthly', 'quarterly', 'yearly', 'custom'],
       validate: {
         validator: function (v) {
-          return this.type === 'WFH' ? true : v !== undefined;
+          return this.type === 'wfh' ? true : v !== undefined;
         },
         message: 'Credit frequency is required for Leave type'
       }
@@ -60,7 +60,7 @@ const leavePolicySchema = new mongoose.Schema({
       enum: ['never', 'monthly', 'quarterly', 'yearly', 'custom'],
       validate: {
         validator: function (v) {
-          return this.type === 'WFH' ? true : v !== undefined;
+          return this.type === 'wfh' ? true : v !== undefined;
         },
         message: 'Expiry frequency is required for Leave type'
       }
@@ -72,25 +72,31 @@ const leavePolicySchema = new mongoose.Schema({
     },
     customDate: {
       type: Date
+    },
+    expireRatio: {
+      type: Number,
+      default: 1,
+      validate: {
+        validator: function (v) {
+          // Only validate if type is NOT 'WFH'
+          if (this.type === 'wfh') return true;
+          return v > 0 && v <= 1;
+        },
+        message: 'Expire ratio must be between 0 (exclusive) and 1 (inclusive)'
+      }
     }
   },
 
-  creditOnCreation: {
-    type: Boolean,
-    default: false
-  },
   isAdvanceAllowed: {
     type: Boolean,
     default: false
   },
-  applyToAll: {
-    type: Boolean,
-    default: true
-  },
+
   isActive: {
     type: Boolean,
     default: true
   }
+
 }, { timestamps: true });
 
 module.exports = mongoose.model('LeavePolicy', leavePolicySchema);

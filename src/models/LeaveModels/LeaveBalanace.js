@@ -34,6 +34,10 @@ const leaveBalanceSchema = new mongoose.Schema({
   },
   lastCreditedPeriod: {
     type: String
+  },
+  isActive: {
+    type: Boolean,
+    default: true
   }
  
 }, { timestamps: true });
