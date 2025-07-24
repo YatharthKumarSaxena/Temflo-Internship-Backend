@@ -13,18 +13,19 @@ router.route('/leave-policy/:id').delete(catchErrors(leaveApi.adminLeaveControll
 router.route('/leave-policy/:plantId').get(catchErrors(leaveApi.adminLeaveController.getCompanyLeavePolicies))
 router.route('/create-leave-balance/selected').post(catchErrors(leaveApi.adminLeaveController.applyLeavePolicyToSelectedEmployees))
 router.route('/leave-balance/:employeeId').get(catchErrors(leaveApi.employeeLeaveController.getLeaveBalancesByEmployeeId))
-router.route('/leave-policy/employee-list/:id').get(catchErrors(leaveApi.adminLeaveController.getPolicyEmployees))
-
+router.route('/policy/employee-list/:policyId').get(catchErrors(leaveApi.adminLeaveController.getPolicyEmployees))
+router.route('/policy/:policyId/status').patch(catchErrors(leaveApi.adminLeaveController.activatePolicy))
 
 
 
 // Leave Balance & Requests
 router.route('/leave-balance').get(catchErrors(leaveApi.adminLeaveController.getCompanyLeaveBalances))
-router.route('/leave-requests').get(catchErrors(leaveApi.adminLeaveController.getLeaveRequests))
+router.route('/leave-requests-summary/:plantId').get(catchErrors(leaveApi.adminLeaveController.getLeaveRequests))
 router.route('/leave-requests/:employeeId').get(catchErrors(leaveApi.adminLeaveController.getLeaveRequestsByEmployee))
 
 router.route('/leave-request/:id/status').patch(catchErrors(leaveApi.adminLeaveController.updateLeaveRequestStatus))
-router.route('/create-leave-balance/:policyId').get(catchErrors(leaveApi.adminLeaveController.createLeaveBalance))
+router.route('/create-leave-balance/:plantId/:policyId').get(catchErrors(leaveApi.adminLeaveController.createLeaveBalance))
+router.route('/reset-leave-balance/:plantId/:policyId').get(catchErrors(leaveApi.adminLeaveController.resetLeaveBalance))
 router.route('/mark-leave-admin').post(catchErrors(leaveApi.adminLeaveController.markLeave))
 
 // Employee Routes
@@ -32,6 +33,8 @@ router.route('/leave-balance-me').get(catchErrors(leaveApi.employeeLeaveControll
 router.route('/apply-leave').post(catchErrors(leaveApi.employeeLeaveController.applyForLeave))
 router.route('/my-requests').get(catchErrors(leaveApi.employeeLeaveController.getMyLeaveRequests))
 router.route('/cancel/:requestId').delete(catchErrors(leaveApi.employeeLeaveController.cancelLeaveRequest))
+router.route('/supervisor-leave-requests-summary').get(catchErrors(leaveApi.employeeLeaveController.getLeaveRequests))
+router.route('/supervisor-leave-request/:id/status').patch(catchErrors(leaveApi.employeeLeaveController.updateLeaveRequestStatus))
 
 
 router.route('/employee-on-leave').get(catchErrors(leaveApi.adminLeaveController.getEmployeeOnLeave))

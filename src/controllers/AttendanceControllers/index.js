@@ -4,6 +4,7 @@ const markAttendanceBulk = require('./markAttendanceBulk')
 const companyAttendanceSetting = require('./companyAttendanceSetting')
 const EmployeeMarkAttendance = require('./EmployeeMarkAttendance')
 const EmployeeAttendance = require('./EmployeeAttendance')
+const EmpAttendanceSetting = require('./EmployeeAttendanceSetting')
 
 const AttendanceMethods = {
     AttendanceSetting,
@@ -11,7 +12,8 @@ const AttendanceMethods = {
     markAttendanceBulk,
     companyAttendanceSetting,
     EmployeeMarkAttendance,
-    EmployeeAttendance
+    EmployeeAttendance,
+    EmpAttendanceSetting
 };
 
 module.exports = AttendanceMethods;

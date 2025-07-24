@@ -2,7 +2,6 @@ const LeavePolicy = require('../../models/LeaveModels/leavePolicy');
 const LeaveBalance = require('../../models/LeaveModels/LeaveBalanace');
 const LeaveRequest = require('../../models/LeaveModels/LeaveRequest');
 const Permission = require('../../models/userModels/Permission');
-const LeaveBalanace = require('../../models/LeaveModels/LeaveBalanace')
 const User = require('../../models/userModels/User')
 const mongoose = require('mongoose');
 
@@ -328,111 +327,147 @@ exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
 
 exports.getPolicyEmployees = async (req,res) =>{
 
-  // try {
+  try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.items) || 10;
+      const skip = (page - 1) * limit;
+      const {policyId} = req.params
+  
+      const {
+        sortBy = 'enabled',
+        sortValue = -1,
+        filter,
+        equal,
+        q: searchQuery = '',
+      } = req.query;
+  
+      const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
+  
+      // Init search arrays
+      const searchFields = [];
+      let plantIds = [];
+  
+      if (searchQuery && fieldsArray.length > 0) {
+        for (const field of fieldsArray) {
+          if (field === 'plantId.name') {
+            const matchedPlants = await Plant.find({
+              name: { $regex: new RegExp(searchQuery, 'i') },
+              companyId: req.admin.companyId,
+            }).select('_id');
+  
+            plantIds = matchedPlants.map(p => p._id);
+          } else {
+            searchFields.push({ [field]: { $regex: new RegExp(searchQuery, 'i') } });
+          }
+        }
+      }
+  
+      // Base query
+      const baseQuery = {
+        removed: false,
+        companyId: req.admin.companyId,
+        role: { $in: ['admin', 'employee'] },
+        ...(filter && equal ? { [filter]: equal } : {}),
+      };
+      
+  
+      // Plant permissions for employee
+      if (req.admin.role === 'employee') {
+        const permissions = await Permission.find({ employeeId: req.admin._id });
+        const allowedPlantIds = permissions.map(p => p.plantId);
+        if (!allowedPlantIds.length) {
+          return res.status(403).json({ message: 'No plant permissions found' });
+        }
+        baseQuery.plantId = { $in: allowedPlantIds };
+      }
+  
+      // If plant search is applied
+      if (plantIds.length > 0) {
+        baseQuery.$or = [
+          ...(searchFields.length > 0 ? searchFields : []),
+          { plantId: { $in: plantIds } },
+        ];
+      } else if (searchFields.length > 0) {
+        baseQuery.$or = searchFields;
+      }
+  
+      const users = await User.find(baseQuery)
+        .skip(skip)
+        .limit(limit)
+        .sort({ [sortBy]: sortValue, _id: 1 })
+        .select('name email employeeCode')
+        .lean()
+        .exec()
 
-  //   const page = parseInt(req.query.page) || 1;
-  //   const limit = parseInt(req.query.items) || 10;
-  //   const skip = (page - 1) * limit;
+      // Fetch all employeeIds with active policies
+      const employeeIds = users.map(u => u._id);
 
-  //   const {
-  //     sortBy = 'enabled',
-  //     sortValue = -1,
-  //     filter,
-  //     equal,
-  //     q: searchQuery = '',
-  //     plantId
-  //   } = req.query;
+      const activePolicyMap = await LeaveBalance.find({
+        userId: { $in: employeeIds },
+        leaveTypeId: policyId
+      }).select('userId').lean();
 
-  //   const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
-  //   const searchFields = [];
-  //   let plantIds = [];
+      
 
-  //   if (searchQuery && fieldsArray.length > 0) {
-  //     for (const field of fieldsArray) {
-  //       if (field === 'plantId.name') {
-  //         const matchedPlants = await Plant.find({
-  //           name: { $regex: new RegExp(searchQuery, 'i') },
-  //           companyId: req.admin.companyId,
-  //         }).select('_id');
+      const activeEmployeeSet = new Set(activePolicyMap.map(p => String(p.userId)));
+      console.log(activePolicyMap)
+      // Append isPolicyApplied to each user
+      const result = users.map(user => ({
+        ...user,
+        isPolicyApplied: activeEmployeeSet.has(String(user._id)),
+      }));  
+        
 
-  //         plantIds = matchedPlants.map(p => p._id);
-  //       } else {
-  //         searchFields.push({ [field]: { $regex: new RegExp(searchQuery, 'i') } });
-  //       }
-  //     }
-  //   }
+  
+      const count = await User.countDocuments(baseQuery);
+  
+  
+      const pages = Math.ceil(count / limit);
+      const pagination = { page, pages, count };
+  
+      return res.status(count ? 200 : 203).json({
+        success: true,
+        result,
+        pagination,
+        message: count ? 'Successfully found all documents' : 'Collection is Empty',
+      });
+    } catch (err) {
+      console.error('Error in paginatedList:', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Server Error',
+        error: err.message,
+      });
+    }
+  
+}
 
-  //   const baseQuery = {
-  //     removed: false,
-  //     companyId: req.admin.companyId,
-  //     plantId,
-  //     role: { $in: ['admin', 'employee'] },
-  //     ...(filter && equal ? { [filter]: equal } : {}),
-  //   };
 
-  //   if (req.admin.role === 'employee') {
-  //     const permissions = await Permission.find({ employeeId: req.admin._id });
-  //     const allowedPlantIds = permissions.map(p => p.plantId);
-  //     if (!allowedPlantIds.length) {
-  //       return res.status(403).json({ message: 'No plant permissions found' });
-  //     }
-  //     baseQuery.plantId = { $in: allowedPlantIds };
-  //   }
+exports.activatePolicy = async (req,res) =>{
 
-  //   if (plantIds.length > 0) {
-  //     baseQuery.$or = [
-  //       ...(searchFields.length > 0 ? searchFields : []),
-  //       { plantId: { $in: plantIds } },
-  //     ];
-  //   } else if (searchFields.length > 0) {
-  //     baseQuery.$or = searchFields;
-  //   }
+  try {
+    const { policyId } = req.params;
+    const { isActive} = req.body;
 
-  //   // Fetch users (projecting only needed fields)
-  //   const users = await User.find(baseQuery)
-  //     .skip(skip)
-  //     .limit(limit)
-  //     .sort({ [sortBy]: sortValue, _id: 1 })
-  //     .select('name email employeeCode') // ✅ Only return these fields
-  //     .lean();
 
-  //   // Fetch all employeeIds with active policies
-  //   const employeeIds = users.map(u => u._id);
+    const updatedPolicy = await LeaveBalance.findOneAndUpdate(
+      { _id: policyId, companyId:req.admin.companyId },
+      { isActive },
+      { new: true }
+    );
 
-  //   const activePolicyMap = await LeaveBalance.find({
-  //     userId: { $in: employeeIds },
-  //     isActive: true,
-  //   }).select('employeeId').lean();
+    if (!updatedPolicy) {
+      return res.status(404).json({ message: 'Policy not found or access denied' });
+    }
 
-  //   const activeEmployeeSet = new Set(activePolicyMap.map(p => String(p.employeeId)));
-
-  //   // Append isPolicyApplied to each user
-  //   const result = users.map(user => ({
-  //     ...user,
-  //     isPolicyApplied: activeEmployeeSet.has(String(user._id)),
-  //   }));
-
-  //   const count = await User.countDocuments(baseQuery);
-  //   const pages = Math.ceil(count / limit);
-
-  //   return res.status(count ? 200 : 203).json({
-  //     success: true,
-  //     result,
-  //     pagination: {
-  //       page,
-  //       pages,
-  //       count
-  //     },
-  //     message: count ? 'Successfully found all employees' : 'Collection is Empty',
-  //   });
-  // } catch (err) {
-  //   console.error('Error in paginatedList:', err);
-  //   return res.status(500).json({
-  //     success: false,
-  //     message: 'Server Error',
-  //     error: err.message,
-  //   });
-  // }
+    return res.status(200).json({
+      message: `Policy successfully ${isActive ? 'activated' : 'deactivated'}`,
+      data: updatedPolicy,
+    });
+  } catch (error) {
+    console.error('Toggle policy error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
 }
 
 
@@ -450,82 +485,104 @@ exports.getCompanyLeaveBalances = async (req, res) => {
 
 
 
-exports.markLeave = async (req,res) =>{
-
+exports.markLeave = async (req, res) => {
   try {
-      const { userId,plantId, leaveType, durationType, fromDate, toDate, reason } = req.body;
-  
-      // Check if leaveType is valid for the company
-      const policy = await LeavePolicy.findOne({
-        companyId: req.admin.companyId,
-        _id: leaveType
-      });
-      if (!policy) {
-        return res.status(400).json({
-          success: false,
-          message: 'This Leave Type is not allowed by your company'
-        });
-      }
-  
-      // Fetch leave balance
-      const balance = await LeaveBalance.findOne({
-        userId,
-        leaveTypeId: leaveType,
-        companyId: req.admin.companyId
-      });
-  
-      let daysRequested;
-  
-      if (durationType === 'first' || durationType === 'second') {
-        daysRequested = 0.5;
-      } else {
-        daysRequested =
-          (new Date(toDate) - new Date(fromDate)) / (1000 * 3600 * 24) + 1;
-      }
-  
-      if (!balance || balance.balance < daysRequested) {
-        return res.status(400).json({
-          success: false,
-          message: 'Insufficient leave balance to apply'
-        });
-      }
-  
-      // Create leave request
-      const request = new LeaveRequest({
-        userId,
-        companyId: req.admin.companyId,
-        plantId,
-        leaveTypeId: leaveType,
-        fromDate,
-        toDate,
-        durationType,
-        daysRequested,
-        reason,
-        status:"Approved"
-      });
-  
-      await request.save();
-  
-      // Update leave balance
-      balance.balance -= daysRequested;
-      balance.availed = (balance.availed || 0) + daysRequested;
-      await balance.save();
-  
-      res.status(200).json({
-        success: true,
-        message: 'Leave request submitted and balance updated',
-        request
-      });
-    } catch (err) {
-      console.error('Error applying for leave:', err);
-      res.status(500).json({
+    const { userId, plantId, leaveType, durationType, fromDate, toDate, reason } = req.body;
+
+    // Check if leaveType is valid for the company
+    const policy = await LeavePolicy.findOne({
+      companyId: req.admin.companyId,
+      _id: leaveType,
+    });
+
+    if (!policy) {
+      return res.status(400).json({
         success: false,
-        message: err.message || 'Server error'
+        message: 'This Leave Type is not allowed by your company',
       });
     }
-  
 
-}
+    // Fetch leave balance
+    const balance = await LeaveBalance.findOne({
+      userId,
+      leaveTypeId: leaveType,
+      companyId: req.admin.companyId,
+    });
+
+    if (!balance) {
+      return res.status(400).json({
+        success: false,
+        message: 'Leave balance not found',
+      });
+    }
+
+    if (!balance.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: 'Policy is not activated',
+      });
+    }
+
+    // Determine leave days
+    let daysRequested;
+    let adjustedToDate = toDate;
+
+    if (durationType === 'first' || durationType === 'second') {
+      daysRequested = 0.5;
+      adjustedToDate = fromDate;
+    } else if (durationType === 'full') {
+      daysRequested = 1;
+      adjustedToDate = fromDate;
+    } else {
+      daysRequested =
+        (new Date(toDate) - new Date(fromDate)) / (1000 * 3600 * 24) + 1;
+    }
+
+    if (balance.balance < daysRequested) {
+      return res.status(400).json({
+        success: false,
+        message: 'Insufficient leave balance to apply',
+      });
+    }
+
+    
+
+    // Create leave request
+    const request = new LeaveRequest({
+      userId,
+      companyId: req.admin.companyId,
+      plantId,
+      leaveTypeId: leaveType,
+      fromDate,
+      toDate: adjustedToDate,
+      durationType,
+      daysRequested,
+      reason,
+      approverId:req.admin.companyId,
+      status: 'Approved',
+    });
+
+    await request.save();
+
+    // Update leave balance
+    balance.balance -= daysRequested;
+    balance.availed = (balance.availed || 0) + daysRequested;
+    await balance.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Leave request submitted and balance updated',
+      request,
+    });
+  } catch (err) {
+    console.error('Error applying for leave:', err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || 'Server error',
+    });
+  }
+};
+
 
 // 6. View all leave requests
 
@@ -636,6 +693,7 @@ exports.getLeaveRequests = async (req, res) => {
       Rejected: 0,
     };
 
+
     statusCounts.forEach(({ _id, count }) => {
       if (statusSummary.hasOwnProperty(_id)) {
         statusSummary[_id] = count;
@@ -728,7 +786,7 @@ exports.updateLeaveRequestStatus = async (req, res) => {
 
 exports.createLeaveBalance = async (req,res) => {
   try {
-    const employees = await User.find({companyId:req.admin.companyId});
+    const employees = await User.find({companyId:req.admin.companyId,plantId:req.params.plantId});
     const policy = await LeavePolicy.findOne({ _id:req.params.policyId,companyId:req.admin.companyId});
 
     if (employees.length === 0 || policy.length === 0) {
@@ -763,6 +821,47 @@ exports.createLeaveBalance = async (req,res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 }
+
+
+exports.resetLeaveBalance = async (req, res) => {
+  try {
+    const employees = await User.find({ 
+      companyId: req.admin.companyId, 
+      plantId: req.params.plantId 
+    });
+
+    const policy = await LeavePolicy.findOne({ 
+      _id: req.params.policyId, 
+      companyId: req.admin.companyId 
+    });
+
+    if (employees.length === 0 || !policy) {
+      return res.status(400).json({ success: false, message: 'No employees or policy found.' });
+    }
+
+    let updatedCount = 0;
+
+    for (const employee of employees) {
+      const leaveBalance = await LeaveBalance.findOne({
+        userId: employee._id,
+        leaveTypeId: policy._id
+      });
+
+      if (leaveBalance) {
+        leaveBalance.balance = 0;
+        leaveBalance.lastCredited = new Date();
+        await leaveBalance.save();
+        updatedCount++;
+      }
+    }
+
+    res.json({ success: true, message: `${updatedCount} leave balances reset to 0.` });
+
+  } catch (err) {
+    console.error('Error resetting leave balances:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
 
 
 exports.getEmployeeOnLeave = async (req,res) =>{

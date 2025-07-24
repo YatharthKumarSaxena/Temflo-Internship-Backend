@@ -15,9 +15,21 @@ router.route('/weekly-off/:plantId').post(catchErrors(attendanceApi.AttendanceSe
 router.route('/working-hours/:plantId').post(catchErrors(attendanceApi.AttendanceSetting.setWorkingHours))
 router.route('/mark/:plantId').post(catchErrors(attendanceApi.AttendanceSetting.markAttendance))
 router.route('/mark-bulk').post(upload.single('excelsheet'),catchErrors(attendanceApi.markAttendanceBulk))
-router.route('/dashboard/:plantId').get(catchErrors(attendanceApi.dashboard))
+router.route('/dashboard/:plantId').get(catchErrors(attendanceApi.dashboard.Attendancesummary))
+router.route('/attendance-requests/:plantId').get(catchErrors(attendanceApi.dashboard.getAttendanceRequests))
+
+router.route('/attendance-employee-setting').post(catchErrors(attendanceApi.EmpAttendanceSetting))
+router.route('/attendance-employee-setting/:plantId/:userId').get(attendanceApi.AttendanceSetting.getEmployeeSetting)
 
 router.route('/company-attendance-setting').get(catchErrors(attendanceApi.companyAttendanceSetting))
 router.route('/employee-mark-attendance').post(catchErrors(attendanceApi.EmployeeMarkAttendance))
 router.route('/marked').get(catchErrors(attendanceApi.EmployeeAttendance))
+
+router.route('/attendance-policy').post(catchErrors(attendanceApi.AttendanceSetting.createAttendancePolicy))
+router.route('/attendance-policy/:id').patch(catchErrors(attendanceApi.AttendanceSetting.updateAttendancePolicy))
+router.route('/attendance-policy/:plantId').get(catchErrors(attendanceApi.AttendanceSetting.getAttendancePolicy))
+
+router.route('/apply-attendance-policy/:plantId/:policyId').get(catchErrors(attendanceApi.AttendanceSetting.applyAttendancePolicy))
+router.route('/apply-attendance-policy/selected').post(catchErrors(attendanceApi.AttendanceSetting.applyAttendancePolicyToSelectedEmployees))
+
 module.exports = router
