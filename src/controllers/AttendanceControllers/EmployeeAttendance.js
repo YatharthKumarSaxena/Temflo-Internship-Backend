@@ -4,7 +4,7 @@ const moment = require('moment');
 
 const EmployeeAttendance = async (req,res) =>{
 
-   const { month, year } = req.query;
+   const { month, year, employeeId } = req.query;
    if (!month || !year) {
     return res.status(400).json({ error: 'Month and Year are required' });
   }
@@ -15,15 +15,11 @@ const EmployeeAttendance = async (req,res) =>{
    try {
     // Fetch from Attendance
     const attendances = await Attendance.find({
-      userId:req.admin.id,
+      userId:employeeId,
+      companyId:req.admin.companyId,
       date: { $gte: startDate.toDate(), $lte: endDate.toDate() }
     });
 
-    // Fetch Approved Attendance Requests
-    const requests = await AttendanceRequest.find({
-      userId:req.admin.id,
-      date: { $gte: startDate.toDate(), $lte: endDate.toDate() }
-    });
 
     // Map attendance records to format
     const records = attendances.map(att => ({
@@ -33,25 +29,7 @@ const EmployeeAttendance = async (req,res) =>{
       exitTime: att.outTime,
     }));
 
-    // Add approved requests (only if not already marked in attendance)
-    const requestRecords = requests.map(req => ({
-      date: moment(req.date).format('YYYY-MM-DD'),
-      empStatus: req.status,
-      inTime: '--',
-      exitTime: '--',
-    }));
-
-    const allData = [...records];
-
-    const existingDates = new Set(records.map(r => r.date));
-
-    requestRecords.forEach(req => {
-      if (!existingDates.has(req.date)) {
-        allData.push(req);
-      }
-    });
-
-    res.status(200).json({success:true, attendance: allData});
+    res.status(200).json({success:true, attendance: records});
   } catch (err) {
     console.error('Error fetching attendance:', err);
     res.status(500).json({ error: 'Server error' });

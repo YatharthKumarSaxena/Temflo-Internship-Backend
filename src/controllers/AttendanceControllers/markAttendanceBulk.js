@@ -50,10 +50,17 @@ const markAttendanceBulk = async (req, res) => {
       const inTimeStr = row.InTime;
       const outTimeStr = row.OutTime;
       const plantCode = row.PlantCode?.toString().trim().toUpperCase();
+      const status = row?.Status;
 
-      if (!employeeCode || !dateStr || !inTimeStr || !outTimeStr || !plantCode) {
+      if (!employeeCode || !dateStr || !inTimeStr || !outTimeStr || !plantCode || !status) {
         failed.push({ ...row, reason: 'Missing required fields' });
         continue;
+      }
+
+      if(!(status =="present" || status =="absent")){
+        failed.push({ ...row, reason: 'Status should be present or absent' });
+        continue;
+
       }
 
       const user = userMap[employeeCode];
@@ -62,7 +69,6 @@ const markAttendanceBulk = async (req, res) => {
       const inTime = inTimeStr;
       const outTime = outTimeStr;
 
-      console.log(inTime, outTime)
 
       if (!user) {
         failed.push({ ...row, reason: 'User not found' });
@@ -93,7 +99,8 @@ const markAttendanceBulk = async (req, res) => {
           plantId,
           inTime: inTime,
           outTime: outTime,
-          date: date.startOf('day').toDate()
+          date: date.startOf('day').toDate(),
+          status
         });
 
         await attendance.save();

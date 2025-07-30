@@ -1,6 +1,7 @@
 const AttendanceSettings = require('../../models/AttendanceModels/AttendanceSetting');
 const Attendance = require('../../models/AttendanceModels/Attendance');
 const AttendanceRequest = require('../../models/AttendanceModels/AttendanceRequest');
+const AttendanceEmployeeSettings = require('../../models/AttendanceModels/AttendanceEmployeeSetting')
 const User = require('../../models/userModels/User');
 const moment = require('moment');
 
@@ -38,7 +39,8 @@ const EmployeeMarkAttendance = async (req, res) => {
       return res.status(404).json({ message: 'Employee or Plant not found' });
     }
 
-    const settings = await AttendanceSettings.findOne({
+    const settings = await AttendanceEmployeeSettings.findOne({
+      userId:req.admin.id,
       plantId: employee.plantId,
       companyId: req.admin.companyId
     });
@@ -58,7 +60,7 @@ const EmployeeMarkAttendance = async (req, res) => {
   }
 
   // ✅ Check if an attendance request already exists
-  const existingRequest = await AttendanceRequest.findOne({
+  const existingRequest = await Attendance.findOne({
     userId: req.admin.id,
     companyId: req.admin.companyId,
     plantId: employee.plantId,
@@ -73,13 +75,14 @@ const EmployeeMarkAttendance = async (req, res) => {
   }
 
   // ✅ Create new request
-  const request = new AttendanceRequest({
+  const request = new Attendance({
     userId: req.admin.id,
     companyId: req.admin.companyId,
     plantId: employee.plantId,
     date: attendanceDate.toDate(),
     reason: reason || 'Marked attendance for past date',
     approver: approver || null,
+    status:"pending"
   });
 
   await request.save();
@@ -90,6 +93,8 @@ const EmployeeMarkAttendance = async (req, res) => {
     request,
   });
 }
+
+
 
 
     if (settings.isLocationBased) {
@@ -121,7 +126,8 @@ const EmployeeMarkAttendance = async (req, res) => {
         plantId: employee.plantId,
         companyId: req.admin.companyId,
         inTime: null,
-        outTime: null
+        outTime: null,
+        approver:null,
       });
     }
 
@@ -140,6 +146,21 @@ const EmployeeMarkAttendance = async (req, res) => {
         return res.status(400).json({ message: 'Out Time already marked' });
       }
       attendance.outTime = outTime;
+    }
+
+    if(settings.isApprovalRequired){
+      let approver = employee.supervisor;
+    
+      // If no supervisor, get a plant admin
+      if (!approver) {
+        const admin = await User.findOne({ plantId: employee.plantId, role: 'Admin' });
+        if (admin) approver = admin._id;
+      }
+
+      attendance.approver = approver;
+      attendance.status = 'pending';
+   
+    
     }
 
     await attendance.save();

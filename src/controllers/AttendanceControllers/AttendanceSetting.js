@@ -5,6 +5,7 @@ const EmployeeAttendanceSetting = require('../../models/AttendanceModels/Attenda
 const AttendancePolicy = require('../../models/AttendanceModels/AttendancePolicy')
 const User = require('../../models/userModels/User')
 const mongoose = require('mongoose')
+const moment = require('moment');
 
 // Create or update settings for plant
 exports.setSettings = async (req, res) => {
@@ -124,28 +125,55 @@ exports.setWeeklyOff = async (req, res) => {
 
 // Admin manually marks attendance for user
 exports.markAttendance = async (req, res) => {
-  const { userId,date,inTime,outTime,status } = req.body;
+  const { userId, date, inTime, outTime, status } = req.body;
   const { plantId } = req.params;
 
   try {
     const employee = await Employee.findById(userId);
-    if (!employee) return res.status(404).json({ success: false, message: 'Employee not found' });
+    if (!employee) {
+      return res.status(404).json({ success: false, message: 'Employee not found' });
+    }
 
-    const attendance = await Attendance.create({
-      userId,
-      plantId,
-      date,
-      inTime,
-      outTime,
-      status,
-      companyId:req.admin.companyId
+    const attendance = await Attendance.findOneAndUpdate(
+      {
+        userId,
+        plantId,
+        date: {
+          $gte: new Date(new Date(date).setHours(0, 0, 0, 0)),
+          $lte: new Date(new Date(date).setHours(23, 59, 59, 999))
+        }
+      },
+      {
+        $set: {
+          inTime,
+          outTime,
+          date,
+          status,
+          companyId: req.admin.companyId,
+          approver: employee.supervisor
+        }
+      },
+      {
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      attendance,
+      message: 'Attendance marked successfully'
     });
-
-    res.status(200).json({ success: true, attendance, message:"Attendance Marked Sucessfully" });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Failed to mark attendance', error: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to mark attendance',
+      error: err.message
+    });
   }
 };
+
 
 
 // Set or update working hours for a plant
@@ -453,4 +481,263 @@ exports.applyAttendancePolicyToSelectedEmployees = async (req, res) => {
     });
   }
 };
+
+
+exports.EmployeeAttendanceSetting = async (req,res) =>{
+
+  try {
+      // Step 1: Find user by _id
+      const userId = req.admin.id
+      const user = await User.findOne({ _id: userId, companyId:req.admin.companyId });
+  
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+  
+      const { companyId, plantId } = user;
+  
+      if (!companyId || !plantId) {
+        return res.status(400).json({ success: false, message: 'User does not have company or plant info' });
+      }
+  
+      // Step 2: Find attendance settings using companyId and plantId
+      const settings = await EmployeeAttendanceSetting.findOne({ userId,companyId, plantId });
+  
+      if (!settings) {
+        return res.status(404).json({ success: false, message: 'First Set Employee Attendance settings ' });
+      }
+  
+      const holidaySettings = await AttendanceSettings.findOne({ companyId, plantId }, 'holidays'); // Only fetching holidays field
+  
+      // Attach holidays to the settings response
+      const settingsWithHolidays = {
+        ...settings.toObject(),
+        holidays: holidaySettings?.holidays || [],
+      };
+      
+      res.status(200).json({ success: true, settings:settingsWithHolidays });
+    } catch (error) {
+      console.error('Error getting settings:', error);
+      res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+}
+
+exports.EmployeeAttendance = async (req,res) => {
+
+  const { month, year } = req.query;
+     if (!month || !year) {
+      return res.status(400).json({ error: 'Month and Year are required' });
+    }
+  
+    const startDate = moment.utc(`${year}-${month}-01`).startOf('month');
+    const endDate = moment.utc(startDate).endOf('month');
+  
+     try {
+      // Fetch from Attendance
+      const attendances = await Attendance.find({
+        userId:req.admin.id,
+        companyId:req.admin.companyId,
+        date: { $gte: startDate.toDate(), $lte: endDate.toDate() }
+      });
+  
+  
+      // Map attendance records to format
+      const records = attendances.map(att => ({
+        date: moment(att.date).format('YYYY-MM-DD'),
+        empStatus: att.status,
+        inTime: att.inTime,
+        exitTime: att.outTime,
+      }));
+  
+      res.status(200).json({success:true, attendance: records});
+    } catch (err) {
+      console.error('Error fetching attendance:', err);
+      res.status(500).json({ error: 'Server error' });
+    }
+}
+
+
+exports.getAttendanceRequests = async (req,res) =>{
+  try {
+      const page = parseInt(req.query.page || 1);
+      const limit = parseInt(req.query.items || 10);
+      const skip = (page - 1) * limit;
+  
+      const { sortBy = 'createdAt', sortValue = -1, filter, equal, leaveTypeId } = req.query;
+  
+      const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
+      const searchQuery = req.query.q || '';
+  
+      let fields = [];
+      let userIds = [];
+  
+      // Search logic
+      if (searchQuery && fieldsArray.length > 0) {
+        for (const field of fieldsArray) {
+          if (field === 'userId.employeeCode') {
+            const matched = await User.find({
+              employeeCode: { $regex: new RegExp(searchQuery, 'i') }
+            }).distinct('_id');
+            userIds.push(...matched);
+          } else if (field === 'userId.email') {
+            const matched = await User.find({
+              email: { $regex: new RegExp(searchQuery, 'i') }
+            }).distinct('_id');
+            userIds.push(...matched);
+          } else {
+            fields.push({ [field]: { $regex: new RegExp(searchQuery, 'i') } });
+          }
+        }
+      }
+  
+      // Main filtered query
+      const query = {
+        companyId: req.admin.companyId,
+        approver: req.admin.id,
+      };
+  
+      if (filter && equal) {
+        query[filter] = equal;
+      }
+  
+      if (leaveTypeId) {
+        query.leaveTypeId = leaveTypeId;
+      }
+  
+      if (fields.length > 0) {
+        query.$or = fields;
+      }
+  
+      if (userIds.length > 0) {
+        query.$or = [...(query.$or || []), { userId: { $in: userIds } }];
+      }
+  
+      // Date range filter
+      if (req.query.startDate && req.query.endDate) {
+        query.fromDate = { $gte: new Date(req.query.startDate) };
+        query.toDate = { $lte: new Date(req.query.endDate) };
+      }
+  
+      // Paginated + Filtered Results
+      const resultsPromise = Attendance.find(query)
+        .populate('plantId', 'name')
+        .populate('userId', 'employeeCode email')
+        .skip(skip)
+        .limit(limit)
+        .sort({ [sortBy]: sortValue });
+  
+      const countPromise = Attendance.countDocuments(query);
+  
+      // Global Summary (Unfiltered except by company & plant)
+      const summaryQuery = {
+        companyId: req.admin.companyId,
+        approver: mongoose.Types.ObjectId.isValid(req.admin.id)
+                ? new mongoose.Types.ObjectId(req.admin.id)
+                : req.admin.id,
+      };
+  
+      const totalCountPromise = Attendance.countDocuments(summaryQuery);
+  
+      const statusCountsPromise = Attendance.aggregate([
+        { $match: summaryQuery },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+          },
+        },
+      ]);
+  
+      // Await all promises
+      const [result, count, totalCount, statusCounts] = await Promise.all([
+        resultsPromise,
+        countPromise,
+        totalCountPromise,
+        statusCountsPromise,
+      ]);
+  
+      // Build Summary
+      const statusSummary = {
+        present: 0,
+        absent: 0,
+        pending: 0,
+      };
+  
+     
+  
+  
+      statusCounts.forEach(({ _id, count }) => {
+        if (statusSummary.hasOwnProperty(_id)) {
+          statusSummary[_id] = count;
+        }
+      });
+  
+      const pagination = {
+        page,
+        pages: Math.ceil(count / limit),
+        count,
+      };
+  
+      return res.status(200).json({
+        success: true,
+        result,
+        pagination,
+        summary: {
+          total: totalCount,
+          present: statusSummary['present'],
+          absent: statusSummary['absent'],
+          pending: statusSummary['pending'],
+        },
+        message:
+          count > 0
+            ? 'Successfully found Attendance requests'
+            : 'No matching attendance requests found',
+      });
+    } catch (err) {
+      console.error('Leave request error:', err);
+      return res.status(500).json({
+        success: false,
+        message: err.message || 'Internal server error',
+      });
+    }
+
+
+}
+
+
+exports.updateAttendanceRequestStatus = async (req, res) => {
+  try {
+    const { status} = req.body;
+
+    const request = await Attendance.findById(req.params.id);
+
+    if(request.approver != req.admin.id){
+      return res.status(404).json({ success: false, message: `You do not have right to approve attendance.` })
+ 
+    }
+
+    if(request.status == status){
+        return res.status(404).json({ success: false, message: `Attendance Status is already ${status}` })
+
+    }
+
+    if(request.status == "pending" && status == "present"){
+      request.status = status;
+      await request.save();
+
+      return res.status(200).json({ success: true,message:"Attendance Aprroved Sucessfully",request });
+    }
+
+    if(request.status == "present" && status == "pending"){
+      request.status = status;
+      await request.save();
+
+      return res.status(200).json({ success: true,message:"Attendance Changed To Pending Sucessfully",request });
+    }
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 
