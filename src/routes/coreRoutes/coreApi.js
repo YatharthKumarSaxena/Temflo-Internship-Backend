@@ -31,17 +31,17 @@ router.route('/employee/search-employee-list').get(catchErrors(userController.em
 router.route('/employee/download-excel-list').get(catchErrors(userController.downloadFile))
 
 // ---------------------------API to Update User Information----------------------------
-router.route('/employee/update-info/:id').patch(checkPermission("employee"),requireWriteAccess,catchErrors(userController.UpdateController.updateInfo))
-router.route('/employee/update-address/:id').patch(checkPermission("employee"),requireWriteAccess,catchErrors(userController.UpdateController.updateAddress))
-router.route('/employee/update-emergency-contact/:id').patch(checkPermission("employee"),requireWriteAccess,catchErrors(userController.UpdateController.updateEmergencyContact))
-router.route('/employee/update-bank-details/:id').patch(checkPermission("employee"),requireWriteAccess,upload.single('bank'),catchErrors(userController.UpdateController.updateBankDetail))
-router.route('/employee/update-degree-info/:id').patch(checkPermission("employee"),requireWriteAccess,upload.single('document'),catchErrors(userController.UpdateController.updateDegreeInfo))
-router.route('/employee/update-pan/:id').patch(checkPermission("employee"),requireWriteAccess,upload.single('pan'),catchErrors(userController.UpdateController.updatePan))
-router.route('/employee/update-aadhar/:id').patch(checkPermission("employee"),requireWriteAccess,upload.single('aadhar'),catchErrors(userController.UpdateController.updateAadhar))
-router.route('/employee/update-experience-info/:id').patch(checkPermission("employee"),requireWriteAccess,upload.single('document'),catchErrors(userController.UpdateController.updateExperienceInfo))
-router.route('/employee/:directory/:filename').get(checkPermission("employee"),requireWriteAccess,catchErrors(userController.downloadFile))
-router.route('/employee/delete/:infoType/:id/:deleteId').delete(checkPermission("employee"),requireWriteAccess,catchErrors(userController.deleteInfo))
-router.route('/employee/update-password/:id').patch(checkPermission("employee"),requireWriteAccess,catchErrors(userController.UpdateController.updatePassword))
+router.route('/employee/update-info/:id').patch(checkPermission("manage_employee"),requireWriteAccess,catchErrors(userController.UpdateController.updateInfo))
+router.route('/employee/update-address/:id').patch(checkPermission("manage_employee"),requireWriteAccess,catchErrors(userController.UpdateController.updateAddress))
+router.route('/employee/update-emergency-contact/:id').patch(checkPermission("manage_employee"),requireWriteAccess,catchErrors(userController.UpdateController.updateEmergencyContact))
+router.route('/employee/update-bank-details/:id').patch(checkPermission("manage_employee"),requireWriteAccess,upload.single('bank'),catchErrors(userController.UpdateController.updateBankDetail))
+router.route('/employee/update-degree-info/:id').patch(checkPermission("manage_employee"),requireWriteAccess,upload.single('document'),catchErrors(userController.UpdateController.updateDegreeInfo))
+router.route('/employee/update-pan/:id').patch(checkPermission("manage_employee"),requireWriteAccess,upload.single('pan'),catchErrors(userController.UpdateController.updatePan))
+router.route('/employee/update-aadhar/:id').patch(checkPermission("manage_employee"),requireWriteAccess,upload.single('aadhar'),catchErrors(userController.UpdateController.updateAadhar))
+router.route('/employee/update-experience-info/:id').patch(checkPermission("manage_employee"),requireWriteAccess,upload.single('document'),catchErrors(userController.UpdateController.updateExperienceInfo))
+router.route('/employee/:directory/:filename').get(checkPermission("manage_employee"),requireWriteAccess,catchErrors(userController.downloadFile))
+router.route('/employee/delete/:infoType/:id/:deleteId').delete(checkPermission("manage_employee"),requireWriteAccess,catchErrors(userController.deleteInfo))
+router.route('/employee/update-password/:id').patch(checkPermission("manage_employee"),requireWriteAccess,catchErrors(userController.UpdateController.updatePassword))
 
 
 

@@ -48,10 +48,7 @@ const leavePolicySchema = new mongoose.Schema({
       type: Number,
       min: 1,
       max: 31
-    },
-    customDates: [{
-      type: Date
-    }]
+    }
   },
 
   expiry: {
@@ -69,9 +66,6 @@ const leavePolicySchema = new mongoose.Schema({
       type: Number,
       min: 1,
       max: 31
-    },
-    customDate: {
-      type: Date
     },
     expireRatio: {
       type: Number,
@@ -95,6 +89,15 @@ const leavePolicySchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  
+  lastCreditedAt: {
+    type: Date,
+    default: null
+  },
+  lastExpiredAt: {
+    type: Date,
+    default: null
   }
 
 }, { timestamps: true });

@@ -16,14 +16,14 @@ const companyAttendanceSetting = async (req, res) => {
     const { companyId, plantId } = user;
 
     if (!companyId || !plantId) {
-      return res.status(400).json({ success: false, message: 'User does not have company or plant info' });
+      return res.status(200).json({ success: false, message: 'User does not have company or plant info' });
     }
 
     // Step 2: Find attendance settings using companyId and plantId
     const settings = await EmployeeAttendanceSetting.findOne({ userId,companyId, plantId });
 
     if (!settings) {
-      return res.status(404).json({ success: false, message: 'First Set Employee Attendance settings ' });
+      return res.status(200).json({ success: false, message: 'First Set Employee Attendance settings' });
     }
 
     const holidaySettings = await AttendanceSettings.findOne({ companyId, plantId }, 'holidays'); // Only fetching holidays field
