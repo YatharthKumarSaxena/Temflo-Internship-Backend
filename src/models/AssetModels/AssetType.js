@@ -2,11 +2,11 @@
 const mongoose = require('mongoose');
 
 const AssetTypeSchema = new mongoose.Schema({
-    companyId: {
-      type: String,
-      required: true,
-      immutable: true
-    },
+  companyId: {
+    type: String,
+    required: true,
+    immutable: true,
+  },
   name: { type: String, required: true },
   description: String,
   createdAt: { type: Date, default: Date.now },

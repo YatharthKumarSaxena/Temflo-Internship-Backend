@@ -10,13 +10,7 @@ const paginatedList = async (req, res) => {
     const limit = parseInt(req.query.items) || 10;
     const skip = (page - 1) * limit;
 
-    const {
-      sortBy = 'enabled',
-      sortValue = -1,
-      filter,
-      equal,
-      q: searchQuery = '',
-    } = req.query;
+    const { sortBy = 'enabled', sortValue = -1, filter, equal, q: searchQuery = '' } = req.query;
 
     const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
 
@@ -32,7 +26,7 @@ const paginatedList = async (req, res) => {
             companyId: req.admin.companyId,
           }).select('_id');
 
-          plantIds = matchedPlants.map(p => p._id);
+          plantIds = matchedPlants.map((p) => p._id);
         } else {
           searchFields.push({ [field]: { $regex: new RegExp(searchQuery, 'i') } });
         }
@@ -43,15 +37,14 @@ const paginatedList = async (req, res) => {
     const baseQuery = {
       removed: false,
       companyId: req.admin.companyId,
-      role: { $in: ['admin', 'employee'] },
+      role: { $in: ['owner', 'admin', 'employee'] },
       ...(filter && equal ? { [filter]: equal } : {}),
     };
-    
 
     // Plant permissions for employee
     if (req.admin.role === 'employee') {
       const permissions = await Permission.find({ employeeId: req.admin._id });
-      const allowedPlantIds = permissions.map(p => p.plantId);
+      const allowedPlantIds = permissions.map((p) => p.plantId);
       if (!allowedPlantIds.length) {
         return res.status(403).json({ message: 'No plant permissions found' });
       }
