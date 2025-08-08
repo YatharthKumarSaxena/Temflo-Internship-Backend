@@ -16,12 +16,6 @@ exports.Attendancesummary = async (req, res) => {
       plantId,
     }).select('_id name email employeeCode');
 
-    console.log({
-      companyId: req.admin.companyId,
-      plantId,
-      date: { $gte: startOfDay, $lte: endOfDay },
-    })
-
     // Attendance records on that date
     const attendanceRequests = await AttendanceRequest.find({
       companyId: req.admin.companyId,
@@ -47,7 +41,7 @@ exports.Attendancesummary = async (req, res) => {
     });
 
     // Users with no attendance request at all (Not Marked)
-    const notMarked = allEmployees.filter(emp => !markedUserIds.has(emp._id.toString()));
+    const notMarked = allEmployees.filter((emp) => !markedUserIds.has(emp._id.toString()));
 
     const summary = {
       presentCount: present.length,
@@ -61,7 +55,6 @@ exports.Attendancesummary = async (req, res) => {
       summary,
       message: 'Attendance dashboard data fetched successfully',
     });
-
   } catch (err) {
     console.error('Dashboard Error:', err);
     return res.status(500).json({
@@ -70,7 +63,6 @@ exports.Attendancesummary = async (req, res) => {
     });
   }
 };
-
 
 exports.getAttendanceRequests = async (req, res) => {
   const {
@@ -89,29 +81,26 @@ exports.getAttendanceRequests = async (req, res) => {
   const limit = parseInt(items);
 
   const companyId = req.admin.companyId;
+  const plantId = req.headers['plant-id'];
+
   const searchRegex = new RegExp(searchQuery, 'i');
   const fieldsArray = fields ? fields.split(',') : [];
 
-  const query = { companyId, plantId: req.params.plantId, };
-
+  const query = { companyId, plantId: req.params.plantId };
 
   const summaryDate = date ? new Date(date) : new Date();
 
+  // Create start and end of day using new Date objects to avoid mutating the original
+  const startOfDay = new Date(summaryDate);
+  startOfDay.setHours(0, 0, 0, 0);
 
+  const endOfDay = new Date(summaryDate);
+  endOfDay.setHours(23, 59, 59, 999);
 
-// Create start and end of day using new Date objects to avoid mutating the original
-const startOfDay = new Date(summaryDate);
-startOfDay.setHours(0, 0, 0, 0);
-
-const endOfDay = new Date(summaryDate);
-endOfDay.setHours(23, 59, 59, 999);
-
-query.date = {
-  $gte: startOfDay,
-  $lte: endOfDay,
-};
-
-  
+  query.date = {
+    $gte: startOfDay,
+    $lte: endOfDay,
+  };
 
   // Filtering by status/plantId/userId, etc.
   if (filter && equal) {
@@ -126,16 +115,16 @@ query.date = {
   }
 
   try {
-
-    if(searchQuery == 'not marked'){
-
-      const allEmployees = await User.find({companyId, plantId: req.params.plantId}).select('_id');
+    if (searchQuery == 'not marked') {
+      const allEmployees = await User.find({ companyId, plantId: req.params.plantId }).select(
+        '_id'
+      );
       const allEmployeeIds = allEmployees.map((e) => e._id.toString());
 
       // Get those who marked attendance
       const markedAttendance = await AttendanceRequest.find({
         companyId,
-        plantId:req.params.plantId,
+        plantId: req.params.plantId,
         date: { $gte: startOfDay, $lte: endOfDay },
       }).select('userId');
 
@@ -149,62 +138,56 @@ query.date = {
 
       const paginatedIds = unmarkedIds.slice(skip, skip + limit);
 
-
       const data = await User.find({ _id: { $in: paginatedIds } })
-      .select('name email employeeCode supervisor')
-      .populate('supervisor', 'name email ')
-      .populate('plantId', 'name');
+        .select('name email employeeCode supervisor')
+        .populate('supervisor', 'name email ')
+        .populate('plantId', 'name');
 
-      const formattedData = data.map(user => ({
-        userId: user ? {
-          email: user.email,
-          employeeCode: user.employeeCode,
-          name: user.name
-        } : null,
-        companyId:user.companyId,
-        status:"notMarked",
+      const formattedData = data.map((user) => ({
+        userId: user
+          ? {
+              email: user.email,
+              employeeCode: user.employeeCode,
+              name: user.name,
+            }
+          : null,
+        companyId: user.companyId,
+        status: 'notMarked',
         approver: user.supervisor,
-     
       }));
-
 
       return res.status(200).json({
         success: true,
         pagination: {
-        page: parseInt(page),
-        pages: pages,
-        count: total
+          page: parseInt(page),
+          pages: pages,
+          count: total,
         },
-        data:formattedData,
+        data: formattedData,
         message: 'Unmarked employees fetched successfully',
       });
+    } else {
+      const totalCount = await AttendanceRequest.countDocuments(query);
+      const pages = Math.ceil(totalCount / limit);
 
-    }else{
-    const totalCount = await AttendanceRequest.countDocuments(query);
-    const pages = Math.ceil(totalCount / limit);
+      const data = await AttendanceRequest.find(query)
+        .sort({ [sortBy]: sortValue })
+        .skip(skip)
+        .limit(limit)
+        .populate('userId', 'name email employeeCode')
+        .populate('approver', 'name email')
+        .populate('plantId', 'name');
 
-    const data = await AttendanceRequest.find(query)
-      .sort({ [sortBy]: sortValue })
-      .skip(skip)
-      .limit(limit)
-      .populate('userId', 'name email employeeCode')
-      .populate('approver', 'name email')
-      .populate('plantId', 'name');
-
-
-
-    return res.status(200).json({
-      success: true,
-      pagination: {
-        page: parseInt(page),
-        pages: pages,
-        count: totalCount
+      return res.status(200).json({
+        success: true,
+        pagination: {
+          page: parseInt(page),
+          pages: pages,
+          count: totalCount,
         },
-      data,
-    });
-
-  }
-
+        data,
+      });
+    }
   } catch (error) {
     console.error('Attendance Fetch Error:', error);
     return res.status(500).json({
@@ -213,4 +196,3 @@ query.date = {
     });
   }
 };
-

@@ -59,7 +59,6 @@ const fileFilter = (req, file, cb) => {
   if (!file) return cb(null, false);
 
   const { fieldname, mimetype } = file;
-  console.log('Uploading:', fieldname, mimetype);
 
   const allowedMimeTypes = [
     // Images
@@ -86,7 +85,6 @@ const fileFilter = (req, file, cb) => {
   ];
 
   if (!allowedMimeTypes.includes(mimetype)) {
-    console.log('Rejected file:', mimetype);
     return cb(new Error('Unsupported file type'), false);
   }
 

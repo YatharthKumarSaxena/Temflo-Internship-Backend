@@ -2,7 +2,7 @@ const LeavePolicy = require('../../models/LeaveModels/leavePolicy');
 const LeaveBalance = require('../../models/LeaveModels/LeaveBalanace');
 const LeaveRequest = require('../../models/LeaveModels/LeaveRequest');
 const Permission = require('../../models/userModels/Permission');
-const User = require('../../models/userModels/User')
+const User = require('../../models/userModels/User');
 const mongoose = require('mongoose');
 
 const getPeriodString = (policy, date = new Date()) => {
@@ -32,18 +32,20 @@ exports.createLeavePolicy = async (req, res) => {
       isAdvanceAllowed,
       applyToAll,
       plantId,
-      type = 'leave' // Default to 'leave' (lowercase for consistency)
+      type = 'leave', // Default to 'leave' (lowercase for consistency)
     } = req.body;
 
     // Basic required field check
     if (!name || !plantId) {
-      return res.status(400).json({ success: false, message: "Required fields are missing" });
+      return res.status(400).json({ success: false, message: 'Required fields are missing' });
     }
 
     // Validate type
     const normalizedType = type.toLowerCase();
     if (!['leave', 'wfh'].includes(normalizedType)) {
-      return res.status(400).json({ success: false, message: "Invalid policy type. Must be 'leave' or 'wfh'" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid policy type. Must be 'leave' or 'wfh'" });
     }
 
     // For regular leave or WFH with policy, do validations
@@ -51,19 +53,15 @@ exports.createLeavePolicy = async (req, res) => {
     const isWFHWithoutPolicy = isWFH && (count == null || credit == null || expiry == null);
 
     if (!isWFHWithoutPolicy) {
-      if (
-        count == null ||
-        !credit?.frequency ||
-        !expiry?.frequency
-      ) {
-        return res.status(400).json({ success: false, message: "Required fields are missing" });
+      if (count == null || !credit?.frequency || !expiry?.frequency) {
+        return res.status(400).json({ success: false, message: 'Required fields are missing' });
       }
 
       if (
         credit.frequency !== 'custom' &&
         (typeof credit.dayOfMonth !== 'number' || credit.dayOfMonth < 1 || credit.dayOfMonth > 31)
       ) {
-        return res.status(400).json({ success: false, message: "Invalid credit day" });
+        return res.status(400).json({ success: false, message: 'Invalid credit day' });
       }
 
       if (
@@ -71,7 +69,7 @@ exports.createLeavePolicy = async (req, res) => {
         expiry.frequency !== 'never' &&
         (typeof expiry.dayOfMonth !== 'number' || expiry.dayOfMonth < 1 || expiry.dayOfMonth > 31)
       ) {
-        return res.status(400).json({ success: false, message: "Invalid expiry day" });
+        return res.status(400).json({ success: false, message: 'Invalid expiry day' });
       }
     }
 
@@ -80,10 +78,12 @@ exports.createLeavePolicy = async (req, res) => {
       const existingWFH = await LeavePolicy.findOne({
         companyId: req.admin.companyId,
         plantId,
-        type: 'wfh'
+        type: 'wfh',
       });
       if (existingWFH) {
-        return res.status(400).json({ success: false, message: "WFH policy already exists for this plant" });
+        return res
+          .status(400)
+          .json({ success: false, message: 'WFH policy already exists for this plant' });
       }
     }
 
@@ -95,9 +95,9 @@ exports.createLeavePolicy = async (req, res) => {
       count: isWFHWithoutPolicy ? null : count,
       credit: isWFHWithoutPolicy ? null : credit,
       expiry: isWFHWithoutPolicy ? null : expiry,
-      creditOnCreation: isWFHWithoutPolicy ? false : (creditOnCreation ?? false),
-      isAdvanceAllowed: isWFHWithoutPolicy ? false : (isAdvanceAllowed ?? false),
-      applyToAll: isWFHWithoutPolicy ? false : (applyToAll ?? true)
+      creditOnCreation: isWFHWithoutPolicy ? false : creditOnCreation ?? false,
+      isAdvanceAllowed: isWFHWithoutPolicy ? false : isAdvanceAllowed ?? false,
+      applyToAll: isWFHWithoutPolicy ? false : applyToAll ?? true,
     });
 
     await policy.save();
@@ -105,16 +105,13 @@ exports.createLeavePolicy = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: `${normalizedType === 'wfh' ? 'WFH' : 'Leave'} policy created successfully`,
-      policy
+      policy,
     });
-
   } catch (err) {
     console.error('Error creating Leave Policy:', err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
-
-
 
 exports.updateLeavePolicy = async (req, res) => {
   try {
@@ -127,7 +124,7 @@ exports.updateLeavePolicy = async (req, res) => {
       isAdvanceAllowed,
       applyToAll,
       plantId,
-      type = 'leave' // default to leave if not provided
+      type = 'leave', // default to leave if not provided
     } = req.body;
 
     if (!name || !plantId) {
@@ -143,14 +140,23 @@ exports.updateLeavePolicy = async (req, res) => {
       if (
         count == null ||
         !credit?.frequency ||
-        (credit.frequency !== 'custom' && (typeof credit.dayOfMonth !== 'number' || credit.dayOfMonth < 1 || credit.dayOfMonth > 31)) ||
-        (credit.frequency === 'custom' && (!Array.isArray(credit.customDates) || credit.customDates.length === 0)) ||
+        (credit.frequency !== 'custom' &&
+          (typeof credit.dayOfMonth !== 'number' ||
+            credit.dayOfMonth < 1 ||
+            credit.dayOfMonth > 31)) ||
+        (credit.frequency === 'custom' &&
+          (!Array.isArray(credit.customDates) || credit.customDates.length === 0)) ||
         !expiry?.frequency ||
-        (expiry.frequency !== 'never' && expiry.frequency !== 'custom' &&
-          (typeof expiry.dayOfMonth !== 'number' || expiry.dayOfMonth < 1 || expiry.dayOfMonth > 31)) ||
+        (expiry.frequency !== 'never' &&
+          expiry.frequency !== 'custom' &&
+          (typeof expiry.dayOfMonth !== 'number' ||
+            expiry.dayOfMonth < 1 ||
+            expiry.dayOfMonth > 31)) ||
         (expiry.frequency === 'custom' && !expiry.customDate)
       ) {
-        return res.status(400).json({ success: false, message: 'All required fields must be filled correctly' });
+        return res
+          .status(400)
+          .json({ success: false, message: 'All required fields must be filled correctly' });
       }
     }
 
@@ -161,9 +167,9 @@ exports.updateLeavePolicy = async (req, res) => {
       count: isWFHWithoutPolicy ? null : count,
       credit: isWFHWithoutPolicy ? null : credit,
       expiry: isWFHWithoutPolicy ? null : expiry,
-      creditOnCreation: isWFHWithoutPolicy ? false : (creditOnCreation || false),
-      isAdvanceAllowed: isWFHWithoutPolicy ? false : (isAdvanceAllowed || false),
-      applyToAll: isWFHWithoutPolicy ? false : (applyToAll ?? true)
+      creditOnCreation: isWFHWithoutPolicy ? false : creditOnCreation || false,
+      isAdvanceAllowed: isWFHWithoutPolicy ? false : isAdvanceAllowed || false,
+      applyToAll: isWFHWithoutPolicy ? false : applyToAll ?? true,
     };
 
     const policy = await LeavePolicy.findOneAndUpdate(
@@ -183,14 +189,13 @@ exports.updateLeavePolicy = async (req, res) => {
   }
 };
 
-
 // 3. Delete Leave Policy
 exports.deleteLeavePolicy = async (req, res) => {
   try {
     // First, find the policy by companyId and _id
     const policy = await LeavePolicy.findOne({
       companyId: req.admin.companyId,
-      _id: req.params.id
+      _id: req.params.id,
     });
 
     if (!policy) {
@@ -207,13 +212,12 @@ exports.deleteLeavePolicy = async (req, res) => {
     res.json({
       success: true,
       message: `Policy marked as ${updated.isActive ? 'active' : 'inactive'}`,
-      policy: updated
+      policy: updated,
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
 
 // 4. Get leave policies by company and plantId
 exports.getCompanyLeavePolicies = async (req, res) => {
@@ -221,21 +225,20 @@ exports.getCompanyLeavePolicies = async (req, res) => {
     const { plantId } = req.params;
 
     if (!plantId) {
-      return res.status(400).json({ success: false, message: "plantId is required in URL params" });
+      return res.status(400).json({ success: false, message: 'plantId is required in URL params' });
     }
 
     const policies = await LeavePolicy.find({
       companyId: req.admin.companyId,
-      plantId
+      plantId,
     });
 
     res.json({ success: true, policies });
   } catch (err) {
     console.error('Error fetching policies:', err);
-    res.status(500).json({ success: false, message: "Failed to fetch policies" });
+    res.status(500).json({ success: false, message: 'Failed to fetch policies' });
   }
 };
-
 
 exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
   const { plantId, employeeIds, policyId } = req.body;
@@ -251,36 +254,38 @@ exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
     const policy = await LeavePolicy.findOne({
       _id: policyId,
       plantId,
-      companyId
+      companyId,
     }).session(session);
 
     if (!policy) {
       throw new Error('Leave policy not found for this company and plant');
     }
 
-    if(!policy.isActive){
+    if (!policy.isActive) {
       return res.status(200).json({
         success: false,
-        message:'Please Active Leave Policy To Apply'
-      })
+        message: 'Please Active Leave Policy To Apply',
+      });
     }
 
     const period = getPeriodString(policy, now);
 
     const users = await User.find({
-      _id: { $in: employeeIds }
-    }).select('_id name employeeCode').lean();
+      _id: { $in: employeeIds },
+    })
+      .select('_id name employeeCode')
+      .lean();
 
     for (const user of users) {
       const existingBalance = await LeaveBalance.findOne({
         userId: user._id,
-        leaveTypeId: policy._id
+        leaveTypeId: policy._id,
       }).session(session);
 
       if (existingBalance && existingBalance.lastCreditedPeriod === period) {
         alreadyApplied.push({
           name: user.name,
-          employeeCode: user.employeeCode
+          employeeCode: user.employeeCode,
         });
         continue;
       }
@@ -292,15 +297,17 @@ exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
         await existingBalance.save({ session });
       } else {
         await LeaveBalance.create(
-          [{
-            userId: user._id,
-            companyId,
-            leaveTypeId: policy._id,
-            leaveTypeName: policy.name,
-            balance: policy.count,
-            lastCredited: now,
-            lastCreditedPeriod: period
-          }],
+          [
+            {
+              userId: user._id,
+              companyId,
+              leaveTypeId: policy._id,
+              leaveTypeName: policy.name,
+              balance: policy.count,
+              lastCredited: now,
+              lastCreditedPeriod: period,
+            },
+          ],
           { session }
         );
       }
@@ -312,146 +319,130 @@ exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Leave policy applied successfully to selected employees.',
-      alreadyApplied // List of users who already had leave applied
+      alreadyApplied, // List of users who already had leave applied
     });
-
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
     return res.status(500).json({
       success: false,
-      message: err.message || 'Failed to apply leave policy.'
+      message: err.message || 'Failed to apply leave policy.',
     });
   }
 };
 
-exports.getPolicyEmployees = async (req,res) =>{
-
+exports.getPolicyEmployees = async (req, res) => {
   try {
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.items) || 10;
-      const skip = (page - 1) * limit;
-      const {policyId} = req.params
-  
-      const {
-        sortBy = 'enabled',
-        sortValue = -1,
-        filter,
-        equal,
-        q: searchQuery = '',
-      } = req.query;
-  
-      const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
-  
-      // Init search arrays
-      const searchFields = [];
-      let plantIds = [];
-  
-      if (searchQuery && fieldsArray.length > 0) {
-        for (const field of fieldsArray) {
-          if (field === 'plantId.name') {
-            const matchedPlants = await Plant.find({
-              name: { $regex: new RegExp(searchQuery, 'i') },
-              companyId: req.admin.companyId,
-            }).select('_id');
-  
-            plantIds = matchedPlants.map(p => p._id);
-          } else {
-            searchFields.push({ [field]: { $regex: new RegExp(searchQuery, 'i') } });
-          }
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.items) || 10;
+    const skip = (page - 1) * limit;
+    const { policyId } = req.params;
+
+    const { sortBy = 'enabled', sortValue = -1, filter, equal, q: searchQuery = '' } = req.query;
+
+    const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
+
+    // Init search arrays
+    const searchFields = [];
+    let plantIds = [];
+
+    if (searchQuery && fieldsArray.length > 0) {
+      for (const field of fieldsArray) {
+        if (field === 'plantId.name') {
+          const matchedPlants = await Plant.find({
+            name: { $regex: new RegExp(searchQuery, 'i') },
+            companyId: req.admin.companyId,
+          }).select('_id');
+
+          plantIds = matchedPlants.map((p) => p._id);
+        } else {
+          searchFields.push({ [field]: { $regex: new RegExp(searchQuery, 'i') } });
         }
       }
-  
-      // Base query
-      const baseQuery = {
-        removed: false,
-        companyId: req.admin.companyId,
-        role: { $in: ['admin', 'employee'] },
-        ...(filter && equal ? { [filter]: equal } : {}),
-      };
-      
-  
-      // Plant permissions for employee
-      if (req.admin.role === 'employee') {
-        const permissions = await Permission.find({ employeeId: req.admin._id });
-        const allowedPlantIds = permissions.map(p => p.plantId);
-        if (!allowedPlantIds.length) {
-          return res.status(403).json({ message: 'No plant permissions found' });
-        }
-        baseQuery.plantId = { $in: allowedPlantIds };
-      }
-  
-      // If plant search is applied
-      if (plantIds.length > 0) {
-        baseQuery.$or = [
-          ...(searchFields.length > 0 ? searchFields : []),
-          { plantId: { $in: plantIds } },
-        ];
-      } else if (searchFields.length > 0) {
-        baseQuery.$or = searchFields;
-      }
-  
-      const users = await User.find(baseQuery)
-        .skip(skip)
-        .limit(limit)
-        .sort({ [sortBy]: sortValue, _id: 1 })
-        .select('name email employeeCode')
-        .lean()
-        .exec()
-
-      // Fetch all employeeIds with active policies
-      const employeeIds = users.map(u => u._id);
-
-      const activePolicyMap = await LeaveBalance.find({
-        userId: { $in: employeeIds },
-        leaveTypeId: policyId
-      }).select('userId').lean();
-
-      
-
-      const activeEmployeeSet = new Set(activePolicyMap.map(p => String(p.userId)));
-      console.log(activePolicyMap)
-      // Append isPolicyApplied to each user
-      const result = users.map(user => ({
-        ...user,
-        isPolicyApplied: activeEmployeeSet.has(String(user._id)),
-      }));  
-        
-
-  
-      const count = await User.countDocuments(baseQuery);
-  
-  
-      const pages = Math.ceil(count / limit);
-      const pagination = { page, pages, count };
-  
-      return res.status(count ? 200 : 203).json({
-        success: true,
-        result,
-        pagination,
-        message: count ? 'Successfully found all documents' : 'Collection is Empty',
-      });
-    } catch (err) {
-      console.error('Error in paginatedList:', err);
-      return res.status(500).json({
-        success: false,
-        message: 'Server Error',
-        error: err.message,
-      });
     }
-  
-}
 
+    // Base query
+    const baseQuery = {
+      removed: false,
+      companyId: req.admin.companyId,
+      role: { $in: ['admin', 'employee'] },
+      ...(filter && equal ? { [filter]: equal } : {}),
+    };
 
-exports.activatePolicy = async (req,res) =>{
+    // Plant permissions for employee
+    if (req.admin.role === 'employee') {
+      const permissions = await Permission.find({ employeeId: req.admin._id });
+      const allowedPlantIds = permissions.map((p) => p.plantId);
+      if (!allowedPlantIds.length) {
+        return res.status(403).json({ message: 'No plant permissions found' });
+      }
+      baseQuery.plantId = { $in: allowedPlantIds };
+    }
 
+    // If plant search is applied
+    if (plantIds.length > 0) {
+      baseQuery.$or = [
+        ...(searchFields.length > 0 ? searchFields : []),
+        { plantId: { $in: plantIds } },
+      ];
+    } else if (searchFields.length > 0) {
+      baseQuery.$or = searchFields;
+    }
+
+    const users = await User.find(baseQuery)
+      .skip(skip)
+      .limit(limit)
+      .sort({ [sortBy]: sortValue, _id: 1 })
+      .select('name email employeeCode')
+      .lean()
+      .exec();
+
+    // Fetch all employeeIds with active policies
+    const employeeIds = users.map((u) => u._id);
+
+    const activePolicyMap = await LeaveBalance.find({
+      userId: { $in: employeeIds },
+      leaveTypeId: policyId,
+    })
+      .select('userId')
+      .lean();
+
+    const activeEmployeeSet = new Set(activePolicyMap.map((p) => String(p.userId)));
+
+    // Append isPolicyApplied to each user
+    const result = users.map((user) => ({
+      ...user,
+      isPolicyApplied: activeEmployeeSet.has(String(user._id)),
+    }));
+
+    const count = await User.countDocuments(baseQuery);
+
+    const pages = Math.ceil(count / limit);
+    const pagination = { page, pages, count };
+
+    return res.status(count ? 200 : 203).json({
+      success: true,
+      result,
+      pagination,
+      message: count ? 'Successfully found all documents' : 'Collection is Empty',
+    });
+  } catch (err) {
+    console.error('Error in paginatedList:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: err.message,
+    });
+  }
+};
+
+exports.activatePolicy = async (req, res) => {
   try {
     const { policyId } = req.params;
-    const { isActive} = req.body;
-
+    const { isActive } = req.body;
 
     const updatedPolicy = await LeaveBalance.findOneAndUpdate(
-      { _id: policyId, companyId:req.admin.companyId },
+      { _id: policyId, companyId: req.admin.companyId },
       { isActive },
       { new: true }
     );
@@ -468,22 +459,19 @@ exports.activatePolicy = async (req,res) =>{
     console.error('Toggle policy error:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
-}
-
-
-
+};
 
 // 5. View all leave balances
 exports.getCompanyLeaveBalances = async (req, res) => {
   try {
-    const balances = await LeaveBalance.find({ companyId: req.params.companyId }).populate('employeeId');
+    const balances = await LeaveBalance.find({ companyId: req.params.companyId }).populate(
+      'employeeId'
+    );
     res.json({ success: true, balances });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
-
 
 exports.markLeave = async (req, res) => {
   try {
@@ -534,8 +522,7 @@ exports.markLeave = async (req, res) => {
       daysRequested = 1;
       adjustedToDate = fromDate;
     } else {
-      daysRequested =
-        (new Date(toDate) - new Date(fromDate)) / (1000 * 3600 * 24) + 1;
+      daysRequested = (new Date(toDate) - new Date(fromDate)) / (1000 * 3600 * 24) + 1;
     }
 
     if (balance.balance < daysRequested) {
@@ -544,8 +531,6 @@ exports.markLeave = async (req, res) => {
         message: 'Insufficient leave balance to apply',
       });
     }
-
-    
 
     // Create leave request
     const request = new LeaveRequest({
@@ -558,7 +543,7 @@ exports.markLeave = async (req, res) => {
       durationType,
       daysRequested,
       reason,
-      approverId:req.admin.companyId,
+      approverId: req.admin.companyId,
       status: 'Approved',
     });
 
@@ -583,7 +568,6 @@ exports.markLeave = async (req, res) => {
   }
 };
 
-
 // 6. View all leave requests
 
 exports.getLeaveRequests = async (req, res) => {
@@ -605,12 +589,12 @@ exports.getLeaveRequests = async (req, res) => {
       for (const field of fieldsArray) {
         if (field === 'userId.employeeCode') {
           const matched = await User.find({
-            employeeCode: { $regex: new RegExp(searchQuery, 'i') }
+            employeeCode: { $regex: new RegExp(searchQuery, 'i') },
           }).distinct('_id');
           userIds.push(...matched);
         } else if (field === 'userId.email') {
           const matched = await User.find({
-            email: { $regex: new RegExp(searchQuery, 'i') }
+            email: { $regex: new RegExp(searchQuery, 'i') },
           }).distinct('_id');
           userIds.push(...matched);
         } else {
@@ -693,7 +677,6 @@ exports.getLeaveRequests = async (req, res) => {
       Rejected: 0,
     };
 
-
     statusCounts.forEach(({ _id, count }) => {
       if (statusSummary.hasOwnProperty(_id)) {
         statusSummary[_id] = count;
@@ -716,10 +699,7 @@ exports.getLeaveRequests = async (req, res) => {
         pending: statusSummary['Pending'],
         rejected: statusSummary['Rejected'],
       },
-      message:
-        count > 0
-          ? 'Successfully found leave requests'
-          : 'No matching leave requests found',
+      message: count > 0 ? 'Successfully found leave requests' : 'No matching leave requests found',
     });
   } catch (err) {
     console.error('Leave request error:', err);
@@ -730,64 +710,77 @@ exports.getLeaveRequests = async (req, res) => {
   }
 };
 
-
 // 7. Approve/Reject a leave request
 exports.updateLeaveRequestStatus = async (req, res) => {
   try {
-    const { status} = req.body;
+    const { status } = req.body;
 
     const request = await LeaveRequest.findById(req.params.id);
 
-    if(request.status == status){
-        return res.status(404).json({ success: false, message: `Leave Status is already ${status}` })
-
+    if (request.status == status) {
+      return res.status(404).json({ success: false, message: `Leave Status is already ${status}` });
     }
 
-    if(request.status == "Rejected"){
-      return res.status(404).json({ success: false, message: 'Leave request already rejected, try to mark new leaves.' })
+    if (request.status == 'Rejected') {
+      return res
+        .status(404)
+        .json({
+          success: false,
+          message: 'Leave request already rejected, try to mark new leaves.',
+        });
     }
 
-    if(request.status == "Pending" && status == "Approved"){
+    if (request.status == 'Pending' && status == 'Approved') {
       request.status = status;
       await request.save();
 
-      return res.status(200).json({ success: true,message:"Leave Aprroved Sucessfully",request });
+      return res
+        .status(200)
+        .json({ success: true, message: 'Leave Aprroved Sucessfully', request });
     }
 
-    if(request.status == "Approved" && status == "Pending"){
+    if (request.status == 'Approved' && status == 'Pending') {
       request.status = status;
       await request.save();
 
-      return res.status(200).json({ success: true,message:"Leave Changed To Pending Sucessfully",request });
+      return res
+        .status(200)
+        .json({ success: true, message: 'Leave Changed To Pending Sucessfully', request });
     }
 
     request.status = status;
     await request.save();
 
     const balance = await LeaveBalance.findOne({
-        userId: request.userId,
-        leaveTypeId: request.leaveTypeId,
-        companyId: req.admin.companyId
-      });
+      userId: request.userId,
+      leaveTypeId: request.leaveTypeId,
+      companyId: req.admin.companyId,
+    });
 
-      balance.balance += request.daysRequested;
-      balance.availed = balance.availed - request.daysRequested;
-      await balance.save();
+    balance.balance += request.daysRequested;
+    balance.availed = balance.availed - request.daysRequested;
+    await balance.save();
 
-      res.status(200).json({
-        success: true,
-        message: 'Leave request Rejected Sucessfully',
-        request
-      });
+    res.status(200).json({
+      success: true,
+      message: 'Leave request Rejected Sucessfully',
+      request,
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-exports.createLeaveBalance = async (req,res) => {
+exports.createLeaveBalance = async (req, res) => {
   try {
-    const employees = await User.find({companyId:req.admin.companyId,plantId:req.params.plantId});
-    const policy = await LeavePolicy.findOne({ _id:req.params.policyId,companyId:req.admin.companyId});
+    const employees = await User.find({
+      companyId: req.admin.companyId,
+      plantId: req.params.plantId,
+    });
+    const policy = await LeavePolicy.findOne({
+      _id: req.params.policyId,
+      companyId: req.admin.companyId,
+    });
 
     if (employees.length === 0 || policy.length === 0) {
       return res.status(400).json({ success: false, message: 'No employees or policies found.' });
@@ -795,44 +788,41 @@ exports.createLeaveBalance = async (req,res) => {
 
     let createdCount = 0;
     for (const employee of employees) {
-        const existing = await LeaveBalance.findOne({
-          userId: employee._id,
-          leaveTypeId: policy._id
-        });
+      const existing = await LeaveBalance.findOne({
+        userId: employee._id,
+        leaveTypeId: policy._id,
+      });
 
-        if (!existing) {
-          await LeaveBalance.create({
-            userId: employee._id,
-            leaveTypeId: policy._id,
-            companyId:req.admin.companyId,
-            leaveTypeName:policy.name,
-            balance: policy.count,
-            lastCredited: new Date()
-          });
-          createdCount++;
-        }
-      
+      if (!existing) {
+        await LeaveBalance.create({
+          userId: employee._id,
+          leaveTypeId: policy._id,
+          companyId: req.admin.companyId,
+          leaveTypeName: policy.name,
+          balance: policy.count,
+          lastCredited: new Date(),
+        });
+        createdCount++;
+      }
     }
 
     res.json({ success: true, message: `${createdCount} leave balances created.` });
-
   } catch (err) {
     console.error('Error creating balances:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
-}
-
+};
 
 exports.resetLeaveBalance = async (req, res) => {
   try {
-    const employees = await User.find({ 
-      companyId: req.admin.companyId, 
-      plantId: req.params.plantId 
+    const employees = await User.find({
+      companyId: req.admin.companyId,
+      plantId: req.params.plantId,
     });
 
-    const policy = await LeavePolicy.findOne({ 
-      _id: req.params.policyId, 
-      companyId: req.admin.companyId 
+    const policy = await LeavePolicy.findOne({
+      _id: req.params.policyId,
+      companyId: req.admin.companyId,
     });
 
     if (employees.length === 0 || !policy) {
@@ -844,7 +834,7 @@ exports.resetLeaveBalance = async (req, res) => {
     for (const employee of employees) {
       const leaveBalance = await LeaveBalance.findOne({
         userId: employee._id,
-        leaveTypeId: policy._id
+        leaveTypeId: policy._id,
       });
 
       if (leaveBalance) {
@@ -856,15 +846,13 @@ exports.resetLeaveBalance = async (req, res) => {
     }
 
     res.json({ success: true, message: `${updatedCount} leave balances reset to 0.` });
-
   } catch (err) {
     console.error('Error resetting leave balances:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
-
-exports.getEmployeeOnLeave = async (req,res) =>{
+exports.getEmployeeOnLeave = async (req, res) => {
   try {
     const queryDate = req.query.date ? new Date(req.query.date) : new Date();
 
@@ -872,26 +860,25 @@ exports.getEmployeeOnLeave = async (req,res) =>{
       companyId: req.admin.companyId,
       status: 'Approved',
       fromDate: { $lte: queryDate },
-      toDate: { $gte: queryDate }
+      toDate: { $gte: queryDate },
     })
       .populate('userId', 'name email image') // adjust fields as needed
-      .populate('leaveTypeId', 'name')        // if you want leave type info
+      .populate('leaveTypeId', 'name') // if you want leave type info
       .sort({ fromDate: 1 });
 
     return res.status(200).json({
       success: true,
       message: 'Approved leaves fetched successfully',
-      data: approvedLeaves
+      data: approvedLeaves,
     });
   } catch (error) {
     console.error('Error fetching approved leaves:', error);
     return res.status(500).json({
       success: false,
-      message: 'Error fetching approved leaves'
+      message: 'Error fetching approved leaves',
     });
   }
-}
-
+};
 
 exports.getLeaveRequestsByEmployee = async (req, res) => {
   try {
@@ -901,25 +888,18 @@ exports.getLeaveRequestsByEmployee = async (req, res) => {
     const limit = parseInt(req.query.items) || 10;
     const skip = (page - 1) * limit;
 
-    const {
-      sortBy = 'appliedAt',
-      sortValue = -1,
-      month,
-      year,
-      q,
-      fields: fieldsRaw
-    } = req.query;
+    const { sortBy = 'appliedAt', sortValue = -1, month, year, q, fields: fieldsRaw } = req.query;
 
     const query = {
       userId: employeeId,
-      companyId: req.admin.companyId
+      companyId: req.admin.companyId,
     };
 
     // Search filter
     const fieldsArray = fieldsRaw ? fieldsRaw.split(',') : [];
     if (q && fieldsArray.length > 0) {
-      query.$or = fieldsArray.map(field => ({
-        [field]: { $regex: new RegExp(q, 'i') }
+      query.$or = fieldsArray.map((field) => ({
+        [field]: { $regex: new RegExp(q, 'i') },
       }));
     }
 
@@ -931,7 +911,7 @@ exports.getLeaveRequestsByEmployee = async (req, res) => {
 
       query.fromDate = {
         $gte: start,
-        $lt: end
+        $lt: end,
       };
     }
 
@@ -945,7 +925,7 @@ exports.getLeaveRequestsByEmployee = async (req, res) => {
         .limit(limit)
         .sort({ [sortBy]: parseInt(sortValue) }),
 
-      LeaveRequest.countDocuments(query)
+      LeaveRequest.countDocuments(query),
     ]);
 
     return res.status(200).json({
@@ -954,11 +934,10 @@ exports.getLeaveRequestsByEmployee = async (req, res) => {
       pagination: {
         page,
         pages: Math.ceil(count / limit),
-        count
+        count,
       },
-      message: count > 0 ? 'Leave requests found' : 'No leave requests'
+      message: count > 0 ? 'Leave requests found' : 'No leave requests',
     });
-
   } catch (err) {
     console.error('Error fetching leave requests by employee:', err);
     res.status(500).json({ success: false, message: err.message });

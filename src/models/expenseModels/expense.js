@@ -13,11 +13,10 @@ const ExpenseSchema = new Schema({
     required: true,
     ref: 'Plant',
   },
-  employeeId:{
+  employeeId: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
     ref: 'User',
-
   },
 
   category: { type: String, required: true },
@@ -39,6 +38,16 @@ const ExpenseSchema = new Schema({
     type: mongoose.Schema.Types.Mixed,
     required: true,
   }, // Flexible schema for dynamic fields
+
+  walletDeducted: {
+    type: Boolean,
+    default: false,
+  }, // Track if wallet balance was deducted
+
+  walletRefunded: {
+    type: Boolean,
+    default: false,
+  }, // Track if wallet balance was refunded (for rejected expenses)
 
   submittedAt: {
     type: Date,
