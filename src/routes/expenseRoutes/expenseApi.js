@@ -36,6 +36,15 @@ router
   .route('/all-expenses/:plantId')
   .get(catchErrors(ExpenseApi.adminExpenseController.getExpenses));
 router
+  .route('/employee-summary/:plantId')
+  .get(catchErrors(ExpenseApi.adminExpenseController.getEmployeeExpenseSummary));
+router
+  .route('/export-employee-expenses/:plantId/:employeeId')
+  .get(catchErrors(ExpenseApi.adminExpenseController.exportEmployeeExpenses));
+router
+  .route('/export-dashboard-expenses/:plantId')
+  .get(catchErrors(ExpenseApi.adminExpenseController.exportDashboardExpenses));
+router
   .route('/update-expense/:expenseId')
   .put(upload.array('files'), catchErrors(ExpenseApi.adminExpenseController.updateExpense));
 router.route('/add-comment').post(catchErrors(ExpenseApi.adminExpenseController.addComment));
