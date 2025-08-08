@@ -1,34 +1,32 @@
+const { required } = require('joi');
 const mongoose = require('mongoose');
 
 const BusinessAreaSchema = new mongoose.Schema({
-    removed: {
+      removed: {
         type: Boolean,
         default: false,
-      },
-      enabled: {
-        type: Boolean,
-        default: true,
       },
       companyId:{
         type: String,
         required: true,
-        immutable: true },
+        immutable: true 
+      },
         
       businessArea:{
         type: String,
-        // required: true,
+        required: true,
         match: /^\d{4}$/, // 4 digit code
         immutable: true ,  // Not editable
-            
+        unique:true      
       },
       description:{
         type: String,
-
+        required:true
       },
-      stateCode:{
-        type: String,
-        immutable: true ,  // Not editable
-        
+      gstinNumber:{
+        type: mongoose.Schema.Types.ObjectId,
+        required:true,
+        ref:'GstinNumber'
       }
 
 })

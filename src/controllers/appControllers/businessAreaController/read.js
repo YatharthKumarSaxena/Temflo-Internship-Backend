@@ -6,7 +6,7 @@ const read = async (Model, req, res) => {
       _id: req.params.id,
       companyId:req.admin.companyId,
       removed: false,
-    })
+    }).populate('gstinNumber')
       .exec();
     // If no results found, return document not found
     if (!result) {

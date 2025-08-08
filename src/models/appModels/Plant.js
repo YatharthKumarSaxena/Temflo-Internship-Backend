@@ -53,9 +53,6 @@ const schema = new mongoose.Schema({
   email:{
     type:String
   },
-  gstinNumber:{
-  type: mongoose.Schema.ObjectId, ref: 'GstinNumber'
-  },
   normalSEZ:{
     type:String,
   },
