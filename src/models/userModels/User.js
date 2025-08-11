@@ -9,18 +9,18 @@ const UserSchema = new Schema({
   companyId: {
     type: String,
     required: true,
-    immutable: true
+    immutable: true,
   },
   plantId: {
     type: mongoose.Schema.ObjectId,
     ref: 'Plant',
     required: function () {
       return this.role === 'employee';
-    }
+    },
   },
   email: {
     type: String,
-    unique:true,
+    unique: true,
     required: [true, 'Enter Email Address'],
     trim: true,
   },
@@ -31,9 +31,9 @@ const UserSchema = new Schema({
     trim: true,
     required: function () {
       return this.role === 'employee';
-    }
+    },
   },
-  supervisor:{
+  supervisor: {
     type: mongoose.Schema.ObjectId,
     ref: 'User',
   },
@@ -43,29 +43,33 @@ const UserSchema = new Schema({
     maxlength: 13,
     required: function () {
       return this.role === 'employee';
-    }
+    },
   },
   status: {
     type: String,
     enum: ['active', 'inactive'],
-    default: 'active'
+    default: 'active',
   },
-  team: [{
-    type: Schema.Types.ObjectId,
-    ref: 'Team'
-  }],
-  leadTeam: [{
-    type: Schema.Types.ObjectId,
-    ref: 'Team'
-  }],
+  team: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: 'Team',
+    },
+  ],
+  leadTeam: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: 'Team',
+    },
+  ],
   image: {
     type: String,
     required: false,
-    default: 'user.png'
+    default: 'user.png',
   },
   name: {
     type: String,
-    trim: true
+    trim: true,
   },
   employeeInfo: {
     firstName: { type: String, trim: true },
@@ -77,31 +81,31 @@ const UserSchema = new Schema({
     emailPersonal: { type: String, trim: true },
     department: { type: String, trim: true },
     dateOfJoining: { type: Date },
-    designation: { type: String, trim: true }
+    designation: { type: String, trim: true },
   },
   cAddress: {
     type: String,
     required: function () {
       return this.role === 'admin' || this.role === 'owner';
-    }
+    },
   },
   city: {
     type: String,
     required: function () {
       return this.role === 'admin' || this.role === 'owner';
-    }
+    },
   },
   state: {
     type: String,
     required: function () {
       return this.role === 'admin' || this.role === 'owner';
-    }
+    },
   },
   country: {
     type: String,
     required: function () {
       return this.role === 'admin' || this.role === 'owner';
-    }
+    },
   },
   pinCode: {
     type: String,
@@ -112,63 +116,67 @@ const UserSchema = new Schema({
       validator: function (val) {
         return /^\d{6}$/.test(val);
       },
-      message: 'Invalid pin code'
-    }
+      message: 'Invalid pin code',
+    },
   },
   phoneNumber: {
     type: String,
     required: function () {
       return this.role === 'admin' || this.role === 'owner';
     },
-    match: [/^\d{10}$/, 'Phone number must be 10 digits']
+    match: [/^\d{10}$/, 'Phone number must be 10 digits'],
   },
   emergencyContact: {
     name: String,
     address: String,
     number: String,
-    email: String
+    email: String,
   },
-  degreeInfo: [{
-    degree: String,
-    institute: String,
-    year: String,
-    percentage: String,
-    document: String,
-    key:String
-  }],
-  address: {
-        permanentAddress: {
-            address: String,
-            country: String,
-            state: String,
-            city: String
-        },
-        presentAddress: {
-            address: String,
-            country: String,
-            state: String,
-            city: String
-        }
+  degreeInfo: [
+    {
+      degree: String,
+      institute: String,
+      year: String,
+      percentage: String,
+      document: String,
+      key: String,
     },
-  experience: [{
-    company: String,
-    position: String,
-    dateOfEntry: String,
-    dateOfExit: String,
-    document: String,
-    key:String
-  }],
+  ],
+  address: {
+    permanentAddress: {
+      address: String,
+      country: String,
+      state: String,
+      city: String,
+    },
+    presentAddress: {
+      address: String,
+      country: String,
+      state: String,
+      city: String,
+    },
+  },
+  experience: [
+    {
+      company: String,
+      position: String,
+      dateOfEntry: String,
+      dateOfExit: String,
+      document: String,
+      key: String,
+    },
+  ],
   bankDetail: {
     accountNumber: String,
     bankName: String,
     ifscCode: String,
     accountType: String,
     accountHolder: String,
-    document: String
+    document: String,
   },
   panaddhar: {
     panCard: String,
-    aadharCard: String
+    aadharCard: String,
   },
   isDetailUpdated: {
     type: Boolean,
@@ -207,8 +215,26 @@ const UserSchema = new Schema({
   role: {
     type: String,
     enum: ['owner', 'admin', 'employee'],
-    default: 'owner'
-  }
+    default: 'owner',
+  },
+
+  // Wallet Balance for Expense Management
+  walletBalance: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+
+  walletStatus: {
+    type: String,
+    enum: ['active', 'suspended', 'pending_request'],
+    default: 'active',
+  },
+
+  lastWalletUpdate: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
 UserSchema.pre('validate', async function (next) {

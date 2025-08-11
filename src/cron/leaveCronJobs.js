@@ -142,8 +142,6 @@ const expireEmployeesForPolicy = async (policy, today) => {
 };
 
 
-
-
 function leaveCronJobs() {
 // Run every day at 2 AM
 cron.schedule('0 2 * * *', async () => {
