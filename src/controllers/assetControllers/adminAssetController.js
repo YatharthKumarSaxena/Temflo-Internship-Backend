@@ -464,11 +464,17 @@ exports.getTransferRequests = async (req, res) => {
     const plantId = req.params.plantId;
     const { status = 'Pending' } = req.query;
 
-    const transfers = await AssetTransfer.find({
+    let query = {
       companyId,
       plantId,
-      status,
-    })
+    };
+
+    // Only add status filter if it's not 'all'
+    if (status !== 'all') {
+      query.status = status;
+    }
+
+    const transfers = await AssetTransfer.find(query)
       .populate('assetId', 'name serialNumber')
       .populate('fromEmployee', 'name employeeCode email')
       .populate('toEmployee', 'name employeeCode email')
