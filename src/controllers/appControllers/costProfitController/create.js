@@ -1,15 +1,14 @@
-const User = require('../../../models/userModels/User');
 
 const create = async (Model, req, res) => {
   try {
-    const { departmentCode, description } = req.body;
+    const { costProfitCode, description } = req.body;
     const companyId = req.admin.companyId;
 
     // Validate segmentCode → must be 1 to 6 digits
-    if (!departmentCode || !/^[0-9]{1,6}$/.test(departmentCode)) {
+    if (!costProfitCode || !/^[0-9]{1,10}$/.test(costProfitCode)) {
       return res.status(400).json({
         success: false,
-        message: "Separtment Code must be between 1 and 6 digits.",
+        message: "Cost/Profit Code must be between 1 and 10 digits.",
       });
     }
 
@@ -21,7 +20,9 @@ const create = async (Model, req, res) => {
       });
     }
 
+
     req.body.removed = false;
+
 
     // Create the new business segment
     const result = await new Model({
@@ -32,11 +33,11 @@ const create = async (Model, req, res) => {
     return res.status(200).json({
       success: true,
       result,
-      message: "Successfully Added Department",
+      message: "Successfully Added Cost/Profit Center",
     });
 
   } catch (error) {
-    console.error("Error adding Department:", error);
+    console.error("Error adding Business Segment:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",

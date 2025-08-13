@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const DepartmentSchema = new mongoose.Schema({
+const CostProfitCenterSchema = new mongoose.Schema({
   removed: {
     type: Boolean,
     default: false,
@@ -10,10 +10,10 @@ const DepartmentSchema = new mongoose.Schema({
     required: true,
     immutable: true,
   },
-  departmentCode: {
+  costProfitCode: {
     type: String,
     required: true,
-    match: /^[0-9]{1,6}$/, // allows only 1 to 6 digits
+    match: /^[0-9]{1,10}$/, // 1 to 10 digits
   },
   description: {
     type: String,
@@ -22,4 +22,4 @@ const DepartmentSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Department', DepartmentSchema);
+module.exports = mongoose.model('CostProfit', CostProfitCenterSchema);

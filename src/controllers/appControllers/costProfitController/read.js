@@ -12,14 +12,14 @@ const read = async (Model, req, res) => {
       return res.status(404).json({
         success: false,
         result: null,
-        message: 'No Department found ',
+        message: 'No Cost/Profit Center found ',
       });
     } else {
       // Return success resposne
       return res.status(200).json({
         success: true,
         result,
-        message: 'We found this Department ',
+        message: 'We found this Cost/Profit Center ',
       });
     }
   };

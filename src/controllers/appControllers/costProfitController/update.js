@@ -21,18 +21,18 @@ const update = async (Model, req, res) => {
       if (!updatedSegment) {
         return res.status(404).json({
           success: false,
-          message: "Deprtment not found.",
+          message: "Cost/Profit Center not found.",
         });
       }
   
       return res.status(200).json({
         success: true,
         result: updatedSegment,
-        message: "Department description updated successfully.",
+        message: "Cost/Profit Center description updated successfully.",
       });
   
     } catch (error) {
-      console.error("Update Department Error:", error);
+      console.error("Update Cost/Profit Center Error:", error);
       return res.status(500).json({
         success: false,
         message: "Internal server error",

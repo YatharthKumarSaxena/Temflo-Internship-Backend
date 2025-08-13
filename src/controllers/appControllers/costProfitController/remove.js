@@ -2,7 +2,7 @@ const remove= async (Model, req, res) => {
     try {
       return res.status(404).json({
         success: false,
-        message: 'You Can Not delete the Department',
+        message: 'You Can Not delete the Cost/Profit Center ',
       });
   
      
@@ -13,7 +13,7 @@ const remove= async (Model, req, res) => {
         message: 'Internal server error',
       });
     }
-
+  
     
   };
   

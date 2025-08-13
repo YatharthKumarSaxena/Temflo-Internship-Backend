@@ -2,14 +2,14 @@ const User = require('../../../models/userModels/User');
 
 const create = async (Model, req, res) => {
   try {
-    const { departmentCode, description } = req.body;
+    const { segmentCode, description } = req.body;
     const companyId = req.admin.companyId;
 
     // Validate segmentCode → must be 1 to 6 digits
-    if (!departmentCode || !/^[0-9]{1,6}$/.test(departmentCode)) {
+    if (!segmentCode || !/^[0-9]{1,6}$/.test(segmentCode)) {
       return res.status(400).json({
         success: false,
-        message: "Separtment Code must be between 1 and 6 digits.",
+        message: "Segment Code must be between 1 and 6 digits.",
       });
     }
 
@@ -32,11 +32,11 @@ const create = async (Model, req, res) => {
     return res.status(200).json({
       success: true,
       result,
-      message: "Successfully Added Department",
+      message: "Successfully Added Business Segment",
     });
 
   } catch (error) {
-    console.error("Error adding Department:", error);
+    console.error("Error adding Business Segment:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
