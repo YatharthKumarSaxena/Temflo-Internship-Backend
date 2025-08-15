@@ -44,6 +44,7 @@
     "resend": "^2.0.0",
     "shortid": "^2.2.16",
     "transliteration": "^2.3.5",
+    "uuid": "^11.1.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

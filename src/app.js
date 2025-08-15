@@ -20,6 +20,7 @@ const ExpenseRouter = require('./routes/expenseRoutes/expenseApi');
 const errorHandlers = require('./handlers/errorHandlers');
 const erpApiRouter = require('./routes/appRoutes/appApi');
 const isAdminOrOwner = require('./middlewares/access/AdminOwner');
+const taskManagerRouter = require('./routes/taskManagerRoutes/taskManagerApi');
 
 const coreNoticeRouter = require('./routes/coreRoutes/coreNotice');
 const coreNotificationRouter = require('./routes/coreRoutes/coreNotification');
@@ -62,6 +63,7 @@ app.use('/api/leave', adminAuth.isValidAuthToken, LeaveRouter);
 app.use('/api/asset', adminAuth.isValidAuthToken, AssetRouter);
 app.use('/api/expenses', adminAuth.isValidAuthToken, ExpenseRouter);
 app.use('/api/notifications', adminAuth.isValidAuthToken, coreNotificationRouter);
+app.use('/api/task-manager', adminAuth.isValidAuthToken, taskManagerRouter);
 
 // app.use('/download', coreDownloadRouter);
 // app.use('/public', corePublicRouter);
