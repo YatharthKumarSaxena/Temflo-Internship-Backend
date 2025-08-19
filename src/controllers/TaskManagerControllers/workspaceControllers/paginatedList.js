@@ -51,13 +51,13 @@ const paginatedList = async (req, res) => {
       .sort(sortObject)
       .exec();
 
-    console.log("Executing query...");
+    console.log('Executing query...');
 
     const countPromise = Workspace.countDocuments(baseQuery);
 
     const [result, count] = await Promise.all([resultsPromise, countPromise]);
 
-    console.log("Results found:", result.length);
+    console.log('Results found:', result.length);
 
     const pages = Math.ceil(count / limit);
     const pagination = { page, pages, count };

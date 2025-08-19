@@ -10,7 +10,7 @@ const read = async (req, res) => {
       .populate('workspaceId')
       .populate('projectId')
       .populate('assignedTo')
-      .populate('createdBy')
+      .populate('createdBy');
 
     if (!task) {
       return res.status(404).json({
