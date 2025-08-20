@@ -22,8 +22,14 @@ const UserPasswordSchema = new Schema({
     type: String,
     required: true,
   },
-  emailToken: String,
-  resetToken: String,
+  emailToken: {
+    token: String,
+    created: Date,
+  },
+  resetToken: {
+    token: String,
+    created: Date,
+  },
   emailVerified: {
     type: Boolean,
     default: false,

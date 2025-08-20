@@ -39,6 +39,7 @@
     "nanoid": "^5.1.5",
     "node-cache": "^5.1.2",
     "node-cron": "^4.0.5",
+    "nodemailer": "^7.0.5",
     "openai": "^4.27.0",
     "pug": "^3.0.2",
     "resend": "^2.0.0",
