@@ -5,6 +5,29 @@ const compression = require('compression');
 
 const cookieParser = require('cookie-parser');
 
+// Import security middlewares
+const {
+  applyHelmet,
+  generalRateLimit,
+  authRateLimit,
+  applyMongoSanitize,
+  applyXssProtection,
+  additionalSecurityHeaders,
+  validateRequest,
+  secureFileUpload,
+  mongoQueryProtection,
+} = require('./middlewares/security');
+const securityConfig = require('./config/security.config');
+
+// Import security monitoring
+const {
+  ipBlockingMiddleware,
+  trackFailedAttempts,
+  detectSuspiciousActivity,
+  monitorSecurityHeaders,
+  monitorRateLimiting,
+} = require('./middlewares/securityMonitoring');
+
 const coreAuthRouter = require('./routes/coreRoutes/coreAuth');
 // const userAuthRouter = require('./routes/userRoutes/userAuth')
 const coreApiRouter = require('./routes/coreRoutes/coreApi');
@@ -31,16 +54,35 @@ const fileUpload = require('express-fileupload');
 // create our Express app
 const app = express();
 
-app.use(
-  cors({
-    origin: 'http://localhost:3000',
-    credentials: true, // allow cookies
-  })
-);
+// Apply CORS with security configuration FIRST (before other security middlewares)
+app.use(cors(securityConfig.cors));
+
+// Apply security middlewares (order is important)
+app.use(applyHelmet);
+app.use(additionalSecurityHeaders);
+
+// Apply IP blocking and monitoring
+app.use(ipBlockingMiddleware);
+app.use(trackFailedAttempts);
+app.use(detectSuspiciousActivity);
+
+// Apply general rate limiting
+app.use(generalRateLimit);
+
+// Apply MongoDB sanitization and XSS protection
+app.use(applyMongoSanitize);
+app.use(applyXssProtection);
+
+// Apply request validation
+app.use(validateRequest);
+
+// Apply security monitoring
+app.use(monitorSecurityHeaders);
+app.use(monitorRateLimiting);
 
 app.use(cookieParser());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use(compression());
 
@@ -51,7 +93,8 @@ runCrons();
 
 // Here our API Routes
 
-app.use('/api', coreAuthRouter);
+// Apply strict rate limiting to authentication routes
+app.use('/api', authRateLimit, coreAuthRouter);
 // app.use('/api/employee',userAuthRouter)
 app.use('/api', adminAuth.isValidAuthToken, coreApiRouter);
 app.use('/api/permission', adminAuth.isValidAuthToken, isAdminOrOwner, permissionRouter);
