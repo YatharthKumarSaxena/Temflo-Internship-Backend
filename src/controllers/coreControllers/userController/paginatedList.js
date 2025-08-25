@@ -37,7 +37,7 @@ const paginatedList = async (req, res) => {
     const baseQuery = {
       removed: false,
       companyId: req.admin.companyId,
-      role: { $in: ['owner', 'admin', 'employee'] },
+      role: { $in: ['admin', 'employee'] },
       ...(filter && equal ? { [filter]: equal } : {}),
     };
 
