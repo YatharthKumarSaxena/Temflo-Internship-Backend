@@ -1,0 +1,389 @@
+2025-08-22T20:40:29.404Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/search-employee-list?search=&page=1&limit=20 - User-Agent: unknown
+2025-08-22T20:40:29.423Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: unknown
+2025-08-22T20:40:29.589Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/search-employee-list?plantId=6890cfb27501e5bad661d69e&search=&page=1&limit=20 - User-Agent: unknown
+2025-08-22T20:40:29.737Z [INFO] Missing security headers - IP: ::1 - URL: /api/leave/leave-balance/6890d2a55914f825ec921645 - User-Agent: unknown
+2025-08-22T20:40:29.741Z [ALERT] IP blocked due to excessive failed attempts - IP: ::1 - URL: /api/leave/leave-requests/6890d2a55914f825ec921645?month=08&year=2025 - User-Agent: unknown
+2025-08-22T20:40:29.747Z [INFO] Missing security headers - IP: ::1 - URL: /api/leave/leave-requests/6890d2a55914f825ec921645?month=08&year=2025 - User-Agent: unknown
+2025-08-22T20:40:32.421Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/task-manager/workspace/list?page=1&items=10 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:32.422Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:32.440Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/task-manager/project/read - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:33.237Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:41.621Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/notice/get-notices - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:41.623Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/policy/get-policies - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:41.626Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:41.627Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:41.630Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:41.632Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:41.633Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:41.635Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/plant/count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:41.637Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/asset/count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:43.908Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/task-manager/workspace/list?items=3&sortBy=createdAt&sortValue=-1 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:43.910Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:43.920Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/notice/get-notices - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:43.921Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/policy/get-policies - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:43.922Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:43.923Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:43.923Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:43.924Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:43.925Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:43.925Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/plant/count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:40:43.926Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/asset/count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:41:02.371Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:41:11.469Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:41:12.989Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:41:13.922Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:41:44.242Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:42:12.987Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:42:49.141Z [ALERT] IP blocked due to excessive failed attempts - IP: ::1 - URL: /api/login - User-Agent: unknown
+2025-08-22T20:42:49.142Z [INFO] Missing security headers - IP: ::1 - URL: /api/login - User-Agent: unknown
+2025-08-22T20:42:57.792Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/login - User-Agent: curl/8.8.0
+2025-08-22T20:43:12.996Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:43:20.056Z [INFO] Missing security headers - IP: ::1 - URL: /api/login - User-Agent: unknown
+2025-08-22T20:43:25.819Z [INFO] Missing security headers - IP: ::1 - URL: /api/login - User-Agent: unknown
+2025-08-22T20:44:13.000Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:45:25.089Z [INFO] Missing security headers - IP: ::1 - URL: /api/login - User-Agent: unknown
+2025-08-22T20:45:43.926Z [INFO] Missing security headers - IP: ::1 - URL: /api/login?timestamp=1755895543905 - User-Agent: unknown
+2025-08-22T20:45:44.838Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/workspace/list?items=3&sortBy=createdAt&sortValue=-1 - User-Agent: unknown
+2025-08-22T20:45:44.845Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:45:44.995Z [INFO] Missing security headers - IP: ::1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:45:45.000Z [ALERT] IP blocked due to excessive failed attempts - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:45:45.001Z [INFO] Missing security headers - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:45:45.004Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:45:45.006Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:45:45.012Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:45:45.015Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:45:45.017Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:45:45.027Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/plant/count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:45:45.029Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/asset/count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:46:05.184Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:46:07.068Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:46:12.995Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:46:14.846Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:46:45.630Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:47:12.985Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:48:14.527Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:48:23.807Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/workspace/list?items=3&sortBy=createdAt&sortValue=-1 - User-Agent: unknown
+2025-08-22T20:48:23.811Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:48:23.832Z [INFO] Missing security headers - IP: ::1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:48:23.835Z [ALERT] IP blocked due to excessive failed attempts - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:48:23.836Z [INFO] Missing security headers - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:48:23.839Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:48:23.841Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:48:23.842Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:48:23.843Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:48:23.844Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:48:23.845Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/plant/count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:48:23.846Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/asset/count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:48:38.221Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/list?page=1&items=10 - User-Agent: unknown
+2025-08-22T20:48:41.132Z [INFO] Missing security headers - IP: ::1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:48:41.137Z [INFO] Missing security headers - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:48:41.141Z [INFO] Missing security headers - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: unknown
+2025-08-22T20:48:41.146Z [ALERT] IP blocked due to excessive failed attempts - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:48:41.147Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:48:41.152Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:48:41.154Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:48:41.157Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:48:41.159Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/plant/count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:48:41.160Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/asset/count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:48:45.303Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:48:47.356Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/list?page=1&items=10 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:48:50.823Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:48:51.641Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/employee/list?page=1&items=10 - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:48:53.818Z [WARN] Blocked request from blocked IP - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+2025-08-22T20:48:59.816Z [INFO] Missing security headers - IP: ::1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:48:59.827Z [INFO] Missing security headers - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:48:59.832Z [INFO] Missing security headers - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: unknown
+2025-08-22T20:48:59.837Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:48:59.840Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:48:59.845Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:48:59.850Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/count - User-Agent: unknown
+2025-08-22T20:48:59.853Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/count - User-Agent: unknown
+2025-08-22T20:48:59.855Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/count - User-Agent: unknown
+2025-08-22T20:49:00.792Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/list?page=1&items=10 - User-Agent: unknown
+2025-08-22T20:49:02.499Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: unknown
+2025-08-22T20:49:03.258Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/list?page=1&items=10 - User-Agent: unknown
+2025-08-22T20:49:04.007Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/list?page=1&items=10 - User-Agent: unknown
+2025-08-22T20:49:05.257Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/list?page=1&items=10 - User-Agent: unknown
+2025-08-22T20:49:05.932Z [INFO] Missing security headers - IP: ::1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:49:05.936Z [INFO] Missing security headers - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:49:05.939Z [INFO] Missing security headers - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: unknown
+2025-08-22T20:49:05.942Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:49:05.944Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:49:05.947Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:49:05.950Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/count - User-Agent: unknown
+2025-08-22T20:49:05.952Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/count - User-Agent: unknown
+2025-08-22T20:49:05.955Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/count - User-Agent: unknown
+2025-08-22T20:49:06.395Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/list?page=1&items=10 - User-Agent: unknown
+2025-08-22T20:49:07.081Z [INFO] Missing security headers - IP: ::1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:49:07.083Z [INFO] Missing security headers - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:49:07.085Z [INFO] Missing security headers - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: unknown
+2025-08-22T20:49:07.088Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:49:07.113Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:49:07.116Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:49:07.121Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/count - User-Agent: unknown
+2025-08-22T20:49:07.123Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/count - User-Agent: unknown
+2025-08-22T20:49:07.124Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/count - User-Agent: unknown
+2025-08-22T20:49:07.522Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/list?page=1&items=10 - User-Agent: unknown
+2025-08-22T20:49:08.873Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/list?page=1&items=10 - User-Agent: unknown
+2025-08-22T20:49:10.336Z [INFO] Missing security headers - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:49:10.345Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:49:10.348Z [INFO] Missing security headers - IP: ::1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:49:10.350Z [INFO] Missing security headers - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: unknown
+2025-08-22T20:49:10.352Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:49:10.354Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:49:10.364Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/count - User-Agent: unknown
+2025-08-22T20:49:10.369Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/count - User-Agent: unknown
+2025-08-22T20:49:10.372Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/count - User-Agent: unknown
+2025-08-22T20:49:12.994Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:49:18.571Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/list?page=1&items=10 - User-Agent: unknown
+2025-08-22T20:49:20.428Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: unknown
+2025-08-22T20:49:20.442Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:49:20.614Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:49:20.617Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/leave/employee-on-leave - User-Agent: unknown
+2025-08-22T20:49:20.619Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:49:20.621Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:49:21.899Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:49:21.902Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/employee/count - User-Agent: unknown
+2025-08-22T20:49:21.905Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/plant/count - User-Agent: unknown
+2025-08-22T20:49:21.907Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/asset/count - User-Agent: unknown
+2025-08-22T20:49:23.624Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/employee/list?page=1&items=10 - User-Agent: unknown
+2025-08-22T20:49:23.813Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:49:24.580Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/plant/list?page=1&items=10 - User-Agent: unknown
+2025-08-22T20:49:25.571Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:49:25.572Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:49:25.574Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/leave/employee-on-leave - User-Agent: unknown
+2025-08-22T20:49:25.575Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:49:25.576Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:49:25.579Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:49:25.581Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/employee/count - User-Agent: unknown
+2025-08-22T20:49:25.583Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/plant/count - User-Agent: unknown
+2025-08-22T20:49:25.584Z [INFO] Missing security headers - IP: ::ffff:127.0.0.1 - URL: /api/asset/count - User-Agent: unknown
+2025-08-22T20:50:27.827Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/workspace/list?items=3&sortBy=createdAt&sortValue=-1 - User-Agent: unknown
+2025-08-22T20:50:27.837Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:50:27.860Z [INFO] Missing security headers - IP: ::1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:50:27.863Z [INFO] Missing security headers - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:50:27.868Z [INFO] Missing security headers - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: unknown
+2025-08-22T20:50:27.872Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:50:27.893Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:50:27.901Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:50:27.911Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/count - User-Agent: unknown
+2025-08-22T20:50:27.915Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/count - User-Agent: unknown
+2025-08-22T20:50:27.917Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/count - User-Agent: unknown
+2025-08-22T20:50:28.030Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:50:28.065Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:50:28.068Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:50:28.071Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:50:28.074Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/count - User-Agent: unknown
+2025-08-22T20:50:28.076Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/count - User-Agent: unknown
+2025-08-22T20:50:28.079Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/count - User-Agent: unknown
+2025-08-22T20:50:28.082Z [INFO] Missing security headers - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:50:28.087Z [INFO] Missing security headers - IP: ::1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:50:28.093Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/workspace/list?items=3&sortBy=createdAt&sortValue=-1 - User-Agent: unknown
+2025-08-22T20:50:28.405Z [INFO] Missing security headers - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: unknown
+2025-08-22T20:50:31.690Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/list?page=1&items=10 - User-Agent: unknown
+2025-08-22T20:50:33.055Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: unknown
+2025-08-22T20:50:38.912Z [INFO] Missing security headers - IP: ::1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:50:38.915Z [INFO] Missing security headers - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:50:38.918Z [INFO] Missing security headers - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: unknown
+2025-08-22T20:50:38.920Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:50:38.922Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:50:38.925Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:50:38.927Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/count - User-Agent: unknown
+2025-08-22T20:50:38.929Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/count - User-Agent: unknown
+2025-08-22T20:50:38.931Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/count - User-Agent: unknown
+2025-08-22T20:50:57.837Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:51:10.938Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: unknown
+2025-08-22T20:51:11.166Z [INFO] Missing security headers - IP: ::1 - URL: /api/attendance/attendance-requests/6890cfb27501e5bad661d69e?page=1&items=10&q=&fields=name%2Cstatus&date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:51:11.173Z [INFO] Missing security headers - IP: ::1 - URL: /api/attendance/dashboard/6890cfb27501e5bad661d69e?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:51:11.178Z [INFO] Missing security headers - IP: ::1 - URL: /api/attendance/setting/6890cfb27501e5bad661d69e - User-Agent: unknown
+2025-08-22T20:51:12.439Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/list?page=1&items=10 - User-Agent: unknown
+2025-08-22T20:51:12.996Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:51:13.777Z [INFO] Missing security headers - IP: ::1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:51:13.780Z [INFO] Missing security headers - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:51:13.784Z [INFO] Missing security headers - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: unknown
+2025-08-22T20:51:13.787Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:51:13.790Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:51:13.794Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:51:13.896Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/count - User-Agent: unknown
+2025-08-22T20:51:13.957Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/count - User-Agent: unknown
+2025-08-22T20:51:13.964Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/count - User-Agent: unknown
+2025-08-22T20:51:27.842Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:51:58.617Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:52:12.997Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:52:27.832Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:52:47.502Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/workspace/list?items=3&sortBy=createdAt&sortValue=-1 - User-Agent: unknown
+2025-08-22T20:52:47.517Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:52:47.522Z [INFO] Missing security headers - IP: ::1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:52:47.527Z [INFO] Missing security headers - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:52:47.532Z [INFO] Missing security headers - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: unknown
+2025-08-22T20:52:47.542Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:52:47.554Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:52:47.557Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:52:47.560Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/count - User-Agent: unknown
+2025-08-22T20:52:47.587Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/count - User-Agent: unknown
+2025-08-22T20:52:47.597Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/count - User-Agent: unknown
+2025-08-22T20:53:10.406Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/workspace/list?items=3&sortBy=createdAt&sortValue=-1 - User-Agent: unknown
+2025-08-22T20:53:10.433Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:53:10.490Z [INFO] Missing security headers - IP: ::1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:53:10.496Z [INFO] Missing security headers - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:53:10.504Z [INFO] Missing security headers - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: unknown
+2025-08-22T20:53:10.512Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:53:10.553Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:53:10.587Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:53:10.612Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/count - User-Agent: unknown
+2025-08-22T20:53:10.662Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/count - User-Agent: unknown
+2025-08-22T20:53:10.677Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/count - User-Agent: unknown
+2025-08-22T20:53:12.999Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:53:24.750Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/workspace/list?items=3&sortBy=createdAt&sortValue=-1 - User-Agent: unknown
+2025-08-22T20:53:24.765Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:53:24.771Z [INFO] Missing security headers - IP: ::1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:53:24.776Z [INFO] Missing security headers - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:53:24.782Z [INFO] Missing security headers - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: unknown
+2025-08-22T20:53:24.789Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:53:24.982Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:53:24.999Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:53:25.007Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/count - User-Agent: unknown
+2025-08-22T20:53:25.012Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/count - User-Agent: unknown
+2025-08-22T20:53:25.069Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/count - User-Agent: unknown
+2025-08-22T20:53:33.006Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: unknown
+2025-08-22T20:53:33.176Z [INFO] Missing security headers - IP: ::1 - URL: /api/attendance/dashboard/6890cfb27501e5bad661d69e?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:53:33.180Z [INFO] Missing security headers - IP: ::1 - URL: /api/attendance/attendance-requests/6890cfb27501e5bad661d69e?page=1&items=10&q=&fields=name%2Cstatus&date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:53:33.184Z [INFO] Missing security headers - IP: ::1 - URL: /api/attendance/setting/6890cfb27501e5bad661d69e - User-Agent: unknown
+2025-08-22T20:53:35.462Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: unknown
+2025-08-22T20:53:35.616Z [INFO] Missing security headers - IP: ::1 - URL: /api/expenses/get-expense-categories?plantId=6890cfb27501e5bad661d69e - User-Agent: unknown
+2025-08-22T20:53:35.619Z [INFO] Missing security headers - IP: ::1 - URL: /api/expenses/all-expenses/6890cfb27501e5bad661d69e?page=1&items=10&q=&fields=employeeId.name,employeeId.employeeCode,category,subCategory - User-Agent: unknown
+2025-08-22T20:53:54.765Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:54:14.025Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:54:24.757Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:54:54.762Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:55:13.003Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:55:24.760Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:55:54.991Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:56:09.423Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: unknown
+2025-08-22T20:56:09.589Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/list?filter=plantId&equal=6890cfb27501e5bad661d69e - User-Agent: unknown
+2025-08-22T20:56:09.592Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/asset-type - User-Agent: unknown
+2025-08-22T20:56:09.596Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/all-asset/6890cfb27501e5bad661d69e?page=1&items=10&q=&fields=name%2CserialNumber%2Cstatus%2CassetType.name%2CassignedTo.employeeCode%2Cresponsible.employeeCode - User-Agent: unknown
+2025-08-22T20:56:09.787Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/all-asset/6890cfb27501e5bad661d69e - User-Agent: unknown
+2025-08-22T20:56:10.352Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:56:11.349Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/workspace/list?items=3&sortBy=createdAt&sortValue=-1 - User-Agent: unknown
+2025-08-22T20:56:11.352Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:56:11.364Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/leaveSummary - User-Agent: unknown
+2025-08-22T20:56:11.368Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/attendance-today - User-Agent: unknown
+2025-08-22T20:56:11.370Z [INFO] Missing security headers - IP: ::1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:56:11.374Z [INFO] Missing security headers - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:56:11.454Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/supervisor - User-Agent: unknown
+2025-08-22T20:56:11.461Z [INFO] Missing security headers - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: unknown
+2025-08-22T20:56:11.564Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:56:11.568Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:56:11.575Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:56:12.795Z [INFO] Missing security headers - IP: ::1 - URL: /api/attendance/employee-attendance-setting - User-Agent: unknown
+2025-08-22T20:56:13.083Z [INFO] Missing security headers - IP: ::1 - URL: /api/attendance/my-attendance?month=8&year=2025 - User-Agent: unknown
+2025-08-22T20:56:18.674Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/workspace/list?page=1&items=10 - User-Agent: unknown
+2025-08-22T20:56:18.677Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: unknown
+2025-08-22T20:56:18.862Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/project/read - User-Agent: unknown
+2025-08-22T20:56:19.097Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/task/read - User-Agent: unknown
+2025-08-22T20:56:20.528Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/workspace/read/w/68a00b6c6664e976667de99b - User-Agent: unknown
+2025-08-22T20:56:20.532Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/project/read/w/68a00b6c6664e976667de99b - User-Agent: unknown
+2025-08-22T20:56:20.537Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/member/read/w - User-Agent: unknown
+2025-08-22T20:56:22.858Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/workspace/list?items=3&sortBy=createdAt&sortValue=-1 - User-Agent: unknown
+2025-08-22T20:56:22.861Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:56:22.873Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/member/read/p - User-Agent: unknown
+2025-08-22T20:56:22.877Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/project/read/p/68a010356664e976667deb71 - User-Agent: unknown
+2025-08-22T20:56:22.880Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/task/read/p/68a010356664e976667deb71 - User-Agent: unknown
+2025-08-22T20:56:22.882Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/member/read/p - User-Agent: unknown
+2025-08-22T20:56:23.110Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/project/read/p/68a010356664e976667deb71 - User-Agent: unknown
+2025-08-22T20:56:23.409Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/member/read/p - User-Agent: unknown
+2025-08-22T20:56:23.413Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/member/read/p - User-Agent: unknown
+2025-08-22T20:56:23.602Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/project/read/p/68a010356664e976667deb71 - User-Agent: unknown
+2025-08-22T20:56:25.058Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/task/update/68a0120c6664e976667deca9 - User-Agent: unknown
+2025-08-22T20:56:25.273Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/member/read/p - User-Agent: unknown
+2025-08-22T20:56:25.277Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/project/read/p/68a010356664e976667deb71 - User-Agent: unknown
+2025-08-22T20:56:25.279Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/task/read/p/68a010356664e976667deb71 - User-Agent: unknown
+2025-08-22T20:56:25.561Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/member/read/p - User-Agent: unknown
+2025-08-22T20:56:25.565Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/member/read/p - User-Agent: unknown
+2025-08-22T20:56:25.759Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/project/read/p/68a010356664e976667deb71 - User-Agent: unknown
+2025-08-22T20:56:26.930Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/task/update/68a0120c6664e976667deca9 - User-Agent: unknown
+2025-08-22T20:56:27.144Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/member/read/p - User-Agent: unknown
+2025-08-22T20:56:27.147Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/project/read/p/68a010356664e976667deb71 - User-Agent: unknown
+2025-08-22T20:56:27.151Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/task/read/p/68a010356664e976667deb71 - User-Agent: unknown
+2025-08-22T20:56:27.417Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/member/read/p - User-Agent: unknown
+2025-08-22T20:56:27.420Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/member/read/p - User-Agent: unknown
+2025-08-22T20:56:27.618Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/project/read/p/68a010356664e976667deb71 - User-Agent: unknown
+2025-08-22T20:56:41.997Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:56:52.880Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:57:11.986Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:57:19.429Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/workspace/list?items=3&sortBy=createdAt&sortValue=-1 - User-Agent: unknown
+2025-08-22T20:57:19.433Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:57:19.443Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/task/read/t/68a8ce8ed570b4488cd72d6c - User-Agent: unknown
+2025-08-22T20:57:19.808Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/subtask/read/t/68a8ce8ed570b4488cd72d6c - User-Agent: unknown
+2025-08-22T20:57:20.050Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/member/read/p - User-Agent: unknown
+2025-08-22T20:57:20.355Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/project/read/p/68a010356664e976667deb71 - User-Agent: unknown
+2025-08-22T20:57:32.801Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/subtask/create/68a8ce8ed570b4488cd72d6c - User-Agent: unknown
+2025-08-22T20:57:36.957Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/subtask/create/68a8ce8ed570b4488cd72d6c - User-Agent: unknown
+2025-08-22T20:57:41.994Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:57:44.611Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/workspace/list?items=3&sortBy=createdAt&sortValue=-1 - User-Agent: unknown
+2025-08-22T20:57:44.624Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:57:44.628Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/task/read/t/68a8ce8ed570b4488cd72d6c - User-Agent: unknown
+2025-08-22T20:57:45.266Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/subtask/read/t/68a8ce8ed570b4488cd72d6c - User-Agent: unknown
+2025-08-22T20:57:45.468Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/member/read/p - User-Agent: unknown
+2025-08-22T20:57:47.327Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/project/read/p/68a010356664e976667deb71 - User-Agent: unknown
+2025-08-22T20:58:09.351Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/subtask/create/68a8ce8ed570b4488cd72d6c - User-Agent: unknown
+2025-08-22T20:58:11.984Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:58:14.612Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:58:18.832Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/workspace/list?items=3&sortBy=createdAt&sortValue=-1 - User-Agent: unknown
+2025-08-22T20:58:18.836Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:58:18.842Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: unknown
+2025-08-22T20:58:19.051Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/list?filter=plantId&equal=6890cfb27501e5bad661d69e - User-Agent: unknown
+2025-08-22T20:58:19.054Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/asset-type - User-Agent: unknown
+2025-08-22T20:58:19.057Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/all-asset/6890cfb27501e5bad661d69e?page=1&items=10&q=&fields=name%2CserialNumber%2Cstatus%2CassetType.name%2CassignedTo.employeeCode%2Cresponsible.employeeCode - User-Agent: unknown
+2025-08-22T20:58:19.244Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/all-asset/6890cfb27501e5bad661d69e - User-Agent: unknown
+2025-08-22T20:58:41.997Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:58:44.992Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:58:48.844Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:59:11.987Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:59:14.988Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:59:18.840Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:59:44.996Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:59:48.843Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T20:59:50.570Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: unknown
+2025-08-22T20:59:50.759Z [INFO] Missing security headers - IP: ::1 - URL: /api/attendance/dashboard/6890cfb27501e5bad661d69e?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:59:50.764Z [INFO] Missing security headers - IP: ::1 - URL: /api/attendance/attendance-requests/6890cfb27501e5bad661d69e?page=1&items=10&q=&fields=name%2Cstatus&date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:59:50.767Z [INFO] Missing security headers - IP: ::1 - URL: /api/attendance/setting/6890cfb27501e5bad661d69e - User-Agent: unknown
+2025-08-22T20:59:52.138Z [INFO] Missing security headers - IP: ::1 - URL: /api/notice/get-notices - User-Agent: unknown
+2025-08-22T20:59:52.141Z [INFO] Missing security headers - IP: ::1 - URL: /api/policy/get-policies - User-Agent: unknown
+2025-08-22T20:59:52.143Z [INFO] Missing security headers - IP: ::1 - URL: /api/leave/employee-on-leave - User-Agent: unknown
+2025-08-22T20:59:52.146Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/birthdays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:59:52.148Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/holidays?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:59:52.150Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/anniversaries?date=2025-08-23 - User-Agent: unknown
+2025-08-22T20:59:52.235Z [INFO] Missing security headers - IP: ::1 - URL: /api/employee/count - User-Agent: unknown
+2025-08-22T20:59:52.237Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/count - User-Agent: unknown
+2025-08-22T20:59:52.317Z [INFO] Missing security headers - IP: ::1 - URL: /api/asset/count - User-Agent: unknown
+2025-08-22T21:00:00.362Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/workspace/list?page=1&items=10 - User-Agent: unknown
+2025-08-22T21:00:00.366Z [INFO] Missing security headers - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: unknown
+2025-08-22T21:00:00.610Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/project/read - User-Agent: unknown
+2025-08-22T21:00:00.832Z [INFO] Missing security headers - IP: ::1 - URL: /api/task-manager/task/read - User-Agent: unknown
+2025-08-22T21:00:12.991Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:00:14.984Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:00:18.849Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:00:44.990Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:00:48.848Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:01:12.987Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:01:18.848Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:01:48.843Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:02:12.985Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:02:12.988Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:02:18.839Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:02:48.838Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:03:12.990Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:03:12.994Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:03:18.847Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:03:48.986Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:04:12.985Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:04:12.988Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:04:18.986Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:05:12.986Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:05:12.989Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:05:13.168Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:06:12.989Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:06:12.994Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-08-22T21:06:13.170Z [INFO] Missing security headers - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
