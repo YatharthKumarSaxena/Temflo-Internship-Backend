@@ -475,9 +475,17 @@ exports.getCompanyLeaveBalances = async (req, res) => {
 
 exports.markLeave = async (req, res) => {
   try {
-    const { userId, plantId, leaveType, durationType, fromDate, toDate, reason } = req.body;
+    const {
+      userId,
+      plantId,
+      leaveType,
+      durationType,
+      fromDate,
+      toDate,
+      reason,
+    } = req.body;
 
-    // Check if leaveType is valid for the company
+    // 1. Validate leave type policy
     const policy = await LeavePolicy.findOne({
       companyId: req.admin.companyId,
       _id: leaveType,
@@ -490,7 +498,7 @@ exports.markLeave = async (req, res) => {
       });
     }
 
-    // Fetch leave balance
+    // 2. Check leave balance
     const balance = await LeaveBalance.findOne({
       userId,
       leaveTypeId: leaveType,
@@ -511,7 +519,7 @@ exports.markLeave = async (req, res) => {
       });
     }
 
-    // Determine leave days
+    // 3. Determine number of leave days
     let daysRequested;
     let adjustedToDate = toDate;
 
@@ -522,7 +530,8 @@ exports.markLeave = async (req, res) => {
       daysRequested = 1;
       adjustedToDate = fromDate;
     } else {
-      daysRequested = (new Date(toDate) - new Date(fromDate)) / (1000 * 3600 * 24) + 1;
+      daysRequested =
+        (new Date(toDate) - new Date(fromDate)) / (1000 * 3600 * 24) + 1;
     }
 
     if (balance.balance < daysRequested) {
@@ -532,7 +541,15 @@ exports.markLeave = async (req, res) => {
       });
     }
 
-    // Create leave request
+    // 4. Determine approver
+    let approverId = req.admin.id; // fallback
+
+    const employee = await User.findById(userId).select('supervisor'); // adjust schema if needed
+    if (employee?.supervisor) {
+      approverId = employee.supervisor;
+    }
+
+    // 5. Create leave request
     const request = new LeaveRequest({
       userId,
       companyId: req.admin.companyId,
@@ -543,13 +560,13 @@ exports.markLeave = async (req, res) => {
       durationType,
       daysRequested,
       reason,
-      approverId: req.admin.companyId,
+      approverId,
       status: 'Approved',
     });
 
     await request.save();
 
-    // Update leave balance
+    // 6. Update leave balance
     balance.balance -= daysRequested;
     balance.availed = (balance.availed || 0) + daysRequested;
     await balance.save();
@@ -567,6 +584,7 @@ exports.markLeave = async (req, res) => {
     });
   }
 };
+
 
 // 6. View all leave requests
 

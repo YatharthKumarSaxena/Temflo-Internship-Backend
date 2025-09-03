@@ -5,6 +5,10 @@ const readW = require('./readW');
 const readT = require('./readT');
 const updateTask = require('./update');
 const remove = require('./remove');
+const paginatedList = require('./paginatedList');
+const count = require('./count');
+const uploadAttachment = require('./uploadAttachment');
+const deleteAttachment = require('./deleteAttachment');
 
 const taskMethods = {
   create: createTask,
@@ -12,8 +16,12 @@ const taskMethods = {
   readP,
   readT,
   readW,
+  paginatedList,
   updateTask,
   remove,
+  count,
+  uploadAttachment,
+  deleteAttachment,
 };
 
 module.exports = taskMethods;

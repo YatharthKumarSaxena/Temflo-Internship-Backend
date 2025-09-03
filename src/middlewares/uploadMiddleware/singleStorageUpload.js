@@ -4,6 +4,35 @@ const { slugify } = require('transliteration');
 
 const fileFilter = require('./utils/LocalfileFilter');
 
+// Security configuration for file uploads
+const securityConfig = {
+  maxFileSize: 10 * 1024 * 1024, // 10MB
+  allowedMimeTypes: [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ],
+  blockedExtensions: [
+    '.exe',
+    '.bat',
+    '.cmd',
+    '.com',
+    '.pif',
+    '.scr',
+    '.vbs',
+    '.js',
+    '.php',
+    '.asp',
+    '.aspx',
+  ],
+};
+
 const singleStorageUpload = ({
   entity,
   fileType = 'default',
@@ -51,7 +80,36 @@ const singleStorageUpload = ({
 
   let filterType = fileFilter(fileType);
 
-  const multerStorage = multer({ storage: diskStorage, fileFilter: filterType }).single('file');
+  // Enhanced security configuration for multer
+  const multerStorage = multer({
+    storage: diskStorage,
+    fileFilter: filterType,
+    limits: {
+      fileSize: securityConfig.maxFileSize,
+      files: 1,
+    },
+    fileFilter: (req, file, cb) => {
+      // Check file size
+      if (file.size > securityConfig.maxFileSize) {
+        return cb(new Error('File size too large. Maximum allowed is 10MB.'), false);
+      }
+
+      // Check MIME type
+      if (!securityConfig.allowedMimeTypes.includes(file.mimetype)) {
+        return cb(new Error('File type not allowed.'), false);
+      }
+
+      // Check file extension
+      const fileExtension = path.extname(file.originalname).toLowerCase();
+      if (securityConfig.blockedExtensions.includes(fileExtension)) {
+        return cb(new Error('File extension not allowed for security reasons.'), false);
+      }
+
+      // Apply original file filter
+      return filterType(req, file, cb);
+    },
+  }).single('file');
+
   return multerStorage;
 };
 

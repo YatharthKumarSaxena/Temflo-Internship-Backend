@@ -240,6 +240,7 @@ exports.claimExpense = async (req, res, next) => {
       deductFromWallet,
     } = req.body;
 
+
     const companyId = req.admin.companyId;
     const expenseAmount = parseFloat(amount);
     const shouldDeductFromWallet = deductFromWallet === 'true' || deductFromWallet === true;
@@ -263,7 +264,6 @@ exports.claimExpense = async (req, res, next) => {
         message: 'Amount and at least one file are required',
       });
     }
-
     // Find the current user (submitter) and check wallet balance
     const currentUser = await User.findOne({
       _id: req.admin._id,
@@ -321,8 +321,8 @@ exports.claimExpense = async (req, res, next) => {
           message: 'Employee ID is required for admin/owner expense submission',
         });
       }
-      expenseSubmitterId = req.admin._id;
-      expenseApproverId = employeeId; // This is the selected employee for admin submissions
+      expenseSubmitterId = employeeId;
+      expenseApproverId = req.admin._id; // This is the selected employee for admin submissions
     }
 
     // Create the expense record
@@ -410,7 +410,7 @@ exports.claimExpense = async (req, res, next) => {
     ) {
       // Admin/Owner deducting from selected employee's wallet
       const targetEmployee = await User.findOne({
-        _id: expenseApproverId, // This is the selected employee for admin submissions
+        _id: expenseSubmitterId, // This is the selected employee for admin submissions
         companyId,
         removed: false,
       }).session(session);
@@ -452,7 +452,7 @@ exports.claimExpense = async (req, res, next) => {
       const balanceAfter = employeeWalletBalance - expenseAmount;
 
       await User.findByIdAndUpdate(
-        expenseApproverId, // The selected employee for admin submissions
+        expenseSubmitterId, // The selected employee for admin submissions
         {
           walletBalance: balanceAfter,
           lastWalletUpdate: new Date(),
@@ -464,7 +464,7 @@ exports.claimExpense = async (req, res, next) => {
       const walletTransaction = new WalletTransaction({
         companyId,
         plantId,
-        employeeId: expenseApproverId, // The employee whose wallet was debited
+        employeeId:expenseSubmitterId, // The employee whose wallet was debited
         transactionType: 'debit',
         amount: expenseAmount,
         balanceBefore: employeeWalletBalance,
