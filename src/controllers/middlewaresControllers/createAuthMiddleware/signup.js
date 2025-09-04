@@ -100,8 +100,6 @@ const signUp = async (req, res, { userModel }) => {
 
     const emailSent = await sendEmail(email, 'Verify your email | ERPICA', emailHtml);
 
-    logWithTime(`✅ 🎯 Admin registered successfully 🚀`);
-
     // Activity Tracker logging
     await activityTracker({
       userId: adminResult._id, // admin ka Mongo ID as userId
@@ -134,7 +132,6 @@ const signUp = async (req, res, { userModel }) => {
       message: 'Signup successful. Please check your email to verify your account before login.',
     });
   } catch (error) {
-    logWithTime('❌ Internal Error: Failed to Register a User 🗑️');
     errorMessage(error);
     return throwInternalServerError(res);
   }

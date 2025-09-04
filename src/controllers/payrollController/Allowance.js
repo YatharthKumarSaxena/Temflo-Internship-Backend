@@ -1,12 +1,12 @@
-import Allowance from "../../models/parollModels/Allowance.js";
+const Allowance = require('../../models/parollModels/Allowance.js');
 
 // Middleware helper to set no-cache
 const setNoCache = (res) => {
-  res.set("Cache-Control", "no-store");
+  res.set('Cache-Control', 'no-store');
 };
 
 // Create Allowance
-export const createAllowance = async (req, res) => {
+const createAllowance = async (req, res) => {
   try {
     const allowance = new Allowance(req.body);
     await allowance.save();
@@ -14,7 +14,7 @@ export const createAllowance = async (req, res) => {
     setNoCache(res);
     res.status(201).json({
       success: true,
-      message: "Allowance created successfully",
+      message: 'Allowance created successfully',
       allowance,
     });
   } catch (error) {
@@ -23,7 +23,7 @@ export const createAllowance = async (req, res) => {
 };
 
 // Get All Allowances
-export const getAllowances = async (req, res) => {
+const getAllowances = async (req, res) => {
   try {
     const allowances = await Allowance.find();
     setNoCache(res);
@@ -35,13 +35,13 @@ export const getAllowances = async (req, res) => {
 };
 
 // Get Allowance by ID
-export const getAllowanceById = async (req, res) => {
+const getAllowanceById = async (req, res) => {
   try {
     const allowance = await Allowance.findById(req.params.id);
     setNoCache(res);
 
     if (!allowance) {
-      return res.status(404).json({ success: false, message: "Allowance not found" });
+      return res.status(404).json({ success: false, message: 'Allowance not found' });
     }
     res.status(200).json({ success: true, data: allowance });
   } catch (error) {
@@ -50,23 +50,22 @@ export const getAllowanceById = async (req, res) => {
 };
 
 // Update Allowance
-export const updateAllowance = async (req, res) => {
+const updateAllowance = async (req, res) => {
   try {
-    const allowance = await Allowance.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const allowance = await Allowance.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
 
     setNoCache(res);
 
     if (!allowance) {
-      return res.status(404).json({ success: false, message: "Allowance not found" });
+      return res.status(404).json({ success: false, message: 'Allowance not found' });
     }
 
     res.status(200).json({
       success: true,
-      message: "Allowance updated successfully",
+      message: 'Allowance updated successfully',
       allowance,
     });
   } catch (error) {
@@ -75,20 +74,28 @@ export const updateAllowance = async (req, res) => {
 };
 
 // Delete Allowance
-export const deleteAllowance = async (req, res) => {
+const deleteAllowance = async (req, res) => {
   try {
     const allowance = await Allowance.findByIdAndDelete(req.params.id);
     setNoCache(res);
 
     if (!allowance) {
-      return res.status(404).json({ success: false, message: "Allowance not found" });
+      return res.status(404).json({ success: false, message: 'Allowance not found' });
     }
 
     res.status(200).json({
       success: true,
-      message: "Allowance deleted successfully",
+      message: 'Allowance deleted successfully',
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
+};
+
+module.exports = {
+  createAllowance,
+  getAllowances,
+  getAllowanceById,
+  updateAllowance,
+  deleteAllowance,
 };

@@ -6,7 +6,7 @@ const {
   refreshTokenExpirySeconds,
 } = require('@/config/jwt.config');
 const { logWithTime } = require('./time-stamps');
-const { errorMessage, throwInternalServerError } = require('@/config/error-handler.config');
+const { errorMessage } = require('@/config/error-handler.config');
 
 const getTokenCategory = (expiryTimeOfToken) => {
   return expiryTimeOfToken === refreshTokenExpirySeconds ? 'REFRESH_TOKEN' : 'ACCESS_TOKEN';
@@ -18,6 +18,14 @@ const makeTokenWithMongoID = async (mongoId, res, expiryTimeOfToken) => {
       expiryTimeOfToken === refreshTokenExpirySeconds
         ? refreshTokenSecretCode
         : accessTokenSecretCode;
+
+    if (!secretCode) {
+      const missing = [];
+      if (!accessTokenSecretCode) missing.push('ACCESS_TOKEN_SECRET_CODE or JWT_SECRET');
+      if (!refreshTokenSecretCode) missing.push('REFRESH_TOKEN_SECRET_CODE or JWT_REFRESH_SECRET');
+      const message = `JWT secret is missing. Set ${missing.join(' and ')}`;
+      throw new Error(message);
+    }
     const newToken = jwt.sign(
       {
         id: mongoId, // ✅ required for `findById`
@@ -31,8 +39,8 @@ const makeTokenWithMongoID = async (mongoId, res, expiryTimeOfToken) => {
   } catch (err) {
     logWithTime('`❌ An Internal Error Occurred while creating the token');
     errorMessage(err);
-    throwInternalServerError(res);
-    return null;
+    // Don't send response here, let the calling function handle it
+    throw err;
   }
 };
 

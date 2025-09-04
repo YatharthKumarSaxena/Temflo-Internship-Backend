@@ -29,7 +29,7 @@ const activityTracker = async ({
       oldData,
       newData,
     });
-    logWithTime(`✅ Activity Tracker for Event: ${eventType} logged successfully`);
+
     return true;
   } catch (err) {
     logWithTime('❌ Internal Error: An Error occurred while saving the Activity Tracker');
