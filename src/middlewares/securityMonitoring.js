@@ -34,11 +34,6 @@ const logSecurityEvent = (level, message, details = {}) => {
   } - User-Agent: ${logEntry.userAgent}\n`;
 
   fs.appendFileSync(securityMonitoringConfig.logFile, logLine);
-
-  // Also log to console in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[SECURITY ${level.toUpperCase()}] ${message}`, details);
-  }
 };
 
 // Placeholder middleware - no IP blocking
@@ -61,30 +56,47 @@ const detectSuspiciousActivity = (req, res, next) => {
 
 // Security headers monitoring
 const monitorSecurityHeaders = (req, res, next) => {
-  const securityHeaders = {
-    'X-Frame-Options': req.headers['x-frame-options'],
-    'X-Content-Type-Options': req.headers['x-content-type-options'],
-    'X-XSS-Protection': req.headers['x-xss-protection'],
-    'Strict-Transport-Security': req.headers['strict-transport-security'],
+  // Store original send method
+  const originalSend = res.send;
+
+  // Override send method to check headers before sending response
+  res.send = function (data) {
+    // Check if security headers are present in the response
+    const securityHeaders = {
+      'X-Frame-Options': res.getHeader('X-Frame-Options'),
+      'X-Content-Type-Options': res.getHeader('X-Content-Type-Options'),
+      'X-XSS-Protection': res.getHeader('X-XSS-Protection'),
+      'Strict-Transport-Security': res.getHeader('Strict-Transport-Security'),
+    };
+
+    // Log missing security headers
+    const missingHeaders = Object.entries(securityHeaders)
+      .filter(([key, value]) => !value)
+      .map(([key]) => key);
+
+    if (missingHeaders.length > 0) {
+      logSecurityEvent('warn', 'Missing security headers in response', {
+        ip: req.ip,
+        url: req.originalUrl,
+        missingHeaders,
+      });
+    } else {
+      // Log when all security headers are present
+      logSecurityEvent('info', 'All security headers present', {
+        ip: req.ip,
+        url: req.originalUrl,
+        headers: Object.keys(securityHeaders),
+      });
+    }
+
+    // Call the original send method
+    return originalSend.call(this, data);
   };
-
-  // Log missing security headers
-  const missingHeaders = Object.entries(securityHeaders)
-    .filter(([key, value]) => !value)
-    .map(([key]) => key);
-
-  if (missingHeaders.length > 0) {
-    logSecurityEvent('info', 'Missing security headers', {
-      ip: req.ip,
-      url: req.originalUrl,
-      missingHeaders,
-    });
-  }
 
   next();
 };
 
-// Rate limiting monitoring
+// Rate limiting monitoring (simplified)
 const monitorRateLimiting = (req, res, next) => {
   const clientIP = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
 

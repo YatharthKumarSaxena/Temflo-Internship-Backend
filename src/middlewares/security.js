@@ -10,9 +10,6 @@ const applyHelmet = helmet(securityConfig.helmet);
 // General rate limiting middleware
 const generalRateLimit = rateLimit(securityConfig.rateLimit);
 
-// Strict rate limiting for authentication endpoints
-const authRateLimit = rateLimit(securityConfig.authRateLimit);
-
 // MongoDB sanitization middleware
 const applyMongoSanitize = mongoSanitize(securityConfig.mongoSanitize);
 
@@ -28,6 +25,7 @@ const additionalSecurityHeaders = (req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
 
@@ -103,7 +101,6 @@ const mongoQueryProtection = (req, res, next) => {
 module.exports = {
   applyHelmet,
   generalRateLimit,
-  authRateLimit,
   applyMongoSanitize,
   applyXssProtection,
   additionalSecurityHeaders,

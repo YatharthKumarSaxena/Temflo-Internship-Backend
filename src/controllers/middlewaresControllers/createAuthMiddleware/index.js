@@ -7,6 +7,7 @@ const resetPassword = require('./resetPassword');
 const getName = require('./getName');
 const verifyEmail = require('./verifyEmail');
 const resendVerificationEmail = require('./resendVerificationMail');
+const refreshToken = require('./refreshToken');
 
 const createAuthMiddleware = (userModel) => {
   let authMethods = {};
@@ -52,6 +53,12 @@ const createAuthMiddleware = (userModel) => {
     getName(req, res, {
       userModel,
     });
+
+  authMethods.refreshToken = (req, res) =>
+    refreshToken(req, res, {
+      userModel,
+    });
+
   return authMethods;
 };
 

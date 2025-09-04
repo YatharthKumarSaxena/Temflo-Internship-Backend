@@ -30,7 +30,7 @@ const createUser = async (req, res) => {
     // Create salt and hash password
     const newUserPassword = new UserPassword();
     const salt = uniqueId();
-    const passwordHash = newUserPassword.generateHash(salt, password);
+    const passwordHash = await newUserPassword.generateHash(salt, password);
 
     const newuser={
         email,employeeCode,companyId:req.admin.companyId,name,plantId,mobile,role:"employee"

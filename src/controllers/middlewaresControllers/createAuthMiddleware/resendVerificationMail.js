@@ -61,10 +61,12 @@ const resendVerificationEmail = async (req, res, { userModel }) => {
       adminPassword.emailToken.created
     ) {
       const now = new Date();
-      const expiryTime = new Date(adminPassword.emailToken.created).getTime() + EMAIL_TOKEN_EXPIRY;
+      const expiryTime =
+        new Date(adminPassword.emailToken.created).getTime() + parseInt(EMAIL_TOKEN_EXPIRY);
 
       if (now.getTime() < expiryTime) {
-        const remainingMinutes = Math.ceil((expiryTime - now.getTime()) / 60000);
+        const remainingTime = expiryTime - now.getTime();
+        const remainingMinutes = Math.max(1, Math.ceil(remainingTime / 60000)); // Ensure at least 1 minute
         return res.status(TOO_MANY_REQUESTS).json({
           success: false,
           message: `A verification link has already been sent. Please try again after ${remainingMinutes} minute(s).`,
@@ -82,7 +84,7 @@ const resendVerificationEmail = async (req, res, { userModel }) => {
     await adminPassword.save();
 
     // ✅ 7. Build the new verification link
-    const baseUrl = 'http://localhost:3000'; // Frontend development URL
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const verificationLink = `${baseUrl}/verify/${admin._id}/${newToken}`;
 
     // ✅ 8. Send the verification email

@@ -81,7 +81,8 @@ const verifyEmail = async (req, res, { userModel }) => {
 
     // ✅ 6. Expiry check
     const now = new Date();
-    const expiryTime = new Date(databasePassword.emailToken.created).getTime() + EMAIL_TOKEN_EXPIRY;
+    const expiryTime =
+      new Date(databasePassword.emailToken.created).getTime() + parseInt(EMAIL_TOKEN_EXPIRY);
 
     if (now.getTime() > expiryTime) {
       return throwInvalidResourceError(

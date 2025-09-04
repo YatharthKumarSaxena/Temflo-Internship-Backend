@@ -9,7 +9,6 @@ const cookieParser = require('cookie-parser');
 const {
   applyHelmet,
   generalRateLimit,
-  authRateLimit,
   applyMongoSanitize,
   applyXssProtection,
   additionalSecurityHeaders,
@@ -17,6 +16,9 @@ const {
   secureFileUpload,
   mongoQueryProtection,
 } = require('./middlewares/security');
+
+// Import simplified rate limiting
+const { simpleRateLimit } = require('./middlewares/rateLimiting');
 const securityConfig = require('./config/security.config');
 
 // Import security monitoring
@@ -61,13 +63,16 @@ app.use(cors(securityConfig.cors));
 app.use(applyHelmet);
 app.use(additionalSecurityHeaders);
 
+// Apply security monitoring right after security headers are set
+app.use(monitorSecurityHeaders);
+
 // Apply IP blocking and monitoring
 app.use(ipBlockingMiddleware);
 app.use(trackFailedAttempts);
 app.use(detectSuspiciousActivity);
 
-// Apply general rate limiting
-app.use(generalRateLimit);
+// Apply rate limiting
+app.use(simpleRateLimit);
 
 // Apply MongoDB sanitization and XSS protection
 app.use(applyMongoSanitize);
@@ -76,8 +81,7 @@ app.use(applyXssProtection);
 // Apply request validation
 app.use(validateRequest);
 
-// Apply security monitoring
-app.use(monitorSecurityHeaders);
+// Apply rate limiting monitoring
 app.use(monitorRateLimiting);
 
 app.use(cookieParser());
@@ -93,9 +97,10 @@ runCrons();
 
 // Here our API Routes
 
-// Apply strict rate limiting to authentication routes
-app.use('/api', authRateLimit, coreAuthRouter);
+// Authentication routes
+app.use('/api', coreAuthRouter);
 // app.use('/api/employee',userAuthRouter)
+// Protected API routes
 app.use('/api', adminAuth.isValidAuthToken, coreApiRouter);
 app.use('/api/permission', adminAuth.isValidAuthToken, isAdminOrOwner, permissionRouter);
 app.use('/api', adminAuth.isValidAuthToken, erpApiRouter);

@@ -56,6 +56,15 @@ const login = async (req, res, { userModel }) => {
       message: 'Your account is deleted, contact your account adminstrator',
     });
 
+  // Check if password record exists
+  if (!databasePassword) {
+    return res.status(404).json({
+      success: false,
+      result: null,
+      message: 'Password record not found. Please contact your administrator.',
+    });
+  }
+
   // Check if admin/owner user has verified email
   if (
     (user.role === ROLE_TYPES.OWNER || user.role === ROLE_TYPES.ADMIN) &&
