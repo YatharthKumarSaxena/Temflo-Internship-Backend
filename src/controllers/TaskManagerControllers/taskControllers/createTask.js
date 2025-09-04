@@ -8,7 +8,6 @@ const createTask = async (req, res) => {
     const {
       title,
       description,
-      plantId,
       status,
       priority,
       assignedTo,
@@ -17,25 +16,32 @@ const createTask = async (req, res) => {
       tags,
       storyPointEstimate
     } = req.body;
-    if (!title  || !plantId || !storyPointEstimate) {
-      return res.status(400).json({ success: false, message: 'All fields required' });
+
+    if (!title || !storyPointEstimate) {
+      return res.status(400).json({ success: false, message: 'All required fields are missing' });
     }
 
-    const p = await Project.findOne({ _id: req.params.projectId });
-    if (!p) {
-      return res.status(500).json({
+    // 1. Fetch project
+    const project = await Project.findById(req.params.projectId);
+    if (!project) {
+      return res.status(404).json({
         success: false,
-        message: 'Cannot Find Project',
+        message: 'Project not found',
       });
     }
-    const workspaceId = p.workspaceId
+
+    // 2. Get workspaceId and plantId from project
+    const workspaceId = project.workspaceId;
+    const plantId = project.plantId;
+
+    // 3. Create task
     const task = new Task({
       title,
       description,
       workspaceId,
       projectId: req.params.projectId,
       companyId: req.admin.companyId,
-      plantId,
+      plantId, // ✅ fetched from project
       status,
       priority,
       assignedTo,
@@ -43,8 +49,9 @@ const createTask = async (req, res) => {
       dueDate,
       links,
       tags,
-      storyPointEstimate
+      storyPointEstimate,
     });
+
     console.log('task', task);
     await task.save();
 
@@ -53,7 +60,7 @@ const createTask = async (req, res) => {
       message: 'Task Created Successfully',
     });
   } catch (error) {
-    console.log('Task Creation Error', error);
+    console.error('Task Creation Error:', error);
     return res.status(500).json({
       success: false,
       message: 'Internal server error',

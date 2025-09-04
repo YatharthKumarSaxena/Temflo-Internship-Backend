@@ -40,7 +40,7 @@ const taskSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Backlog', 'Todo', 'In Progress', 'Under Review', 'Completed'],
+      enum: ['Backlog', 'Todo', 'In Progress', 'Under Review', 'On Hold', 'Completed'],
       default: 'Backlog',
     },
     priority: {
@@ -74,6 +74,40 @@ const taskSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    comments: [String],
+    attachments: [
+      {
+        fileName: {
+          type: String,
+          required: true,
+        },
+        originalName: {
+          type: String,
+          required: true,
+        },
+        filePath: {
+          type: String,
+          required: true,
+        },
+        fileSize: {
+          type: Number,
+          required: true,
+        },
+        mimeType: {
+          type: String,
+          required: true,
+        },
+        uploadedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        uploadedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   { timestamps: true }
 );

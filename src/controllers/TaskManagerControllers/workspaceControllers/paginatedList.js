@@ -29,7 +29,6 @@ const paginatedList = async (req, res) => {
 
     // Base query
     const baseQuery = {
-      removed: false,
       companyId: req.admin.companyId,
       ...(filter && equal ? { [filter]: equal } : {}),
       ...fields,

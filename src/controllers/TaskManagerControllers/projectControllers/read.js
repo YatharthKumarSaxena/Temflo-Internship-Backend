@@ -5,6 +5,7 @@ const readP = async (req, res) => {
     const Project = mongoose.model('Project');
     const project = await Project.find({
       companyId: req.admin.companyId,
+      plantId:req.params.plantId,
       removed: false,
     })
       .populate('createdBy')

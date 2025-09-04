@@ -49,6 +49,7 @@ const taskManagerRouter = require('./routes/taskManagerRoutes/taskManagerApi');
 
 const coreNoticeRouter = require('./routes/coreRoutes/coreNotice');
 const coreNotificationRouter = require('./routes/coreRoutes/coreNotification');
+const payrollApiRouter = require('./routes/PayrollRoutes/payrollAPI'); // ✅ payroll import
 
 const runCrons = require('./cron');
 
@@ -112,6 +113,8 @@ app.use('/api/asset', adminAuth.isValidAuthToken, AssetRouter);
 app.use('/api/expenses', adminAuth.isValidAuthToken, ExpenseRouter);
 app.use('/api/notifications', adminAuth.isValidAuthToken, coreNotificationRouter);
 app.use('/api/task-manager', adminAuth.isValidAuthToken, taskManagerRouter);
+
+app.use('/api/payroll', adminAuth.isValidAuthToken, payrollApiRouter); // ✅ payroll route
 
 // app.use('/download', coreDownloadRouter);
 // app.use('/public', corePublicRouter);

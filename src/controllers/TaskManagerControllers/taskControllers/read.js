@@ -5,6 +5,7 @@ const read = async (req, res) => {
     const Task = mongoose.model('Task');
     const task = await Task.find({
       companyId: req.admin.companyId,
+      plantId:req.params.plantId,
       removed: false,
     })
       .populate('workspaceId')

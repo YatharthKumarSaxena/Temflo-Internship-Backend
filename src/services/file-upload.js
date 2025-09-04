@@ -42,6 +42,15 @@ const storage = new CloudinaryStorage({
       case 'bank':
         folderName = 'erpica/bank';
         break;
+      case 'taskAttachment':
+        folderName = 'erpica/task-attachments';
+        break;
+      case 'projectAttachment':
+        folderName = 'erpica/project-attachments';
+        break;
+      case 'subtaskAttachment':
+        folderName = 'erpica/subtask-attachments';
+        break;  
       default:
         folderName = 'erpica/others';
     }
