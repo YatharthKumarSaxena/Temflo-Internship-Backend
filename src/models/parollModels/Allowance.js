@@ -1,5 +1,5 @@
 // models/Allowance.js
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const allowanceSchema = new mongoose.Schema(
   {
