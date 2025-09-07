@@ -16,10 +16,7 @@ router
 
 router
   .route('/pending')
-  .get(
-    AdminOwner,
-    catchErrors(purchaseOrderController.getPendingPurchaseOrders)
-  );
+  .get(AdminOwner, catchErrors(purchaseOrderController.getPendingPurchaseOrders));
 
 router.route('/materials').get(catchErrors(purchaseOrderController.getMaterialsForPO));
 
@@ -37,9 +34,13 @@ router
 
 router
   .route('/:id/approve')
-  .post(
-    AdminOwner,
-    catchErrors(purchaseOrderController.approvePurchaseOrder)
-  );
+  .post(AdminOwner, catchErrors(purchaseOrderController.approvePurchaseOrder));
+
+// Plant mapping routes
+router.route('/plant-mappings/:plantId').get(catchErrors(purchaseOrderController.getPlantMappings));
+
+router
+  .route('/cost-centres/:plantId/:segmentId')
+  .get(catchErrors(purchaseOrderController.getCostCentresForPlantSegment));
 
 module.exports = router;

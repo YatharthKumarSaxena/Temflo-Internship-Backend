@@ -1,5 +1,6 @@
 const Material = require('../../models/MaterialModels/MaterialModel');
 const HSNCode = require('../../models/MaterialModels/HSNCodeModel');
+const GeneralLedger = require('../../models/MaterialModels/GeneralLedgerModel');
 
 class MaterialController {
   // Create new material
@@ -10,12 +11,15 @@ class MaterialController {
         createdBy: req.user.id,
       };
 
+      // reconGL will be auto-assigned in the model pre-save middleware
+
       const material = new Material(materialData);
       await material.save();
 
       const populatedMaterial = await Material.findById(material._id)
         .populate('hsnCode', 'hsnCode description gstRate')
         .populate('supplier', 'supplierCode supplierName')
+        .populate('reconGL', 'accountCode accountName')
         .populate('createdBy', 'name email');
 
       res.status(201).json({
@@ -243,6 +247,32 @@ class MaterialController {
       });
     } catch (error) {
       throw error;
+    }
+  }
+
+  // Helper method to get default GL account based on category
+  static async getDefaultGLAccount(category) {
+    try {
+      let accountName;
+
+      if (category === 'Service') {
+        accountName = 'Service Revenue';
+      } else if (category === 'Material') {
+        accountName = 'Inventory';
+      }
+
+      if (accountName) {
+        return await GeneralLedger.findOne({
+          accountName: { $regex: accountName, $options: 'i' },
+          isActive: true,
+        });
+      }
+
+      // Fallback to first available GL account
+      return await GeneralLedger.findOne({ isActive: true });
+    } catch (error) {
+      console.error('Error getting default GL account:', error);
+      return null;
     }
   }
 }

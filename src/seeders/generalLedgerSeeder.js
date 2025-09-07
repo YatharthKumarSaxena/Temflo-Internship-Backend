@@ -121,6 +121,14 @@ const defaultAccounts = [
     isActive: true,
   },
   {
+    accountCode: '4010',
+    accountName: 'Service Revenue',
+    accountType: 'Revenue',
+    category: 'Revenue',
+    description: 'Service-based revenue',
+    isActive: true,
+  },
+  {
     accountCode: '4100',
     accountName: 'Sales Returns',
     accountType: 'Revenue',

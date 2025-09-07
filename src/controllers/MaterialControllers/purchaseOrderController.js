@@ -1,6 +1,10 @@
 const PurchaseOrder = require('../../models/MaterialModels/PurchaseOrderModel');
 const Material = require('../../models/MaterialModels/MaterialModel');
 const Supplier = require('../../models/MaterialModels/SupplierModel');
+const PurchaseOrderBooking = require('../../models/MaterialModels/PurchaseOrderBookingModel');
+const BusinessSegment = require('../../models/appModels/BusinessSegment');
+const CostProfitCenter = require('../../models/appModels/CostProfitCenter');
+const PlantMapping = require('../../models/appModels/PlantMapping');
 
 class PurchaseOrderController {
   // Create new purchase order
@@ -147,6 +151,24 @@ class PurchaseOrderController {
         updatedBy: req.user.id,
       };
 
+      // If line items are being updated, validate deletion rules
+      if (updateData.lineItems) {
+        const originalPO = await PurchaseOrder.findById(req.params.id);
+        if (originalPO) {
+          const validationResult = await this.validateLineItemDeletion(
+            originalPO,
+            updateData.lineItems
+          );
+          if (!validationResult.canUpdate) {
+            return res.status(400).json({
+              success: false,
+              message: validationResult.message,
+              details: validationResult.details,
+            });
+          }
+        }
+      }
+
       const purchaseOrder = await PurchaseOrder.findByIdAndUpdate(req.params.id, updateData, {
         new: true,
         runValidators: true,
@@ -179,6 +201,65 @@ class PurchaseOrderController {
       }
       throw error;
     }
+  }
+
+  // Validate line item deletion based on booking rules
+  async validateLineItemDeletion(originalPO, newLineItems) {
+    const originalLineItemCount = originalPO.lineItems.length;
+    const newLineItemCount = newLineItems.length;
+
+    // If no line items were removed, no validation needed
+    if (newLineItemCount >= originalLineItemCount) {
+      return { canUpdate: true };
+    }
+
+    const removedLineItems = [];
+    const errors = [];
+
+    // Check which line items were removed
+    for (let i = 0; i < originalLineItemCount; i++) {
+      const originalItem = originalPO.lineItems[i];
+      const stillExists = newLineItems.some(
+        (newItem) =>
+          newItem.material?.toString() === originalItem.material?.toString() &&
+          newItem.quantity === originalItem.quantity &&
+          newItem.basicCost === originalItem.basicCost
+      );
+
+      if (!stillExists) {
+        removedLineItems.push(i);
+      }
+    }
+
+    // Validate each removed line item
+    for (const lineItemIndex of removedLineItems) {
+      const canDelete = await PurchaseOrderBooking.canDeleteLineItem(originalPO._id, lineItemIndex);
+      if (!canDelete) {
+        const netBookingAmount = await PurchaseOrderBooking.getNetBookingAmount(
+          originalPO._id,
+          lineItemIndex
+        );
+        const lineItem = originalPO.lineItems[lineItemIndex];
+        errors.push({
+          lineItemIndex,
+          material: lineItem.material,
+          netBookingAmount,
+          message: `Cannot delete line item ${
+            lineItemIndex + 1
+          }. Net booking amount (${netBookingAmount}) is greater than 0.`,
+        });
+      }
+    }
+
+    if (errors.length > 0) {
+      return {
+        canUpdate: false,
+        message: 'Cannot delete line items with existing bookings',
+        details: errors,
+      };
+    }
+
+    return { canUpdate: true };
   }
 
   // Delete purchase order
@@ -291,6 +372,52 @@ class PurchaseOrderController {
         success: true,
         message: `Purchase Order ${action} successfully`,
         data: populatedPO,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Get segments and cost centres for a specific plant
+  async getPlantMappings(req, res) {
+    try {
+      const { plantId } = req.params;
+
+      const mappings = await PlantMapping.find({ plantId, enabled: true })
+        .populate('segmentId', 'segmentCode description')
+        .populate('costCentreId', 'costProfitCode description');
+
+      const segments = [...new Set(mappings.map((m) => m.segmentId))];
+      const costCentres = [...new Set(mappings.map((m) => m.costCentreId))];
+
+      res.json({
+        success: true,
+        data: {
+          segments,
+          costCentres,
+        },
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Get cost centres for a specific plant and segment combination
+  async getCostCentresForPlantSegment(req, res) {
+    try {
+      const { plantId, segmentId } = req.params;
+
+      const mappings = await PlantMapping.find({
+        plantId,
+        segmentId,
+        enabled: true,
+      }).populate('costCentreId', 'costProfitCode description');
+
+      const costCentres = mappings.map((m) => m.costCentreId);
+
+      res.json({
+        success: true,
+        data: costCentres,
       });
     } catch (error) {
       throw error;

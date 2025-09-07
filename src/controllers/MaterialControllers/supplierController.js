@@ -1,5 +1,6 @@
 const Supplier = require('../../models/MaterialModels/SupplierModel');
 const { catchErrors } = require('@/handlers/errorHandlers');
+const { indianStates, countries, pinCodeValidation } = require('../../config/indianStates');
 
 class SupplierController {
   // Create new supplier
@@ -8,7 +9,16 @@ class SupplierController {
       const supplierData = {
         ...req.body,
         createdBy: req.user.id,
+        approvalStatus: 'draft', // Start as draft
       };
+
+      // Validate pin code
+      if (supplierData.pinCode && !pinCodeValidation.isValidPinCode(supplierData.pinCode)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid pin code format',
+        });
+      }
 
       const supplier = new Supplier(supplierData);
       await supplier.save();
@@ -23,6 +33,18 @@ class SupplierController {
         return res.status(400).json({
           success: false,
           message: 'Supplier code or GSTIN already exists',
+        });
+      }
+      if (error.message.includes('Only one vendor code')) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
+      if (error.message.includes('GSTIN digits') || error.message.includes('PAN 4th digit')) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
         });
       }
       throw error;
@@ -173,6 +195,110 @@ class SupplierController {
       res.json({
         success: true,
         data: suppliers,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Submit supplier for approval
+  async submitForApproval(req, res) {
+    try {
+      const { id } = req.params;
+      const { comments } = req.body;
+
+      const supplier = await Supplier.findById(id);
+      if (!supplier) {
+        return res.status(404).json({
+          success: false,
+          message: 'Supplier not found',
+        });
+      }
+
+      if (supplier.approvalStatus !== 'draft') {
+        return res.status(400).json({
+          success: false,
+          message: 'Only draft suppliers can be submitted for approval',
+        });
+      }
+
+      supplier.approvalStatus = 'pending';
+      supplier.approvalHistory.push({
+        approver: req.user.id,
+        action: 'submitted',
+        comments: comments || 'Submitted for approval',
+        approvedAt: new Date(),
+      });
+
+      await supplier.save();
+
+      res.json({
+        success: true,
+        message: 'Supplier submitted for approval successfully',
+        data: supplier,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Approve/Reject supplier
+  async approveSupplier(req, res) {
+    try {
+      const { id } = req.params;
+      const { action, comments } = req.body;
+
+      if (!['approved', 'rejected'].includes(action)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Action must be either approved or rejected',
+        });
+      }
+
+      const supplier = await Supplier.findById(id);
+      if (!supplier) {
+        return res.status(404).json({
+          success: false,
+          message: 'Supplier not found',
+        });
+      }
+
+      if (supplier.approvalStatus !== 'pending') {
+        return res.status(400).json({
+          success: false,
+          message: 'Only pending suppliers can be approved/rejected',
+        });
+      }
+
+      supplier.approvalStatus = action;
+      supplier.approvalHistory.push({
+        approver: req.user.id,
+        action,
+        comments: comments || `${action} by approver`,
+        approvedAt: new Date(),
+      });
+
+      await supplier.save();
+
+      res.json({
+        success: true,
+        message: `Supplier ${action} successfully`,
+        data: supplier,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Get master data for dropdowns
+  async getMasterData(req, res) {
+    try {
+      res.json({
+        success: true,
+        data: {
+          states: indianStates,
+          countries: countries,
+        },
       });
     } catch (error) {
       throw error;

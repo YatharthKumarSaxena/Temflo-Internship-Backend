@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const PlantMapping = require('../appModels/PlantMapping');
 
 const purchaseOrderSchema = new mongoose.Schema(
   {
@@ -35,10 +36,31 @@ const purchaseOrderSchema = new mongoose.Schema(
     },
     lineItems: [
       {
+        lineNumber: {
+          type: Number,
+          required: true,
+        },
+        purchaseType: {
+          type: String,
+          required: true,
+          enum: ['Material', 'Services', 'Own consumption', 'Capital goods'],
+        },
+        segment: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'BusinessSegment',
+          required: true,
+        },
+        costCentre: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'CostProfitCenter',
+          required: true,
+        },
         material: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'Material',
-          required: true,
+          required: function () {
+            return this.purchaseType === 'Material' || this.purchaseType === 'Services';
+          },
         },
         quantity: {
           type: Number,
@@ -76,6 +98,9 @@ const purchaseOrderSchema = new mongoose.Schema(
         description: {
           type: String,
           trim: true,
+          required: function () {
+            return this.purchaseType === 'Own consumption' || this.purchaseType === 'Capital goods';
+          },
         },
         totalAmount: {
           type: Number,
@@ -152,6 +177,65 @@ const purchaseOrderSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Pre-save middleware for validation
+purchaseOrderSchema.pre('save', async function (next) {
+  try {
+    // Validate financial year for purchase period
+    const startDate = this.purchasePeriod.startDate;
+    const endDate = this.purchasePeriod.endDate;
+
+    // Get company's financial year setting
+    const User = mongoose.model('User');
+    const company = await User.findOne({ companyId: this.createdBy?.companyId || this.companyId });
+
+    if (company && company.year === 'Financial') {
+      const currentYear = new Date().getFullYear();
+      const startYear = startDate.getFullYear();
+      const endYear = endDate.getFullYear();
+
+      // Financial year validation (April to March)
+      if (startDate.getMonth() >= 3) {
+        // April onwards
+        if (startYear !== currentYear || endYear !== currentYear) {
+          return next(new Error('Purchase period must be within current financial year'));
+        }
+      } else {
+        // January to March
+        if (startYear !== currentYear || endYear !== currentYear) {
+          return next(new Error('Purchase period must be within current financial year'));
+        }
+      }
+    }
+
+    // Validate Plant-Segment-Cost Centre mapping
+    for (const lineItem of this.lineItems) {
+      const mapping = await PlantMapping.findOne({
+        plantId: this.plant,
+        segmentId: lineItem.segment,
+        costCentreId: lineItem.costCentre,
+        enabled: true,
+      });
+
+      if (!mapping) {
+        return next(
+          new Error(
+            `Invalid combination: Plant, Segment, and Cost Centre must be mapped in company master`
+          )
+        );
+      }
+    }
+
+    // Auto-number line items
+    this.lineItems.forEach((item, index) => {
+      item.lineNumber = index + 1;
+    });
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 // Index for better query performance
 purchaseOrderSchema.index({ poCode: 1 });

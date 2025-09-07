@@ -18,10 +18,18 @@ router.route('/dropdown').get(catchErrors(supplierController.getSuppliersDropdow
 
 router.route('/validate-gstin').post(catchErrors(supplierController.validateGSTIN));
 
+router.route('/master-data').get(catchErrors(supplierController.getMasterData));
+
 router
   .route('/:id')
   .get(catchErrors(supplierController.getSupplierById))
   .put(AdminOwner, catchErrors(supplierController.updateSupplier))
   .delete(AdminOwner, catchErrors(supplierController.deleteSupplier));
+
+router
+  .route('/:id/submit-approval')
+  .post(AdminOwner, catchErrors(supplierController.submitForApproval));
+
+router.route('/:id/approve').post(AdminOwner, catchErrors(supplierController.approveSupplier));
 
 module.exports = router;
