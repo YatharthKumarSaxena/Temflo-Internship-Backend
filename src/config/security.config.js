@@ -29,29 +29,21 @@ const securityConfig = {
     },
     noSniff: true,
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    // Explicitly enable all security headers
+    frameguard: { action: 'deny' },
+    xssFilter: true,
+    hidePoweredBy: true,
+    ieNoOpen: true,
+    noSniff: true,
   },
 
-  // Rate limiting configuration
+  // Rate limiting configuration (200 requests per minute)
   rateLimit: {
-    windowMs: 1 * 60 * 1000, // 1
-    max: 100, // limit each IP to 100 requests per windowMs
+    windowMs: (parseInt(process.env.RATE_LIMIT_WINDOW) || 1) * 60 * 1000, // 1 minute default
+    max: parseInt(process.env.RATE_LIMIT_MAX) || 200, // 200 requests default
     message: {
-      error: 'Too many requests from this IP, please try again later.',
-      retryAfter: '1 minute',
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-    skipSuccessfulRequests: false,
-    skipFailedRequests: false,
-  },
-
-  // Strict rate limiting for auth endpoints
-  authRateLimit: {
-    windowMs: 1 * 60 * 1000, // 1 minute
-    max: 50, // limit each IP to 50 requests per windowMs for auth
-    message: {
-      error: 'Too many authentication attempts, please try again later.',
-      retryAfter: '1 minute',
+      error: 'Too many requests, please try again later.',
+      retryAfter: `${parseInt(process.env.RATE_LIMIT_WINDOW) || 1} minute`,
     },
     standardHeaders: true,
     legacyHeaders: false,
@@ -61,10 +53,25 @@ const securityConfig = {
 
   // CORS configuration
   cors: {
-    origin: true, // Allow all origins for development
-    credentials: true,
+    origin: process.env.CORS_ALLOWED_ORIGINS
+      ? process.env.CORS_ALLOWED_ORIGINS.split(',').map((origin) => origin.trim())
+      : true, // Allow all origins for development if not specified
+    credentials: process.env.CORS_CREDENTIALS === 'true' || true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept','Plant-Id'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Origin',
+      'Accept',
+      'Plant-Id',
+      'plant-id', // Allow plant-id header
+      'company-id', // Allow company-id header
+      'user-id', // Allow user-id header
+      'X-Plant-ID', // Alternative naming
+      'X-Company-ID', // Alternative naming
+      'X-User-ID', // Alternative naming
+    ],
     exposedHeaders: ['X-Total-Count', 'X-Page-Count'],
     maxAge: 86400, // 24 hours
   },

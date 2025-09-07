@@ -81,7 +81,8 @@ const verifyEmail = async (req, res, { userModel }) => {
 
     // ✅ 6. Expiry check
     const now = new Date();
-    const expiryTime = new Date(databasePassword.emailToken.created).getTime() + EMAIL_TOKEN_EXPIRY;
+    const expiryTime =
+      new Date(databasePassword.emailToken.created).getTime() + parseInt(EMAIL_TOKEN_EXPIRY);
 
     if (now.getTime() > expiryTime) {
       return throwInvalidResourceError(
@@ -101,8 +102,6 @@ const verifyEmail = async (req, res, { userModel }) => {
       },
       { new: true }
     );
-
-    logWithTime(`✅ 🎯 User Email Verified successfully 🚀`);
 
     // Activity Tracker logging
     await activityTracker({
@@ -126,6 +125,11 @@ const verifyEmail = async (req, res, { userModel }) => {
     });
 
     const refreshToken = await makeTokenWithMongoID(user._id, res, refreshTokenExpirySeconds);
+    
+    // Check if token creation failed
+    if (!refreshToken) {
+      return throwInternalServerError(res);
+    }
 
     await UserPassword.findOneAndUpdate(
       { user: userId },
@@ -138,7 +142,6 @@ const verifyEmail = async (req, res, { userModel }) => {
       { new: true }
     );
 
-    logWithTime(`✅ 🎯 User logged in successfully 🚀`);
     const isCookieSet = setRefreshTokenCookie(res, refreshToken);
     if (!isCookieSet) {
       return res.status(OK).json({
@@ -163,9 +166,20 @@ const verifyEmail = async (req, res, { userModel }) => {
     });
 
     const accessToken = await makeTokenWithMongoID(user._id, res, accessTokenExpirySeconds);
-    const isAccessTokenSet = setAccessTokenHeaders(res, accessToken);
-    if (!isAccessTokenSet) {
-      logWithTime(`Access Token is not set at Email Verification`);
+    
+    // Check if access token creation failed
+    if (!accessToken) {
+      return throwInternalServerError(res);
+    }
+    
+    try {
+      const isAccessTokenSet = setAccessTokenHeaders(res, accessToken);
+      if (!isAccessTokenSet) {
+        return throwInternalServerError(res);
+      }
+    } catch (error) {
+      errorMessage(error);
+      return throwInternalServerError(res);
     }
 
     return res.status(OK).json({
@@ -173,7 +187,6 @@ const verifyEmail = async (req, res, { userModel }) => {
       message: 'Email verified successfully. You are now logged in.',
     });
   } catch (error) {
-    logWithTime('❌ Internal Error: Failed to Verify a User 🗑️');
     errorMessage(error);
     return throwInternalServerError(res);
   }

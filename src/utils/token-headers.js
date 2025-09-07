@@ -1,5 +1,5 @@
 const { logWithTime } = require('./time-stamps');
-const { errorMessage, throwInternalServerError } = require('@/config/error-handler.config');
+const { errorMessage } = require('@/config/error-handler.config');
 
 const setAccessTokenHeaders = (res, token) => {
   try {
@@ -10,8 +10,8 @@ const setAccessTokenHeaders = (res, token) => {
   } catch (err) {
     logWithTime('❌ An Internal Error occurred while setting the Access Token in Headers');
     errorMessage(err);
-    throwInternalServerError(res);
-    return false;
+    // Don't send response here, let the calling function handle it
+    throw err;
   }
 };
 

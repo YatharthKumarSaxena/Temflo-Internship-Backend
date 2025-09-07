@@ -52,11 +52,10 @@ const getAllowanceById = async (req, res) => {
 // Update Allowance
 const updateAllowance = async (req, res) => {
   try {
-    const allowance = await Allowance.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const allowance = await Allowance.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
 
     setNoCache(res);
 

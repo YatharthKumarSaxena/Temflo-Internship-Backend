@@ -7,10 +7,7 @@ const { MODULE, SUBMODULE, FILE, MODEL_AFFECTED, ACTIONS } = require('../config/
 console.log('✅ Activity Tracker Test started');
 
 // Connect to MongoDB
-mongoose.connect(process.env.DATABASE_URI || 'mongodb://localhost:27017/test', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+mongoose.connect(process.env.DATABASE_URI || 'mongodb://localhost:27017/test');
 
 (async () => {
   try {

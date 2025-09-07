@@ -51,7 +51,7 @@ const signUp = async (req, res, { userModel }) => {
     // Create salt and hash password (compatible with existing system)
     const salt = uniqueId();
     const newAdminPassword = new AdminPassword();
-    const passwordHash = newAdminPassword.generateHash(salt, password);
+    const passwordHash = await newAdminPassword.generateHash(salt, password);
 
     // Generate email verification token
     const token = await generateNanoId();
@@ -88,7 +88,7 @@ const signUp = async (req, res, { userModel }) => {
     await new AdminPassword(adminPasswordData).save();
 
     // Send verification email
-    const baseUrl = 'http://localhost:3000'; // Frontend development URL
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const verificationLink = `${baseUrl}/verify/${adminResult._id}/${emailToken.token}`;
 
     const emailHtml = emailVerfication({
@@ -99,8 +99,6 @@ const signUp = async (req, res, { userModel }) => {
     });
 
     const emailSent = await sendEmail(email, 'Verify your email | ERPICA', emailHtml);
-
-    logWithTime(`✅ 🎯 Admin registered successfully 🚀`);
 
     // Activity Tracker logging
     await activityTracker({
@@ -134,7 +132,6 @@ const signUp = async (req, res, { userModel }) => {
       message: 'Signup successful. Please check your email to verify your account before login.',
     });
   } catch (error) {
-    logWithTime('❌ Internal Error: Failed to Register a User 🗑️');
     errorMessage(error);
     return throwInternalServerError(res);
   }

@@ -1,175 +1,147 @@
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
+const authService = require('@/services/authService');
 
 // JWT security configuration
 const jwtSecurityConfig = {
   // Token expiration times
-  accessTokenExpiry: '15m', // 15 minutes
-  refreshTokenExpiry: '7d', // 7 days
+  accessTokenExpiry: process.env.JWT_ACCESS_TOKEN_EXPIRY || '1d',
+  refreshTokenExpiry: process.env.JWT_REFRESH_TOKEN_EXPIRY || '7d',
 
   // Algorithm
-  algorithm: 'HS256',
+  algorithm: process.env.JWT_ALGORITHM || 'HS256',
 
   // Issuer and audience for additional security
   issuer: process.env.JWT_ISSUER || 'erp-system',
   audience: process.env.JWT_AUDIENCE || 'erp-users',
 };
 
-// Enhanced JWT verification middleware
-const enhancedJwtVerification = (req, res, next) => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1] || req.cookies?.token;
+// Enhanced JWT verification middleware with blacklist checking
+const enhancedJwtVerification = (userModel = 'User') => {
+  return async (req, res, next) => {
+    try {
+      const token = req.headers.authorization?.split(' ')[1] || req.cookies?.token;
 
-    if (!token) {
-      return res.status(401).json({
-        error: 'Access denied',
-        message: 'No token provided',
-      });
-    }
-
-    // Verify token with enhanced options
-    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
-      algorithms: [jwtSecurityConfig.algorithm],
-      issuer: jwtSecurityConfig.issuer,
-      audience: jwtSecurityConfig.audience,
-      clockTolerance: 30, // 30 seconds tolerance for clock skew
-    });
-
-    // Check if token is expired
-    if (decoded.exp && Date.now() >= decoded.exp * 1000) {
-      return res.status(401).json({
-        error: 'Token expired',
-        message: 'Please login again',
-      });
-    }
-
-    // Check if token was issued too long ago (additional security)
-    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-    if (decoded.iat && Date.now() - decoded.iat * 1000 > maxAge) {
-      return res.status(401).json({
-        error: 'Token too old',
-        message: 'Please login again',
-      });
-    }
-
-    // Add decoded token to request
-    req.user = decoded;
-
-    // Add security headers
-    res.setHeader('X-JWT-Issued-At', decoded.iat);
-    res.setHeader('X-JWT-Expires-At', decoded.exp);
-
-    next();
-  } catch (error) {
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        error: 'Token expired',
-        message: 'Please login again',
-      });
-    } else if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({
-        error: 'Invalid token',
-        message: 'Please provide a valid token',
-      });
-    } else if (error.name === 'NotBeforeError') {
-      return res.status(401).json({
-        error: 'Token not active',
-        message: 'Token is not yet valid',
-      });
-    } else {
-      console.error('JWT verification error:', error);
-      return res.status(500).json({
-        error: 'Internal server error',
-        message: 'Token verification failed',
-      });
-    }
-  }
-};
-
-// Generate secure JWT tokens
-const generateSecureTokens = (payload) => {
-  const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: jwtSecurityConfig.accessTokenExpiry,
-    algorithm: jwtSecurityConfig.algorithm,
-    issuer: jwtSecurityConfig.issuer,
-    audience: jwtSecurityConfig.audience,
-    subject: payload.id || payload._id,
-    jwtid: require('nanoid').nanoid(), // Unique token ID
-  });
-
-  const refreshToken = jwt.sign(
-    {
-      id: payload.id || payload._id,
-      type: 'refresh',
-      version: payload.tokenVersion || 1, // For token invalidation
-    },
-    process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
-    {
-      expiresIn: jwtSecurityConfig.refreshTokenExpiry,
-      algorithm: jwtSecurityConfig.algorithm,
-      issuer: jwtSecurityConfig.issuer,
-      audience: jwtSecurityConfig.audience,
-      subject: payload.id || payload._id,
-      jwtid: require('nanoid').nanoid(),
-    }
-  );
-
-  return { accessToken, refreshToken };
-};
-
-// Token refresh middleware
-const refreshTokenMiddleware = (req, res, next) => {
-  try {
-    const refreshToken = req.body.refreshToken || req.cookies?.refreshToken;
-
-    if (!refreshToken) {
-      return res.status(401).json({
-        error: 'Refresh token required',
-        message: 'Please provide a refresh token',
-      });
-    }
-
-    const decoded = jwt.verify(
-      refreshToken,
-      process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
-      {
-        algorithms: [jwtSecurityConfig.algorithm],
-        issuer: jwtSecurityConfig.issuer,
-        audience: jwtSecurityConfig.audience,
+      if (!token) {
+        return res.status(401).json({
+          success: false,
+          error: 'Access denied',
+          message: 'No token provided',
+          jwtExpired: true,
+        });
       }
-    );
 
-    if (decoded.type !== 'refresh') {
-      return res.status(401).json({
-        error: 'Invalid token type',
-        message: 'Token is not a refresh token',
-      });
+      // Verify token using auth service
+      const decoded = await authService.verifyToken(token, 'access');
+
+      // Get user and password data to check blacklist
+      const UserPassword = mongoose.model(userModel + 'Password');
+      const User = mongoose.model(userModel);
+
+      const [user, userPassword] = await Promise.all([
+        User.findById(decoded.id),
+        UserPassword.findOne({ user: decoded.id }),
+      ]);
+
+      if (!user || user.removed) {
+        return res.status(401).json({
+          success: false,
+          error: 'User not found',
+          message: 'User account does not exist or has been disabled',
+          jwtExpired: true,
+        });
+      }
+
+      if (!userPassword) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication data not found',
+          message: 'Please login again',
+          jwtExpired: true,
+        });
+      }
+
+      // Check if token is blacklisted
+      if (userPassword.isTokenBlacklisted(token)) {
+        return res.status(401).json({
+          success: false,
+          error: 'Token revoked',
+          message: 'This token has been revoked. Please login again',
+          jwtExpired: true,
+        });
+      }
+
+      // Check token version
+      if (decoded.tokenVersion !== userPassword.tokenVersion) {
+        return res.status(401).json({
+          success: false,
+          error: 'Token version mismatch',
+          message: 'Please login again',
+          jwtExpired: true,
+        });
+      }
+
+      // Find and update session last activity
+      const session = userPassword.activeSessions.find((s) => s.accessToken === token);
+
+      if (!session) {
+        return res.status(401).json({
+          success: false,
+          error: 'Session not found',
+          message: 'Session has expired. Please login again',
+          jwtExpired: true,
+        });
+      }
+
+      // Update last activity
+      session.lastActivity = new Date();
+      await userPassword.save();
+
+      // Add user data to request
+      req.user = decoded;
+      req.admin = user; // For backward compatibility
+      req.session = session;
+
+      // Add security headers
+      res.setHeader('X-JWT-Issued-At', decoded.iat);
+      res.setHeader('X-JWT-Expires-At', decoded.exp);
+      res.setHeader('X-Token-Version', decoded.tokenVersion);
+
+      next();
+    } catch (error) {
+      console.error('JWT verification error:', error);
+
+      let errorResponse = {
+        success: false,
+        jwtExpired: true,
+      };
+
+      if (error.message.includes('expired')) {
+        errorResponse.error = 'Token expired';
+        errorResponse.message = 'Your session has expired. Please login again';
+      } else if (error.message.includes('invalid') || error.message.includes('malformed')) {
+        errorResponse.error = 'Invalid token';
+        errorResponse.message = 'Please provide a valid authentication token';
+      } else if (error.message.includes('verification failed')) {
+        errorResponse.error = 'Token verification failed';
+        errorResponse.message = 'Authentication failed. Please login again';
+      } else {
+        errorResponse.error = 'Authentication error';
+        errorResponse.message = 'Authentication failed. Please try again';
+      }
+
+      return res.status(401).json(errorResponse);
     }
-
-    req.refreshTokenData = decoded;
-    next();
-  } catch (error) {
-    return res.status(401).json({
-      error: 'Invalid refresh token',
-      message: 'Please login again',
-    });
-  }
+  };
 };
 
-// Token blacklist check (for logout functionality)
-const tokenBlacklistCheck = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1] || req.cookies?.token;
-
-  if (!token) {
-    return next();
-  }
-
-  next();
+// Backward compatibility for existing isValidAuthToken
+const createIsValidAuthToken = (userModel = 'User') => {
+  return enhancedJwtVerification(userModel);
 };
 
 module.exports = {
   enhancedJwtVerification,
-  generateSecureTokens,
-  refreshTokenMiddleware,
-  tokenBlacklistCheck,
+  createIsValidAuthToken,
   jwtSecurityConfig,
 };

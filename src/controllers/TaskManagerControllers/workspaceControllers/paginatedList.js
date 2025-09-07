@@ -34,14 +34,8 @@ const paginatedList = async (req, res) => {
       ...fields,
     };
 
-    // Logging for debugging
-    console.log('Page:', page, 'Limit:', limit, 'Skip:', skip);
-    console.log('Sort by:', actualSortBy, 'Sort order:', sortOrder);
-    console.log('Base Query:', baseQuery);
-
     // Create sort object properly
     const sortObject = { [actualSortBy]: sortOrder, _id: 1 }; // Ensure stable sorting
-    console.log('Sort Object:', sortObject);
 
     // Query results and count
     const resultsPromise = Workspace.find(baseQuery)
@@ -50,13 +44,9 @@ const paginatedList = async (req, res) => {
       .sort(sortObject)
       .exec();
 
-    console.log('Executing query...');
-
     const countPromise = Workspace.countDocuments(baseQuery);
 
     const [result, count] = await Promise.all([resultsPromise, countPromise]);
-
-    console.log('Results found:', result.length);
 
     const pages = Math.ceil(count / limit);
     const pagination = { page, pages, count };
