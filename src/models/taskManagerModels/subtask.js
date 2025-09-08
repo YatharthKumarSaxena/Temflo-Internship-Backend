@@ -1,13 +1,7 @@
 const mongoose = require('mongoose');
-const { generateSubtaskCode } = require('../utils/uuid');
 
 const subtaskSchema = new mongoose.Schema(
   {
-    subtaskCode: {
-      type: String,
-      unique: true,
-      default: generateSubtaskCode, // generate
-    },
     title: {
       type: String,
       required: true,
