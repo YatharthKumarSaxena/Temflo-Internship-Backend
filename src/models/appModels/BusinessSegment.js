@@ -5,6 +5,10 @@ const BusinessSegmentSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  enabled: {
+    type: Boolean,
+    default: true,
+  },
   companyId: {
     type: String,
     required: true,
@@ -13,13 +17,26 @@ const BusinessSegmentSchema = new mongoose.Schema({
   segmentCode: {
     type: String,
     required: true,
-    match: /^[0-9]{1,6}$/, // allows only 1 to 6 digits
+    match: /^[0-9]{1,6}$/, // 1 to 6 digits
+    immutable: true,
   },
   description: {
     type: String,
     required: true,
     trim: true,
-  }
-}, { timestamps: true });
+  },
+  created: {
+    type: Date,
+    default: Date.now,
+  },
+  updated: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+// Index for better query performance
+BusinessSegmentSchema.index({ segmentCode: 1 });
+BusinessSegmentSchema.index({ companyId: 1 });
 
 module.exports = mongoose.model('BusinessSegment', BusinessSegmentSchema);

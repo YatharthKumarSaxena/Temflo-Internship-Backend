@@ -84,7 +84,7 @@ const createBulk = async (req, res) => {
       try {
         const salt = uniqueId();
         const userPassword = new UserPassword();
-        const passwordHash = userPassword.generateHash(salt, emp.Password.toString());
+        const passwordHash = await userPassword.generateHash(salt, emp.Password.toString());
 
         const newUser = new User({
           email,

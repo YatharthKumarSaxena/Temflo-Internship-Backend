@@ -42,6 +42,15 @@ const storage = new CloudinaryStorage({
       case 'bank':
         folderName = 'erpica/bank';
         break;
+      case 'taskAttachment':
+        folderName = 'erpica/task-attachments';
+        break;
+      case 'projectAttachment':
+        folderName = 'erpica/project-attachments';
+        break;
+      case 'subtaskAttachment':
+        folderName = 'erpica/subtask-attachments';
+        break;  
       default:
         folderName = 'erpica/others';
     }
@@ -59,7 +68,6 @@ const fileFilter = (req, file, cb) => {
   if (!file) return cb(null, false);
 
   const { fieldname, mimetype } = file;
-  console.log('Uploading:', fieldname, mimetype);
 
   const allowedMimeTypes = [
     // Images
@@ -86,7 +94,6 @@ const fileFilter = (req, file, cb) => {
   ];
 
   if (!allowedMimeTypes.includes(mimetype)) {
-    console.log('Rejected file:', mimetype);
     return cb(new Error('Unsupported file type'), false);
   }
 

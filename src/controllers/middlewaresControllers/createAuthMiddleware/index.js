@@ -1,10 +1,13 @@
 const isValidAuthToken = require('./isValidAuthToken');
 const login = require('./login');
 const logout = require('./logout');
-const signUp = require('./signup')
+const signUp = require('./signup');
 const forgetPassword = require('./forgetPassword');
 const resetPassword = require('./resetPassword');
-const getName = require('./getName')
+const getName = require('./getName');
+const verifyEmail = require('./verifyEmail');
+const resendVerificationEmail = require('./resendVerificationMail');
+const refreshToken = require('./refreshToken');
 
 const createAuthMiddleware = (userModel) => {
   let authMethods = {};
@@ -14,8 +17,7 @@ const createAuthMiddleware = (userModel) => {
       userModel,
     });
 
-  authMethods.signUp = (req, res) =>
-    signUp(req, res, { userModel });
+  authMethods.signUp = (req, res) => signUp(req, res, { userModel });
 
   authMethods.login = (req, res) =>
     login(req, res, {
@@ -37,10 +39,26 @@ const createAuthMiddleware = (userModel) => {
       userModel,
     });
 
+  authMethods.verifyEmail = (req, res) =>
+    verifyEmail(req, res, {
+      userModel,
+    });
+
+  authMethods.resendVerificationMail = (req, res) =>
+    resendVerificationEmail(req, res, {
+      userModel,
+    });
+
   authMethods.getName = (req, res) =>
     getName(req, res, {
       userModel,
     });
+
+  authMethods.refreshToken = (req, res) =>
+    refreshToken(req, res, {
+      userModel,
+    });
+
   return authMethods;
 };
 

@@ -15,7 +15,7 @@ async function setupApp() {
 
     const salt = uniqueId();
 
-    const passwordHash = newAdminPassword.generateHash(salt, 'admin123');
+    const passwordHash = await newAdminPassword.generateHash(salt, 'admin123');
 
     const demoAdmin = {
       email: 'admin@demo.com',

@@ -1,41 +1,67 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const authService = require('@/services/authService');
+const { ROLE_TYPES } = require('@/config/user.config');
 
 const authUser = async (req, res, { user, databasePassword, password, UserPasswordModel }) => {
-  const isMatch = await bcrypt.compare(databasePassword.salt + password, databasePassword.password);
+  try {
+    // Check if databasePassword exists
+    if (!databasePassword) {
+      return res.status(404).json({
+        success: false,
+        result: null,
+        message: 'Password record not found. Please contact your administrator.',
+      });
+    }
 
-  if (!isMatch) {
-    return res.status(403).json({
-      success: false,
-      result: null,
-      message: 'Invalid credentials.',
-    });
-  }
+    // Validate password using new standardized method
+    const isMatch = await databasePassword.validPassword(password);
 
-  const token = jwt.sign(
-    {
-      id: user._id,
-      companyId: user.companyId,
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: req.body.remember ? '8760h' : '24h' } // 1 year or 1 day
-  );
+    if (!isMatch) {
+      // Return invalid credentials error
+      return res.status(401).json({
+        success: false,
+        result: null,
+        message: 'Invalid credentials.',
+      });
+    }
 
-  await UserPasswordModel.findOneAndUpdate(
-    { user: user._id },
-    { $push: { loggedSessions: token } },
-    { new: true }
-  ).exec();
+    // Check if user is admin/owner and email is not verified
+    if (
+      (user.role === ROLE_TYPES.OWNER || user.role === ROLE_TYPES.ADMIN) &&
+      !databasePassword.emailVerified
+    ) {
+      return res.status(403).json({
+        success: false,
+        result: null,
+        message:
+          'Please verify your email before logging in. Check your inbox for verification link.',
+      });
+    }
 
-  res
-    .status(200)
-    .cookie('token', token, {
-      httpOnly: true,
-      secure: true,           // must be true since Render uses HTTPS
-      sameSite: 'None',       // must be 'None' for cross-site cookies
-      maxAge: 24 * 60 * 60 * 1000, // optional
-    })
-    .json({
+    // Create new session with tokens
+    const tokens = await authService.createSession(user, databasePassword, req);
+
+    // Set secure cookies
+    res
+      .cookie('token', tokens.accessToken, {
+        httpOnly: process.env.COOKIE_HTTP_ONLY !== 'false',
+        secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true',
+        sameSite:
+          process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'None' : 'Lax'),
+        domain: process.env.COOKIE_DOMAIN || undefined,
+        path: process.env.COOKIE_PATH || '/',
+        maxAge: 24 * 60 * 60 * 1000, // 1 day
+      })
+      .cookie('refreshToken', tokens.refreshToken, {
+        httpOnly: process.env.COOKIE_HTTP_ONLY !== 'false',
+        secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true',
+        sameSite:
+          process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'None' : 'Lax'),
+        domain: process.env.COOKIE_DOMAIN || undefined,
+        path: process.env.COOKIE_PATH || '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
+    res.status(200).json({
       success: true,
       result: {
         _id: user._id,
@@ -45,9 +71,21 @@ const authUser = async (req, res, { user, databasePassword, password, UserPasswo
         email: user.email,
         photo: user.photo,
         permissions: user.permissions,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresAt: tokens.accessExpiresAt,
       },
-      message: 'Successfully login user',
+      message: 'Successfully logged in',
     });
+  } catch (error) {
+    console.error('Login error:', error);
+
+    return res.status(403).json({
+      success: false,
+      result: null,
+      message: error.message || 'Authentication failed',
+    });
+  }
 };
 
 module.exports = authUser;

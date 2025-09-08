@@ -39,7 +39,7 @@ const setup = async (req, res) => {
 
   const salt = uniqueId();
 
-  const passwordHash = newAdminPassword.generateHash(salt, password);
+  const passwordHash = await newAdminPassword.generateHash(salt, password);
 
   const accountOwnner = {
     email,

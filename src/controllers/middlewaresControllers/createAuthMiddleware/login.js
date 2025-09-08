@@ -9,6 +9,7 @@ const sendMail = require('./sendMail');
 
 const { loadSettings } = require('@/middlewares/settings');
 const { useAppSettings } = require('@/settings');
+const { ROLE_TYPES } = require('@/config/user.config');
 
 const authUser = require('./authUser');
 
@@ -54,6 +55,28 @@ const login = async (req, res, { userModel }) => {
       result: null,
       message: 'Your account is deleted, contact your account adminstrator',
     });
+
+  // Check if password record exists
+  if (!databasePassword) {
+    return res.status(404).json({
+      success: false,
+      result: null,
+      message: 'Password record not found. Please contact your administrator.',
+    });
+  }
+
+  // Check if admin/owner user has verified email
+  if (
+    (user.role === ROLE_TYPES.OWNER || user.role === ROLE_TYPES.ADMIN) &&
+    !databasePassword.emailVerified
+  ) {
+    return res.status(403).json({
+      success: false,
+      result: null,
+      message:
+        'Please verify your email before logging in. Check your inbox for verification link.',
+    });
+  }
 
   //  authUser if your has correct password
   authUser(req, res, { user, databasePassword, password, UserPasswordModel });

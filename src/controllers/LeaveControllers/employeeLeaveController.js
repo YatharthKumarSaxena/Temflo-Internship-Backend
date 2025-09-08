@@ -1,7 +1,7 @@
 const LeavePolicy = require('../../models/LeaveModels/leavePolicy');
 const LeaveRequest = require('../../models/LeaveModels/LeaveRequest');
 const LeaveBalance = require('../../models/LeaveModels/LeaveBalanace');
-const User = require('../../models/userModels/User')
+const User = require('../../models/userModels/User');
 const mongoose = require('mongoose');
 
 // 1. View leave balances
@@ -9,18 +9,15 @@ exports.getMyLeaveBalances = async (req, res) => {
   try {
     const balances = await LeaveBalance.find({
       userId: req.admin.id,
-      companyId: req.admin.companyId
+      companyId: req.admin.companyId,
     }).populate({
       path: 'leaveTypeId',
-      match: { isActive: true }  // ✅ only active leave types
+      match: { isActive: true }, // ✅ only active leave types
     });
 
-    console.log(req.admin.companyId, req.admin.id )
-    const activeBalances = balances.filter(b => b.leaveTypeId);
-
+    const activeBalances = balances.filter((b) => b.leaveTypeId);
 
     res.status(200).json({ success: true, balances: activeBalances });
-
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -36,23 +33,19 @@ exports.getLeaveBalancesByEmployeeId = async (req, res) => {
 
     const balances = await LeaveBalance.find({
       userId: employeeId,
-      companyId: req.admin.companyId
+      companyId: req.admin.companyId,
     }).populate({
       path: 'leaveTypeId',
-      match: { isActive: true }  // ✅ only active leave types
+      match: { isActive: true }, // ✅ only active leave types
     });
 
-    console.log(req.admin.companyId,employeeId)
-
-    const activeBalances = balances.filter(b => b.leaveTypeId);
+    const activeBalances = balances.filter((b) => b.leaveTypeId);
 
     res.status(200).json({ success: true, balances: activeBalances });
-
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
 
 // 3. Apply for leave
 exports.applyForLeave = async (req, res) => {
@@ -62,12 +55,12 @@ exports.applyForLeave = async (req, res) => {
     // Check if leaveType is valid for the company
     const policy = await LeavePolicy.findOne({
       companyId: req.admin.companyId,
-      _id: leaveType
+      _id: leaveType,
     });
     if (!policy) {
       return res.status(400).json({
         success: false,
-        message: 'This Leave Type is not allowed by your company'
+        message: 'This Leave Type is not allowed by your company',
       });
     }
 
@@ -75,7 +68,7 @@ exports.applyForLeave = async (req, res) => {
     const balance = await LeaveBalance.findOne({
       userId: req.admin.id,
       leaveTypeId: leaveType,
-      companyId: req.admin.companyId
+      companyId: req.admin.companyId,
     });
 
     if (!balance) {
@@ -102,8 +95,7 @@ exports.applyForLeave = async (req, res) => {
       daysRequested = 1;
       adjustedToDate = fromDate;
     } else {
-      daysRequested =
-        (new Date(toDate) - new Date(fromDate)) / (1000 * 3600 * 24) + 1;
+      daysRequested = (new Date(toDate) - new Date(fromDate)) / (1000 * 3600 * 24) + 1;
     }
 
     if (balance.balance < daysRequested) {
@@ -115,7 +107,7 @@ exports.applyForLeave = async (req, res) => {
 
     const user = await User.findOne({
       _id: req.admin.id,
-      companyId: req.admin.companyId
+      companyId: req.admin.companyId,
     });
 
     // Create leave request
@@ -123,13 +115,13 @@ exports.applyForLeave = async (req, res) => {
       userId: req.admin.id,
       companyId: req.admin.companyId,
       leaveTypeId: leaveType,
-      plantId:user.plantId,
-      approverId:user.supervisor,
+      plantId: user.plantId,
+      approverId: user.supervisor,
       fromDate,
       toDate: adjustedToDate,
       durationType,
       daysRequested,
-      reason
+      reason,
     });
 
     await request.save();
@@ -142,22 +134,23 @@ exports.applyForLeave = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Leave request submitted and balance updated',
-      request
+      request,
     });
   } catch (err) {
     console.error('Error applying for leave:', err);
     res.status(500).json({
       success: false,
-      message: err.message || 'Server error'
+      message: err.message || 'Server error',
     });
   }
 };
 
-
 // 4. View own leave requests
 exports.getMyLeaveRequests = async (req, res) => {
   try {
-    const requests = await LeaveRequest.find({ userId: req.admin.id }).populate('leaveTypeId', 'name').sort({ appliedAt: -1 });
+    const requests = await LeaveRequest.find({ userId: req.admin.id })
+      .populate('leaveTypeId', 'name')
+      .sort({ appliedAt: -1 });
     res.status(200).json({ success: true, requests });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -170,20 +163,20 @@ exports.cancelLeaveRequest = async (req, res) => {
     const request = await LeaveRequest.findOne({
       _id: req.params.requestId,
       userId: req.admin.id,
-      status: 'Pending'
+      status: 'Pending',
     });
 
     if (!request) {
-      return res.status(404).json({ success: false, message: 'Request not found or already processed' });
+      return res
+        .status(404)
+        .json({ success: false, message: 'Request not found or already processed' });
     }
-
-    
 
     // Find and update LeaveBalance
     const balance = await LeaveBalance.findOne({
       userId: req.admin.id,
       leaveTypeId: request.leaveTypeId,
-      companyId: req.admin.companyId
+      companyId: req.admin.companyId,
     });
 
     if (balance) {
@@ -199,7 +192,6 @@ exports.cancelLeaveRequest = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
 
 exports.getLeaveRequests = async (req, res) => {
   try {
@@ -220,12 +212,12 @@ exports.getLeaveRequests = async (req, res) => {
       for (const field of fieldsArray) {
         if (field === 'userId.employeeCode') {
           const matched = await User.find({
-            employeeCode: { $regex: new RegExp(searchQuery, 'i') }
+            employeeCode: { $regex: new RegExp(searchQuery, 'i') },
           }).distinct('_id');
           userIds.push(...matched);
         } else if (field === 'userId.email') {
           const matched = await User.find({
-            email: { $regex: new RegExp(searchQuery, 'i') }
+            email: { $regex: new RegExp(searchQuery, 'i') },
           }).distinct('_id');
           userIds.push(...matched);
         } else {
@@ -277,8 +269,8 @@ exports.getLeaveRequests = async (req, res) => {
     const summaryQuery = {
       companyId: req.admin.companyId,
       approverId: mongoose.Types.ObjectId.isValid(req.admin.id)
-              ? new mongoose.Types.ObjectId(req.admin.id)
-              : req.admin.id,
+        ? new mongoose.Types.ObjectId(req.admin.id)
+        : req.admin.id,
     };
 
     const totalCountPromise = LeaveRequest.countDocuments(summaryQuery);
@@ -308,9 +300,6 @@ exports.getLeaveRequests = async (req, res) => {
       Rejected: 0,
     };
 
-   
-
-
     statusCounts.forEach(({ _id, count }) => {
       if (statusSummary.hasOwnProperty(_id)) {
         statusSummary[_id] = count;
@@ -333,10 +322,7 @@ exports.getLeaveRequests = async (req, res) => {
         pending: statusSummary['Pending'],
         rejected: statusSummary['Rejected'],
       },
-      message:
-        count > 0
-          ? 'Successfully found leave requests'
-          : 'No matching leave requests found',
+      message: count > 0 ? 'Successfully found leave requests' : 'No matching leave requests found',
     });
   } catch (err) {
     console.error('Leave request error:', err);
@@ -349,59 +335,66 @@ exports.getLeaveRequests = async (req, res) => {
 
 exports.updateLeaveRequestStatus = async (req, res) => {
   try {
-    const { status} = req.body;
+    const { status } = req.body;
 
     const request = await LeaveRequest.findById(req.params.id);
 
-    if(request.approverId != req.admin.id){
-      return res.status(404).json({ success: false, message: `You do not have right to approve leave.` })
- 
+    if (request.approverId != req.admin.id) {
+      return res
+        .status(404)
+        .json({ success: false, message: `You do not have right to approve leave.` });
     }
 
-    if(request.status == status){
-        return res.status(404).json({ success: false, message: `Leave Status is already ${status}` })
-
+    if (request.status == status) {
+      return res.status(404).json({ success: false, message: `Leave Status is already ${status}` });
     }
 
-    if(request.status == "Rejected"){
-      return res.status(404).json({ success: false, message: 'Leave request already rejected, try to mark new leaves.' })
+    if (request.status == 'Rejected') {
+      return res
+        .status(404)
+        .json({
+          success: false,
+          message: 'Leave request already rejected, try to mark new leaves.',
+        });
     }
 
-    if(request.status == "Pending" && status == "Approved"){
+    if (request.status == 'Pending' && status == 'Approved') {
       request.status = status;
       await request.save();
 
-      return res.status(200).json({ success: true,message:"Leave Aprroved Sucessfully",request });
+      return res
+        .status(200)
+        .json({ success: true, message: 'Leave Aprroved Sucessfully', request });
     }
 
-    if(request.status == "Approved" && status == "Pending"){
+    if (request.status == 'Approved' && status == 'Pending') {
       request.status = status;
       await request.save();
 
-      return res.status(200).json({ success: true,message:"Leave Changed To Pending Sucessfully",request });
+      return res
+        .status(200)
+        .json({ success: true, message: 'Leave Changed To Pending Sucessfully', request });
     }
 
     request.status = status;
     await request.save();
 
     const balance = await LeaveBalance.findOne({
-        userId: request.userId,
-        leaveTypeId: request.leaveTypeId,
-        companyId: req.admin.companyId
-      });
+      userId: request.userId,
+      leaveTypeId: request.leaveTypeId,
+      companyId: req.admin.companyId,
+    });
 
-      balance.balance += request.daysRequested;
-      balance.availed = balance.availed - request.daysRequested;
-      await balance.save();
+    balance.balance += request.daysRequested;
+    balance.availed = balance.availed - request.daysRequested;
+    await balance.save();
 
-      res.status(200).json({
-        success: true,
-        message: 'Leave request Rejected Sucessfully',
-        request
-      });
+    res.status(200).json({
+      success: true,
+      message: 'Leave request Rejected Sucessfully',
+      request,
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
-

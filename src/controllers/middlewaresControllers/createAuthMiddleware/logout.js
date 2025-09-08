@@ -1,31 +1,67 @@
-const mongoose = require('mongoose');
+const authService = require('@/services/authService');
 
 const logout = async (req, res, { userModel }) => {
-  const UserPassword = mongoose.model(userModel + 'Password');
+  try {
+    const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
+    const logoutAll = req.body?.logoutAll === true;
 
-  const token = req.cookies.token;
-  await UserPassword.findOneAndUpdate(
-    { user: req.admin._id },
-    { $pull: { loggedSessions: token } },
-    {
-      new: true,
+    if (token) {
+      // Use auth service to handle logout and token blacklisting
+      await authService.logout(token, userModel, logoutAll);
     }
-  ).exec();
 
-  res
-    .clearCookie('token', {
-      maxAge: null,
-      sameSite: 'none',
-      httpOnly: true,
-      secure: true,
-      domain: req.hostname,
-      Path: '/',
-    })
-    .json({
+    // Clear cookies
+    res
+      .clearCookie('token', {
+        httpOnly: process.env.COOKIE_HTTP_ONLY !== 'false',
+        secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true',
+        sameSite:
+          process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'None' : 'Lax'),
+        domain: process.env.COOKIE_DOMAIN || undefined,
+        path: process.env.COOKIE_PATH || '/',
+      })
+      .clearCookie('refreshToken', {
+        httpOnly: process.env.COOKIE_HTTP_ONLY !== 'false',
+        secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true',
+        sameSite:
+          process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'None' : 'Lax'),
+        domain: process.env.COOKIE_DOMAIN || undefined,
+        path: process.env.COOKIE_PATH || '/',
+      });
+
+    res.status(200).json({
       success: true,
       result: {},
-      message: 'Successfully logout',
+      message: logoutAll ? 'Successfully logged out from all devices' : 'Successfully logged out',
     });
+  } catch (error) {
+    console.error('Logout error:', error);
+
+    // Still clear cookies even if logout fails
+    res
+      .clearCookie('token', {
+        httpOnly: process.env.COOKIE_HTTP_ONLY !== 'false',
+        secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true',
+        sameSite:
+          process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'None' : 'Lax'),
+        domain: process.env.COOKIE_DOMAIN || undefined,
+        path: process.env.COOKIE_PATH || '/',
+      })
+      .clearCookie('refreshToken', {
+        httpOnly: process.env.COOKIE_HTTP_ONLY !== 'false',
+        secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true',
+        sameSite:
+          process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'None' : 'Lax'),
+        domain: process.env.COOKIE_DOMAIN || undefined,
+        path: process.env.COOKIE_PATH || '/',
+      });
+
+    res.status(200).json({
+      success: true,
+      result: {},
+      message: 'Logged out (with errors)',
+    });
+  }
 };
 
 module.exports = logout;
