@@ -51,6 +51,7 @@ const coreNoticeRouter = require('./routes/coreRoutes/coreNotice');
 const coreNotificationRouter = require('./routes/coreRoutes/coreNotification');
 const payrollApiRouter = require('./routes/PayrollRoutes/payrollAPI'); // ✅ payroll import
 const materialManagementRouter = require('./routes/MaterialRoutes/index'); // Material Management routes
+const assignmentRouter = require('./routes/appRoutes/assignmentRoutes'); // Assignment routes
 
 const runCrons = require('./cron');
 
@@ -117,6 +118,7 @@ app.use('/api/task-manager', adminAuth.isValidAuthToken, taskManagerRouter);
 app.use('/api/material-management', adminAuth.isValidAuthToken, materialManagementRouter); // Material Management routes
 
 app.use('/api/payroll', adminAuth.isValidAuthToken, payrollApiRouter); // ✅ payroll route
+app.use('/api/assignment', adminAuth.isValidAuthToken, assignmentRouter); // Assignment routes
 
 // app.use('/download', coreDownloadRouter);
 // app.use('/public', corePublicRouter);
