@@ -27,7 +27,7 @@ router.route('/workspace/delete/:workspaceId').delete(catchErrors(workspaceContr
 // Project APIs
 router.route('/project/create/:workspaceId').post(catchErrors(projectController.create));
 router.route('/project/list/:workspaceId').get(catchErrors(projectController.paginatedList)); 
-router.route('/project/read').get(catchErrors(projectController.read));
+router.route('/project/read/:plantId').get(catchErrors(projectController.read));
 router.route('/project/read/p/:projectId').get(catchErrors(projectController.readP));
 router.route('/project/read/w/:workspaceId').get(catchErrors(projectController.readW));
 router.route('/project/update/:projectId').put(catchErrors(projectController.updateProject)); 
@@ -36,7 +36,7 @@ router.route('/project/delete/:projectId').delete(catchErrors(projectController.
 // Task APIs
 router.route('/task/create/:projectId').post(catchErrors(taskController.create)); 
 router.route('/task/list/:projectId').get(catchErrors(taskController.paginatedList));
-router.route('/task/read').get(catchErrors(taskController.read));
+router.route('/task/read/:plantId').get(catchErrors(taskController.read));
 router.route('/task/read/w/:workspaceId').get(catchErrors(taskController.readW));
 router.route('/task/read/p/:projectId').get(catchErrors(taskController.readP));
 router.route('/task/read/t/:taskId').get(catchErrors(taskController.readT));
