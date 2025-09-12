@@ -1,27 +1,33 @@
+const UserModel = require("@/models/userModels/User");
+const { COMPANY_DETAILS_UPDATED } = require("@/config/activity.enums");
+const { errorMessage, throwInternalServerError, throwDBResourceNotFoundError, throwMissingFieldsError } = require("@/config/error-handler.config");
+const { logWithTime } = require("@/utils/time-stamps");
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { OK } = require('@/config/httpStatus.config');
 
-const User = require("../../../models/userModels/User")
-
-const updateCompanyDetails= async (req, res) => {
+const updateCompanyDetails = async (req, res) => {
   try {
-    const  id  = req.admin._id; // Admin ID passed in URL
+    const id = req.admin._id; // Admin ID
+    const companyId = req.admin.companyId;
+
     const {
       legalStatus,
-        tan,
-        pan,
-        year,
-        name,
-        address,
-        city,
-        state,
-        country,
-        pinCode,
-        phoneNumber
+      tan,
+      pan,
+      year,
+      name,
+      address,
+      city,
+      state,
+      country,
+      pinCode,
+      phoneNumber
     } = req.body;
 
-   
-
-    const updatedAdmin = await User.findByIdAndUpdate(
-      id,
+    // ⚡ Single query: update + old doc return
+    const oldAdmin = await UserModel.findOneAndUpdate(
+      { _id: id, companyId },
       {
         legalStatus,
         tan,
@@ -33,31 +39,71 @@ const updateCompanyDetails= async (req, res) => {
         state,
         country,
         pinCode,
-        phoneNumber
-        
+        phoneNumber,
       },
-      { new: true } // Return the updated document
+      { new: false } // 👈 returns OLD document (before update)
     );
 
-    if (!updatedAdmin) {
-      return res.status(404).json({
-        success: false,
-        message: 'Admin not found',
-      });
+    if (!oldAdmin) {
+      return throwDBResourceNotFoundError(res, "Admin");
     }
 
+    logWithTime(`✅ 🎯 Company Details Updated Successfully 🚀`);
 
-    return res.status(200).json({
+    // Old data from oldAdmin
+    const oldData = {
+      legalStatus: oldAdmin.legalStatus,
+      tan: oldAdmin.tan,
+      pan: oldAdmin.pan,
+      year: oldAdmin.year,
+      name: oldAdmin.name,
+      address: oldAdmin.address,
+      city: oldAdmin.city,
+      state: oldAdmin.state,
+      country: oldAdmin.country,
+      pinCode: oldAdmin.pinCode,
+      phoneNumber: oldAdmin.phoneNumber
+    };
+
+    // New data from request body (already updated in DB)
+    const newData = {
+      legalStatus,
+      tan,
+      pan,
+      year,
+      name,
+      address,
+      city,
+      state,
+      country,
+      pinCode,
+      phoneNumber
+    };
+
+    // Activity Tracker logging
+    activityTracker({
+      userId: id, // admin ka Mongo ID as userId
+      companyId: companyId,
+      plantId: oldAdmin.plantId || null,
+      module: MODULE.core,
+      subModuleAffected: SUBMODULE.setting,
+      fileAffected: FILE.file_setting_updateCompanyDetails,
+      modelAffected: [MODEL_AFFECTED.model_user],
+      eventType: COMPANY_DETAILS_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData: oldData,
+      newData: newData
+    });
+
+    return res.status(OK).json({
       success: true,
-      result: updatedAdmin,
+      result: { ...oldAdmin.toObject(), ...newData }, // response me updated data bhejna
       message: 'Company details updated successfully',
     });
   } catch (error) {
-    console.error('Update Admin Error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-    });
+    logWithTime("❌ Internal Error: Failed to update the company details 🗑️");
+    errorMessage(error);
+    return throwInternalServerError(res);
   }
 };
 

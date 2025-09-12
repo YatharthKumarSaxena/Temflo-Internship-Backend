@@ -1,4 +1,7 @@
 const authService = require('@/services/authService');
+const { USER_LOGGED_OUT } = require("@/config/activity.enums");
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
 
 const logout = async (req, res, { userModel }) => {
   try {
@@ -28,6 +31,25 @@ const logout = async (req, res, { userModel }) => {
         domain: process.env.COOKIE_DOMAIN || undefined,
         path: process.env.COOKIE_PATH || '/',
       });
+
+    // Activity Tracker logging
+    activityTracker({
+      userId: req.admin._id, // admin ka Mongo ID as userId
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.middlewares,
+      subModuleAffected: SUBMODULE.createAuth,
+      fileAffected: FILE.file_createAuth_logout,
+      modelAffected: [MODEL_AFFECTED.model_userPassword],
+      eventType: USER_LOGGED_OUT,
+      actionDone: ACTIONS.update,
+      oldData: {
+        refreshToken: "A Refresh Token"
+      },  
+      newData: {
+        refreshToken: null
+      }   
+    });
 
     res.status(200).json({
       success: true,

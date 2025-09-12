@@ -1,17 +1,27 @@
 const mongoose = require('mongoose');
-
+const { USER_INFO_DELETED } = require("@/config/activity.enums");
+const { errorMessage, throwInternalServerError, throwMissingFieldsError, throwInvalidResourceError, throwDBResourceNotFoundError } = require("@/config/error-handler.config");
+const { logWithTime } = require("@/utils/time-stamps");
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { OK } = require('@/config/httpStatus.config');
 
 const deleteInfo = async (req, res, next) => {
-    const { infoType, id, deleteId } = req.params;
-    const User = mongoose.model('User');
+  const { infoType, id, deleteId } = req.params;
+  const User = mongoose.model('User');
 
-    // Validate infoType
-    const allowedTypes = ['degreeInfo', 'experience'];
-    if (!allowedTypes.includes(infoType)) {
-        return res.status(400).json({ message: 'Invalid Url to delete' });
-    }
+  // Validate infoType
+  const allowedTypes = ['degreeInfo', 'experience'];
+  if (!allowedTypes.includes(infoType)) {
+    return throwInvalidResourceError(res, "URL");
+  }
 
-    try {
+  try {
+
+    const userBeforeUpdate = await User.findOne({ _id: id });
+
+    const deletedInfo = userBeforeUpdate[infoType].find(item => item._id.toString() === deleteId);
+
     // Pull the item from the specified array
     const result = await User.findOneAndUpdate(
       { _id: id, [`${infoType}._id`]: deleteId }, // Check existence
@@ -20,17 +30,34 @@ const deleteInfo = async (req, res, next) => {
     );
 
     if (!result) {
-      return res.status(404).json({ message: `${infoType === 'degreeInfo' ? 'Degree' : 'Experience'} not found` });
+      return throwDBResourceNotFoundError(res, `${infoType === 'degreeInfo' ? 'Degree' : 'Experience'}`);
     }
 
-    res.status(200).json({ message: `${infoType === 'degreeInfo' ? 'Degree' : 'Experience'} deleted successfully`, data: result });
-  } catch (error) {
-    console.error('Error deleting item:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-    
+    logWithTime(`✅ 🎯 User Information (Experience and Degree) Deleted Successfully 🚀`);
 
-   
+    // Activity Tracker logging
+    activityTracker({
+      userId: req.admin._id, // admin ka Mongo ID as userId
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.core,
+      subModuleAffected: SUBMODULE.user,
+      fileAffected: FILE.file_user_deleteInfo,
+      modelAffected: [MODEL_AFFECTED.model_user],
+      eventType: USER_INFO_DELETED,
+      actionDone: ACTIONS.delete,
+      oldData: deletedInfo || null,
+      newData: {
+        [infoType]: result[infoType] // updated array after deletion
+      }
+    });
+
+    return res.status(OK).json({ message: `${infoType === 'degreeInfo' ? 'Degree' : 'Experience'} deleted successfully`, data: result });
+  } catch (error) {
+    logWithTime("❌ Internal Error: Failed to delete User Information 🗑️");
+    errorMessage(error);
+    return throwInternalServerError(res);
+  }
 };
 
 module.exports = deleteInfo;

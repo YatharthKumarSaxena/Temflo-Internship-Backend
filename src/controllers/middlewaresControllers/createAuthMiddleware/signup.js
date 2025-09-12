@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const sendEmail = require('@/utils/emailSender');
+const {sendEmail} = require('@/utils/emailSender');
 const { emailVerfication } = require('@/emailTemplate/emailVerfication');
 const checkAndCorrectURL = require('./checkAndCorrectURL');
 const { useAppSettings } = require('@/settings');
@@ -101,10 +101,10 @@ const signUp = async (req, res, { userModel }) => {
     const emailSent = await sendEmail(email, 'Verify your email | ERPICA', emailHtml);
 
     // Activity Tracker logging
-    await activityTracker({
+    activityTracker({
       userId: adminResult._id, // admin ka Mongo ID as userId
       companyId: adminResult.companyId,
-      plantId: null,
+      plantId: adminResult.plantId || null,
       module: MODULE.middlewares,
       subModuleAffected: SUBMODULE.createAuth,
       fileAffected: FILE.file_createAuth_register,
@@ -115,6 +115,7 @@ const signUp = async (req, res, { userModel }) => {
       newData: adminResult.toObject(),
     });
 
+    console.log("Lets See");
     // ✅ Case 1: Email send failed but account created
     if (!emailSent) {
       return res.status(CREATED).json({

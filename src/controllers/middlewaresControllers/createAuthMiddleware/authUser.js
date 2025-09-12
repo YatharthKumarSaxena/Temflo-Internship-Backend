@@ -1,5 +1,8 @@
 const authService = require('@/services/authService');
 const { ROLE_TYPES } = require('@/config/user.config');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { USER_LOGGED_IN } = require("@/config/activity.enums");
 
 const authUser = async (req, res, { user, databasePassword, password, UserPasswordModel }) => {
   try {
@@ -61,6 +64,21 @@ const authUser = async (req, res, { user, databasePassword, password, UserPasswo
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
 
+        // Activity Tracker logging
+    activityTracker({
+      userId: user._id, // admin ka Mongo ID as userId
+      companyId: user.companyId,
+      plantId: user.plantId || null,
+      module: MODULE.middlewares,
+      subModuleAffected: SUBMODULE.createAuth,
+      fileAffected: FILE.file_createAuth_authUser,
+      modelAffected: [MODEL_AFFECTED.model_userPassword],
+      eventType: USER_LOGGED_IN,
+      actionDone: ACTIONS.update,
+      oldData: { jwtTokenIssuedAt: databasePassword.lastActivity || null },
+      newData: { jwtTokenIssuedAt: new Date() }
+    });
+    
     res.status(200).json({
       success: true,
       result: {

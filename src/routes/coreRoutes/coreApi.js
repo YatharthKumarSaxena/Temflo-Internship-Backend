@@ -12,6 +12,8 @@ const requireReadAccess = require('@/middlewares/access/requireReadAccess')
 const requireWriteAccess = require('@/middlewares/access/requireWriteAccess')
 const checkPermission = require('@/middlewares/access/checkMiddleware')
 const isAdminOrOwner = require('@/middlewares/access/AdminOwner')
+const { getAdminActivities } = require("@/controllers/coreControllers/activityTracker/adminActivity.controller");
+const { getUserActivities } = require("@/controllers/coreControllers/activityTracker/userActivity.controller");
 
 router.route('/setting/CompanyInfo').get(isAdminOrOwner, catchErrors(settingController.getCompanyDetails));
 router.route('/setting/updateCompanyDetails').patch(isAdminOrOwner,catchErrors(settingController.updateCompanyDetails))
@@ -29,6 +31,8 @@ router.route('/plant/count').get(catchErrors(userController.countPlants))
 router.route('/asset/count').get(catchErrors(userController.countAssets))
 router.route('/employee/search-employee-list').get(catchErrors(userController.employeeList))
 router.route('/employee/download-excel-list').get(catchErrors(userController.downloadFile))
+router.route('/get-user-activities').get(catchErrors(getAdminActivities));
+router.route('/get-my-activities').get(catchErrors(getUserActivities));
 
 // ---------------------------API to Update User Information----------------------------
 router.route('/employee/update-info/:id').patch(checkPermission("manage_employee"),requireWriteAccess,catchErrors(userController.UpdateController.updateInfo))

@@ -1,33 +1,52 @@
-const remove= async (Model, req, res) => {
-    try {
-      const  id  = req.admin.companyId; 
-       
-      const updatedBusinessArea = await Model.findOneAndUpdate(
-          { _id: req.params.id, companyId: id }, 
-          { removed:true },                
-          { new: true }                   
-        );
-  
-      if (!updatedBusinessArea) {
-        return res.status(404).json({
-          success: false,
-          message: 'GSTIN Number not found or you do not have access to delete this GSTIN Number.',
-        });
-      }
-  
-  
-      return res.status(200).json({
-        success: true,
-        message: 'GSTIN Number Deleted successfully',
-      });
-    } catch (error) {
-      console.error('Update Admin Error:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-      });
+const { OK } = require("@/config/httpStatus.config");
+const { GSTIN_REMOVED } = require("@/config/activity.enums");
+const { errorMessage, throwInternalServerError, throwDBResourceNotFoundError } = require("@/config/error-handler.config");
+const { logWithTime } = require("@/utils/time-stamps");
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+
+const remove = async (Model, req, res) => {
+  try {
+    const companyId = req.admin.companyId;
+
+    const updatedGSTINNumber = await Model.findOneAndUpdate(
+      { _id: req.params.id, companyId: companyId },
+      { removed: true },
+      { new: false } 
+    );
+
+    if (!updatedGSTINNumber) {
+      return throwDBResourceNotFoundError(res, "GSTIN Number");
     }
-  };
-  
-  module.exports = remove;
-  
+
+    logWithTime(`✅ 🎯 Document removed Successfully 🚀`);
+    // Activity Tracker logging
+    activityTracker({
+      userId: req.admin._id, // admin ka Mongo ID as userId
+      companyId: companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.app,
+      subModuleAffected: SUBMODULE.gstinNumber,
+      fileAffected: FILE.file_gstinNumber_remove,
+      modelAffected: [MODEL_AFFECTED.model_gstinNumber],
+      eventType: GSTIN_REMOVED,
+      actionDone: ACTIONS.delete,
+      oldData: updatedGSTINNumber.toObject(),
+      newData: {
+        note: "All fields same as old data, Soft delettion is done",
+        removed: true
+      }
+    });
+
+    return res.status(OK).json({
+      success: true,
+      message: 'GSTIN Number Deleted successfully',
+    });
+  } catch (error) {
+    logWithTime("❌ Internal Error: Failed to remove GSTIN Number 🗑️");
+    errorMessage(error);
+    return throwInternalServerError(res);
+  }
+};
+
+module.exports = remove;

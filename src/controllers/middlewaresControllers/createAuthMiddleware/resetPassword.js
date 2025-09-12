@@ -1,138 +1,113 @@
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const Joi = require('joi');
 const mongoose = require('mongoose');
-
+const Joi = require('joi');
 const shortid = require('shortid');
+const { activityTracker } = require("@/utils/activityTracker");
+const { USER_PASSWORD_RESET, USER_LOGGED_OUT } = require("@/config/activity.enums");
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { RESET_TOKEN_EXPIRY } = require("@/config/token.config");
 
 const resetPassword = async (req, res, { userModel }) => {
-  const UserPassword = mongoose.model(userModel + 'Password');
-  const User = mongoose.model(userModel);
-  const { password, userId, resetToken } = req.body;
+  try {
+    const User = mongoose.model(userModel);
+    const UserPassword = mongoose.model(userModel + 'Password');
 
-  const databasePassword = await UserPassword.findOne({ user: userId, removed: false });
-  const user = await User.findOne({ _id: userId, removed: false }).exec();
+    const { password, userId, resetToken } = req.body;
 
-  if (!user.enabled && user.role === 'owner') {
-    const settings = useAppSettings();
-    const idurar_app_email = settings['idurar_app_email'];
-    const idurar_base_url = settings['idurar_base_url'];
-
-    const url = checkAndCorrectURL(idurar_base_url);
-
-    const link = url + '/verify/' + user._id + '/' + databasePassword.emailToken;
-
-    await sendMail({
-      email,
-      name: user.name,
-      link,
-      idurar_app_email,
-      emailToken: databasePassword.emailToken,
+    // Input validation
+    const schema = Joi.object({
+      password: Joi.string().min(8).required(),
+      userId: Joi.string().required(),
+      resetToken: Joi.string().required(),
     });
+    const { error } = schema.validate({ password, userId, resetToken });
+    if (error) return res.status(409).json({ success: false, message: error.message });
 
-    return res.status(403).json({
-      success: false,
-      result: null,
-      message:
-        'your email account is not verified , check your email inbox to activate your account',
-    });
-  }
+    // Fetch user and password record
+    const user = await User.findOne({ _id: userId, removed: false });
+    const userPassword = await UserPassword.findOne({ user: userId, removed: false });
 
-  if (!user.enabled)
-    return res.status(409).json({
-      success: false,
-      result: null,
-      message: 'Your account is disabled, contact your account adminstrator',
-    });
-
-  if (!databasePassword || !user)
-    return res.status(404).json({
-      success: false,
-      result: null,
-      message: 'No account with this email has been registered.',
-    });
-
-  const isMatch = resetToken === databasePassword.resetToken;
-  if (!isMatch || databasePassword.resetToken === undefined || databasePassword.resetToken === null)
-    return res.status(403).json({
-      success: false,
-      result: null,
-      message: 'Invalid reset token',
-    });
-
-  // validate
-  const objectSchema = Joi.object({
-    password: Joi.string().required(),
-    userId: Joi.string().required(),
-    resetToken: Joi.string().required(),
-  });
-
-  const { error, value } = objectSchema.validate({ password, userId, resetToken });
-  if (error) {
-    return res.status(409).json({
-      success: false,
-      result: null,
-      error: error,
-      message: 'Invalid reset password object',
-      errorMessage: error.message,
-    });
-  }
-
-  const salt = shortid.generate();
-  const hashedPassword = bcrypt.hashSync(salt + password);
-  const emailToken = shortid.generate();
-
-  const token = jwt.sign(
-    {
-      id: userId,
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: '24h' }
-  );
-
-  await UserPassword.findOneAndUpdate(
-    { user: userId },
-    {
-      $push: { loggedSessions: token },
-      password: hashedPassword,
-      salt: salt,
-      emailToken: emailToken,
-      resetToken: shortid.generate(),
-      emailVerified: true,
-    },
-    {
-      new: true,
+    if (!user || !userPassword) {
+      return res.status(404).json({ success: false, message: "User not found" });
     }
-  ).exec();
 
-  if (
-    resetToken === databasePassword.resetToken &&
-    databasePassword.resetToken !== undefined &&
-    databasePassword.resetToken !== null
-  )
-    return res
-      .status(200)
-      .cookie('token', token, {
-        maxAge: 24 * 60 * 60 * 1000,
-        sameSite: 'Lax',
-        httpOnly: true,
-        secure: false,
-        domain: req.hostname,
-        path: '/',
-        Partitioned: true,
-      })
-      .json({
-        success: true,
-        result: {
-          _id: user._id,
-          name: user.name,
-          surname: user.surname,
-          role: user.role,
-          email: user.email,
-          photo: user.photo,
-        },
-        message: 'Successfully resetPassword user',
+    // Token validation
+    if (!userPassword.resetToken || resetToken !== userPassword.resetToken.token) {
+      return res.status(403).json({ success: false, message: "Invalid reset token" });
+    }
+
+    // Check token expiry
+    const tokenCreated = new Date(userPassword.resetToken.created).getTime();
+    const now = Date.now();
+    if (now > tokenCreated + RESET_TOKEN_EXPIRY) {
+      return res.status(403).json({ success: false, message: "Reset token expired" });
+    }
+
+    // Generate new password hash
+    const salt = shortid.generate();
+    const hashedPassword = await userPassword.generateHash(salt, password);
+
+    // Update password and reset token
+    userPassword.password = hashedPassword;
+    userPassword.salt = salt;
+    userPassword.resetToken = null;
+
+    // Check if there are any active refresh tokens
+    const oldTokens = userPassword.activeSessions.map(s => s.refreshToken);
+    const hasActiveRefreshToken = oldTokens.some(token => token);
+
+    if (hasActiveRefreshToken) {
+      // Remove all active sessions
+      userPassword.activeSessions = [];
+    }
+
+    // Save updates (password + sessions cleared if any)
+    await userPassword.save();
+
+    // Activity Tracker: Password reset
+    activityTracker({
+      userId: user._id,
+      companyId: user.companyId,
+      plantId: user.plantId || null,
+      module: MODULE.middlewares,
+      subModuleAffected: SUBMODULE.createAuth,
+      fileAffected: FILE.file_createAuth_resetPassword,
+      modelAffected: [MODEL_AFFECTED.model_userPassword],
+      eventType: USER_PASSWORD_RESET,
+      actionDone: ACTIONS.update,
+      oldData: { resetToken: "Old Token", passwordChanged: false, sessionsCleared: false },
+      newData: { resetToken: null, passwordChanged: true, sessionsCleared: hasActiveRefreshToken },
+    });
+
+    // If sessions were cleared, log USER_LOGGED_OUT + clear cookies
+    if (hasActiveRefreshToken) {
+      activityTracker({
+        userId: user._id,
+        companyId: user.companyId,
+        plantId: user.plantId || null,
+        module: MODULE.middlewares,
+        subModuleAffected: SUBMODULE.createAuth,
+        fileAffected: FILE.file_createAuth_resetPassword,
+        modelAffected: [MODEL_AFFECTED.model_userPassword],
+        eventType: USER_LOGGED_OUT,
+        actionDone: ACTIONS.update,
+        oldData: { refreshToken: oldTokens },
+        newData: { refreshToken: [] },
       });
+
+      res
+        .clearCookie('token', { path: '/', httpOnly: true })
+        .clearCookie('refreshToken', { path: '/', httpOnly: true });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully. Please login with your new password.",
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
 };
 
 module.exports = resetPassword;

@@ -1,5 +1,8 @@
 const mongoose = require('mongoose');
 const { generate: uniqueId } = require('shortid');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { USER_CREATED } = require("@/config/activity.enums");
 
 const createUser = async (req, res) => {
   try {
@@ -44,7 +47,23 @@ const createUser = async (req, res) => {
         user:userResult._id
     }
     await new UserPassword(userPasswordData).save();
-
+    // Activity Tracker logging
+    activityTracker({
+      userId: req.admin._id, // admin ka Mongo ID as userId
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.core,
+      subModuleAffected: SUBMODULE.user,
+      fileAffected: FILE.file_user_createUser,
+      modelAffected: [MODEL_AFFECTED.model_user, MODEL_AFFECTED.model_userPassword],
+      eventType: USER_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: {
+        user: userResult
+      }
+    });
+    
     return res.status(200).json({
       success: true,
       message: 'User Created Successfully',
