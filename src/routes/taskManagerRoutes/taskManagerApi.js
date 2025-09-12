@@ -22,7 +22,7 @@ router.route('/workspace/read/w/:workspaceId').get(catchErrors(workspaceControll
 router
   .route('/workspace/update/:workspaceId')
   .put(catchErrors(workspaceController.updateWorkspace)); 
-router.route('/workspace/delete/:workspaceId').delete(catchErrors(workspaceController.remove)); 
+router.route('/workspace/delete/:workspaceId').patch(catchErrors(workspaceController.remove)); 
 
 // Project APIs
 router.route('/project/create/:workspaceId').post(catchErrors(projectController.create));
@@ -31,7 +31,7 @@ router.route('/project/read/:plantId').get(catchErrors(projectController.read));
 router.route('/project/read/p/:projectId').get(catchErrors(projectController.readP));
 router.route('/project/read/w/:workspaceId').get(catchErrors(projectController.readW));
 router.route('/project/update/:projectId').put(catchErrors(projectController.updateProject)); 
-router.route('/project/delete/:projectId').delete(catchErrors(projectController.remove)); 
+router.route('/project/delete/:projectId').patch(catchErrors(projectController.remove)); 
 
 // Task APIs
 router.route('/task/create/:projectId').post(catchErrors(taskController.create)); 
