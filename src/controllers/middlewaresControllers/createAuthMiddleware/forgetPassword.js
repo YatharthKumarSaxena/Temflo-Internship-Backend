@@ -1,86 +1,110 @@
 const Joi = require('joi');
-
 const mongoose = require('mongoose');
-
 const checkAndCorrectURL = require('./checkAndCorrectURL');
-const sendMail = require('./sendMail');
+const { sendEmail } = require('@/utils/emailSender');
 const shortid = require('shortid');
-const { loadSettings } = require('@/middlewares/settings');
-
 const { useAppSettings } = require('@/settings');
+const { RESET_TOKEN_EXPIRY } = require('@/config/token.config'); // in milliseconds
 
 const forgetPassword = async (req, res, { userModel }) => {
-  const UserPassword = mongoose.model(userModel + 'Password');
-  const User = mongoose.model(userModel);
-  const { email } = req.body;
+  try {
+    const UserPassword = mongoose.model(userModel + 'Password');
+    const User = mongoose.model(userModel);
+    const { email } = req.body;
 
-  // validate
-  const objectSchema = Joi.object({
-    email: Joi.string()
-      .email({ tlds: { allow: true } })
-      .required(),
-  });
+    // Validate email
+    const schema = Joi.object({
+      email: Joi.string().email({ tlds: { allow: true } }).required(),
+    });
+    const { error } = schema.validate({ email });
+    if (error) {
+      return res.status(409).json({
+        success: false,
+        result: null,
+        message: 'Invalid email.',
+        errorMessage: error.message,
+      });
+    }
 
-  const { error, value } = objectSchema.validate({ email });
-  if (error) {
+    // Find user
+    const user = await User.findOne({ email, removed: false });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        result: null,
+        message: 'No account with this email has been registered.',
+      });
+    }
+
+    if (user.status === 'inactive') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is inactive, contact your administrator',
+      });
+    }
+
+    // Find user's password record
+    const userPassword = await UserPassword.findOne({ user: user._id, removed: false });
+    const now = new Date();
+
+    // Check if valid token exists and not expired
+    if (
+      userPassword.resetToken &&
+      userPassword.resetToken.token &&
+      userPassword.resetToken.created
+    ) {
+      const tokenCreated = new Date(userPassword.resetToken.created).getTime();
+      const tokenExpiryTime = tokenCreated + RESET_TOKEN_EXPIRY;
+
+if (now.getTime() < tokenExpiryTime) {
+    const remainingMs = tokenExpiryTime - now.getTime();
+    const remainingMinutes = Math.ceil(remainingMs / 60000); // minutes
     return res.status(409).json({
-      success: false,
+        success: false,
+        message: `Password reset email already sent. Please check your inbox. Token will expire in ${remainingMinutes} minute(s).`,
+    });
+}
+
+    }
+
+    // Generate new token if none exists or expired
+    const resetToken = shortid.generate();
+    userPassword.resetToken = { token: resetToken, created: now };
+    await userPassword.save();
+
+    // Build reset link
+    const settings = useAppSettings();
+    const idurar_base_url = settings['idurar_base_url'];
+    const url = checkAndCorrectURL(idurar_base_url);
+    const link = `${url}/resetpassword/${user._id}/${resetToken}`;
+
+    // Send email
+    const emailSent = await sendEmail(
+      email,
+      'Reset your password | idurar',
+      `<p>Hello ${user.name},</p>
+       <p>Click <a href="${link}">here</a> to reset your password.</p>`
+    );
+
+    if (!emailSent) {
+      return res.status(500).json({
+        success: false,
+        message: 'Sorry, an internal error occurred. Please try again.',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
       result: null,
-      error: error,
-      message: 'Invalid email.',
-      errorMessage: error.message,
+      message: 'Check your email inbox to reset your password',
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
     });
   }
-
-  const user = await User.findOne({ email: email, removed: false });
-  const databasePassword = await UserPassword.findOne({ user: user._id, removed: false });
-
-  if (!user.enabled)
-    return res.status(409).json({
-      success: false,
-      result: null,
-      message: 'Your account is disabled, contact your account adminstrator',
-    });
-
-  // console.log(user);
-  if (!user)
-    return res.status(404).json({
-      success: false,
-      result: null,
-      message: 'No account with this email has been registered.',
-    });
-
-  const resetToken = shortid.generate();
-  await UserPassword.findOneAndUpdate(
-    { user: user._id },
-    { resetToken },
-    {
-      new: true,
-    }
-  ).exec();
-
-  const settings = useAppSettings();
-  const idurar_app_email = settings['idurar_app_email'];
-  const idurar_base_url = settings['idurar_base_url'];
-
-  const url = checkAndCorrectURL(idurar_base_url);
-
-  const link = url + '/resetpassword/' + user._id + '/' + resetToken;
-
-  await sendMail({
-    email,
-    name: user.name,
-    link,
-    subject: 'Reset your password | idurar',
-    idurar_app_email,
-    type: 'passwordVerfication',
-  });
-
-  return res.status(200).json({
-    success: true,
-    result: null,
-    message: 'Check your email inbox , to reset your password',
-  });
 };
 
 module.exports = forgetPassword;

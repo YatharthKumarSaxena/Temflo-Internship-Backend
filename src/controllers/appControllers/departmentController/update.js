@@ -1,35 +1,53 @@
-const update= async (Model, req, res) => {
+const { OK } = require("@/config/httpStatus.config");
+const { DEPARTMENT_UPDATED } = require("@/config/activity.enums");
+const { errorMessage, throwInternalServerError, throwDBResourceNotFoundError } = require("@/config/error-handler.config");
+const { logWithTime } = require("@/utils/time-stamps");
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+
+const update = async (Model, req, res) => {
   try {
-    const  id  = req.admin.companyId; // Admin ID passed in URL
-    const {
-      description
-    } = req.body;
+    const companyId = req.admin.companyId;
+    const { description } = req.body;
 
-    const updatedBusinessArea = await Model.findOneAndUpdate(
-        { _id: req.params.id, companyId: id }, 
-        { description },                
-        { new: true }                   
-      );
+    // single query: update + return old document
+    const oldDepartment = await Model.findOneAndUpdate(
+      { _id: req.params.id, companyId: companyId },
+      { description },
+      { new: false }  // return pre-update document
+    );
 
-    if (!updatedBusinessArea) {
-      return res.status(404).json({
-        success: false,
-        message: 'Department not found or you do not have access to this Department',
-      });
+    if (!oldDepartment) {
+      return throwDBResourceNotFoundError(res, "Department");
     }
 
+    logWithTime(`✅ 🎯 Department Updated Successfully 🚀`);
 
-    return res.status(200).json({
+    // Activity Tracker logging
+    activityTracker({
+      userId: req.admin._id,
+      companyId: companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.app,
+      subModuleAffected: SUBMODULE.department,
+      fileAffected: FILE.file_department_update,
+      modelAffected: [MODEL_AFFECTED.model_department],
+      eventType: DEPARTMENT_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData: { _id: req.params.id, description: oldDepartment.description },
+      newData: { description },
+    });
+
+    return res.status(OK).json({
       success: true,
-      result: updatedBusinessArea,
-      message: 'Department updated successfully',
+      result: { ...oldDepartment.toObject(), description }, // updated version return
+      message: "Department updated successfully",
     });
+
   } catch (error) {
-    console.error('Update Admin Error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-    });
+    logWithTime("❌ Internal Error: Failed to update Department 🗑️");
+    errorMessage(error);
+    return throwInternalServerError(res);
   }
 };
 

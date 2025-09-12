@@ -1,33 +1,53 @@
-const remove= async (Model, req, res) => {
-    try {
-      const  id  = req.admin.companyId; 
-       
-      const updatedBusinessArea = await Model.findOneAndUpdate(
-          { _id: req.params.id, companyId: id }, 
-          { removed:true },                
-          { new: true }                   
-        );
-  
-      if (!updatedBusinessArea) {
-        return res.status(404).json({
-          success: false,
-          message: 'Department not found or you do not have access to delete this Department',
-        });
-      }
-  
-  
-      return res.status(200).json({
-        success: true,
-        message: 'Department Deleted successfully',
-      });
-    } catch (error) {
-      console.error('Update Admin Error:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-      });
+const { OK } = require("@/config/httpStatus.config");
+const { DEPARTMENT_REMOVED } = require("@/config/activity.enums");
+const { errorMessage, throwInternalServerError, throwDBResourceNotFoundError } = require("@/config/error-handler.config");
+const { logWithTime } = require("@/utils/time-stamps");
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+
+const remove = async (Model, req, res) => {
+  try {
+    const companyId = req.admin.companyId; // Company ID from admin token
+
+    const updatedDepartment = await Model.findOneAndUpdate(
+      { _id: req.params.id, companyId: companyId },
+      { removed: true },
+      { new: false } 
+    );
+
+    if (!updatedDepartment) {
+      return throwDBResourceNotFoundError(res, "Department");
     }
-  };
-  
-  module.exports = remove;
-  
+
+    logWithTime(`✅ 🎯 Department Removed Successfully 🚀`);
+
+    // Activity Tracker logging
+    activityTracker({
+      userId: req.admin._id, // admin ka Mongo ID as userId
+      companyId: companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.app,
+      subModuleAffected: SUBMODULE.department,
+      fileAffected: FILE.file_department_remove,
+      modelAffected: [MODEL_AFFECTED.model_department],
+      eventType: DEPARTMENT_REMOVED,
+      actionDone: ACTIONS.delete,
+      oldData: updatedDepartment.toObject(),
+      newData: { 
+        note: "All fields same as old data, Soft deletion is done",
+        removed: true 
+      }
+    });
+
+    return res.status(OK).json({
+      success: true,
+      message: 'Department Deleted successfully',
+    });
+  } catch (error) {
+    logWithTime("❌ Internal Error: Failed to remove Department 🗑️");
+    errorMessage(error);
+    return throwInternalServerError(res);
+  }
+};
+
+module.exports = remove;
