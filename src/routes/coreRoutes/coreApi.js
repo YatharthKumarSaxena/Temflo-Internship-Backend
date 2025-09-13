@@ -14,11 +14,13 @@ const checkPermission = require('@/middlewares/access/checkMiddleware')
 const isAdminOrOwner = require('@/middlewares/access/AdminOwner')
 const { getAdminActivities } = require("@/controllers/coreControllers/activityTracker/adminActivity.controller");
 const { getUserActivities } = require("@/controllers/coreControllers/activityTracker/userActivity.controller");
+const { createUserController } = require("@/controllers/middlewaresControllers/createUserController/index");
+const userControllerInstance = createUserController('User');
 
 router.route('/setting/CompanyInfo').get(isAdminOrOwner, catchErrors(settingController.getCompanyDetails));
 router.route('/setting/updateCompanyDetails').patch(isAdminOrOwner,catchErrors(settingController.updateCompanyDetails))
 router.route('/setting/updatePassword').patch(catchErrors(settingController.updatePassword))
-
+router.route('/update-user-password/:id').patch(catchErrors(userControllerInstance.updatePassword))
 
 // ------------------------------API to create User in Company---------------------------
 router.route('/employee/create').post(catchErrors(userController.create));
