@@ -1,4 +1,3 @@
-// utils/emailSender.js
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
@@ -13,27 +12,33 @@ const transporter = nodemailer.createTransport({
 
 /**
  * Reusable email sender
+ * Works in both modes:
+ *  1. Fire-and-forget (just call sendEmail(...))
+ *  2. Await mode (await sendEmail(...))
+ * 
  * @param {string} to - Recipient email
  * @param {string} subject - Email subject
  * @param {string} html - Email body (HTML allowed)
- * @returns {boolean} true if mail sent successfully, false otherwise
+ * @returns {Promise<boolean>} Resolves true if mail sent successfully, false otherwise
  */
-const sendEmail = async (to, subject, html) => {
-  try {
-    await transporter.sendMail({
+const sendEmail = (to, subject, html) => {
+  return transporter
+    .sendMail({
       from: `"ERPICA" <${process.env.SMTP_EMAIL}>`,
       to,
       subject,
       html,
+    })
+    .then(() => {
+      console.log(`✅ Email sent to ${to}`);
+      return true;
+    })
+    .catch((err) => {
+      console.error('❌ Email send failed:', err);
+      return false;
     });
-    console.log(`✅ Email sent to ${to}`);
-    return true;
-  } catch (err) {
-    console.error('❌ Email send failed:', err);
-    return false;
-  }
 };
 
 module.exports = {
-  sendEmail
-}
+  sendEmail,
+};

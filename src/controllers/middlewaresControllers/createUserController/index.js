@@ -16,4 +16,6 @@ const createUserController = (userModel) => {
   return userController;
 };
 
-module.exports = createUserController;
+module.exports = {
+  createUserController
+}
