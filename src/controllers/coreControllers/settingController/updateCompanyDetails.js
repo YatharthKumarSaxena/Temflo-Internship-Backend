@@ -5,6 +5,9 @@ const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { OK } = require('@/config/httpStatus.config');
+const { masterTemplate } = require("@/config/emailTemplate");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { sendEmail } = require("@/utils/emailSender");
 
 const updateCompanyDetails = async (req, res) => {
   try {
@@ -80,6 +83,23 @@ const updateCompanyDetails = async (req, res) => {
       phoneNumber
     };
 
+  // After activityTracker logging, before return response
+if (req.admin.email) { // ensure admin email exists
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const profileLink = `${baseUrl}/profile`; // link to admin's profile
+
+  const emailConfig = {
+    ...masterTemplate.companyDetailsUpdated,
+    user_name: req.admin.name || "Admin",
+    action_cta: "Please visit your profile to verify the updated details.",
+    actionbutton_text: "Go to Profile",
+    actionlink: profileLink,
+    action_link: profileLink,
+  };
+
+  const html = generateMasterTemplate(emailConfig);
+  sendEmail(req.admin.email, emailConfig.subject, html); // fire-and-forget
+}
     // Activity Tracker logging
     activityTracker({
       userId: id, // admin ka Mongo ID as userId
