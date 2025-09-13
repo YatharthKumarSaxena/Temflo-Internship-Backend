@@ -4,6 +4,12 @@ const mongoose = require('mongoose');
 const User = require('../../models/userModels/User');
 const WalletTransaction = require('../../models/expenseModels/walletTransaction');
 const ErrorHandler = require('../../utils/errorHandler');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { EXPENSE_CATEGORY_CREATED, EXPENSE_FORM_CREATED, EXPENSE_FORM_UPDATED, EXPENSE_CATEGORY_UPDATED, EXPENSE_CATEGORY_DELETED, EXPENSE_CLAIM_CREATED, WALLET_DEBITED, WALLET_REFUNDED, EXPENSE_UPDATED, COMMENT_ADDED, FILE_UPLOADED } = require("@/config/activity.enums");
+const { masterTemplate } = require("@/config/emailTemplate");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { sendEmail } = require("@/utils/emailSender");
 
 exports.createExpenseCategory = async (req, res) => {
   try {
@@ -37,6 +43,20 @@ exports.createExpenseCategory = async (req, res) => {
 
     // Save the updated record
     await ExpenseCategoryRecord.save();
+
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.expense,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_expense,
+      modelAffected: [MODEL_AFFECTED.model_expenseCategory],
+      eventType: EXPENSE_CATEGORY_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: ExpenseCategoryRecord.toObject()
+    });
 
     return res.status(200).json({
       success: true,
@@ -117,8 +137,22 @@ exports.saveExpenseForm = async (req, res) => {
     let expenseCategoryRecord = await ExpensePolicy.findOne({ companyId, plantId });
 
     if (expenseCategoryRecord) {
+      const oldData = { plantId: plantId, fields: expenseCategoryRecord.fields || [] };
       expenseCategoryRecord.fields = fields || [];
       await expenseCategoryRecord.save();
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.expense,
+        subModuleAffected: null,
+        fileAffected: FILE.file_admin_expense,
+        modelAffected: [MODEL_AFFECTED.model_expenseCategory],
+        eventType: EXPENSE_FORM_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData: oldData,
+        newData: expenseCategoryRecord.toObject()
+      });
     } else {
       expenseCategoryRecord = new ExpensePolicy({
         companyId,
@@ -127,9 +161,23 @@ exports.saveExpenseForm = async (req, res) => {
         expensePolicies: [],
       });
       await expenseCategoryRecord.save();
+
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.expense,
+        subModuleAffected: null,
+        fileAffected: FILE.file_admin_expense,
+        modelAffected: [MODEL_AFFECTED.model_expenseCategory],
+        eventType: EXPENSE_FORM_CREATED,
+        actionDone: ACTIONS.create,
+        oldData: null,
+        newData: expenseCategoryRecord.toObject()
+      });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: 'Expense form saved successfully',
       expenseForm: expenseCategoryRecord.fields,
@@ -164,6 +212,8 @@ exports.updateExpenseCategory = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Expense Category not found' });
     }
 
+    const oldData = expenseCategoryToUpdate.toObject();
+
     // Update the fields
     expenseCategoryToUpdate.category = expenseCategory || expenseCategoryToUpdate.category;
     expenseCategoryToUpdate.subCategory = subCategories || expenseCategoryToUpdate.subCategory;
@@ -171,7 +221,28 @@ exports.updateExpenseCategory = async (req, res, next) => {
     // Save the updated record
     await expenseCategoryRecord.save();
 
-    res.status(200).json({
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.expense,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_expense,
+      modelAffected: [MODEL_AFFECTED.model_expenseCategory],
+      eventType: EXPENSE_CATEGORY_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData: {
+        plantId, expenseId,
+        category: oldData.category,
+        subCategory: oldData.subCategory
+      },
+      newData: {
+        category: expenseCategory || oldData.category,
+        subCategory: subCategories || oldData.subCategory
+      }
+    });
+
+    return res.status(200).json({
       success: true,
       message: 'Expense Category updated successfully',
       expenseCategoryRecord,
@@ -210,11 +281,33 @@ exports.deleteExpenseRecord = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Expense Category not found' });
     }
 
+    const deletedCategory = expenseCategoryRecord.expensePolicies.find(
+      (exp) => exp._id.toString() === expenseId
+    );
+
     // Save updated record
     expenseCategoryRecord.expensePolicies = updatedPolicies;
     await expenseCategoryRecord.save();
 
-    res.status(200).json({
+    // --- Activity Tracker 
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.expense,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_expense,
+      modelAffected: [MODEL_AFFECTED.model_expenseCategory],
+      eventType: EXPENSE_CATEGORY_DELETED,
+      actionDone: ACTIONS.delete,
+      oldData: deletedCategory.toObject(),
+      newData: {
+        note: "All fields same as Old Data, Soft deletion is Done",
+        removed: true
+      }
+    });
+
+    return res.status(200).json({
       success: true,
       message: 'Expense Category deleted successfully',
       expenseCategoryRecord,
@@ -240,7 +333,6 @@ exports.claimExpense = async (req, res, next) => {
       deductFromWallet,
     } = req.body;
 
-
     const companyId = req.admin.companyId;
     const expenseAmount = parseFloat(amount);
     const shouldDeductFromWallet = deductFromWallet === 'true' || deductFromWallet === true;
@@ -264,6 +356,7 @@ exports.claimExpense = async (req, res, next) => {
         message: 'Amount and at least one file are required',
       });
     }
+
     // Find the current user (submitter) and check wallet balance
     const currentUser = await User.findOne({
       _id: req.admin._id,
@@ -283,10 +376,9 @@ exports.claimExpense = async (req, res, next) => {
     let expenseSubmitterId, expenseApproverId;
 
     if (req.admin.role === 'employee') {
-      // Employee submitting expense
       expenseSubmitterId = req.admin._id;
 
-      // First try to find admin/owner in the same plant
+      // Find admin/owner in same plant or company
       let autoApprover = await User.findOne({
         companyId,
         plantId,
@@ -294,7 +386,6 @@ exports.claimExpense = async (req, res, next) => {
         removed: false,
       }).session(session);
 
-      // If no admin/owner found in the same plant, find any admin/owner in the company
       if (!autoApprover) {
         autoApprover = await User.findOne({
           companyId,
@@ -313,7 +404,6 @@ exports.claimExpense = async (req, res, next) => {
 
       expenseApproverId = autoApprover._id;
     } else {
-      // Admin/Owner submitting expense for an employee
       if (!employeeId) {
         await session.abortTransaction();
         return res.status(400).json({
@@ -321,14 +411,14 @@ exports.claimExpense = async (req, res, next) => {
           message: 'Employee ID is required for admin/owner expense submission',
         });
       }
-      expenseSubmitterId = employeeId;
-      expenseApproverId = req.admin._id; // This is the selected employee for admin submissions
+      expenseSubmitterId = req.admin._id;
+      expenseApproverId = employeeId;
     }
 
     // Create the expense record
     const newExpense = new Expense({
-      employeeId: expenseSubmitterId, // The person submitting the expense
-      approver: expenseApproverId, // The person who should approve it
+      employeeId: expenseSubmitterId,
+      approver: expenseApproverId,
       companyId,
       plantId,
       category,
@@ -336,18 +426,31 @@ exports.claimExpense = async (req, res, next) => {
       amount: expenseAmount,
       files: fileUrls,
       formData,
-      walletDeducted: shouldDeductFromWallet, // Track if wallet was deducted
+      walletDeducted: shouldDeductFromWallet,
     });
 
     await newExpense.save({ session });
 
+    activityTracker({
+      userId: req.admin._id,
+      companyId: companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.expense,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_expense,
+      modelAffected: [MODEL_AFFECTED.model_expense],
+      eventType: EXPENSE_CLAIM_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: newExpense.toObject()
+    });
+
     let walletTransactionData = null;
 
-    // Only process wallet deduction if requested and user is employee
+    // Employee wallet deduction
     if (shouldDeductFromWallet && req.admin.role === 'employee') {
       const currentWalletBalance = currentUser.walletBalance || 0;
 
-      // Check if employee has sufficient wallet balance
       if (currentWalletBalance < expenseAmount) {
         await session.abortTransaction();
         return res.status(400).json({
@@ -361,7 +464,6 @@ exports.claimExpense = async (req, res, next) => {
         });
       }
 
-      // Check wallet status
       if (currentUser.walletStatus === 'suspended') {
         await session.abortTransaction();
         return res.status(403).json({
@@ -370,19 +472,14 @@ exports.claimExpense = async (req, res, next) => {
         });
       }
 
-      // Deduct amount from wallet balance for employees only
       const balanceAfter = currentWalletBalance - expenseAmount;
 
       await User.findByIdAndUpdate(
         expenseSubmitterId,
-        {
-          walletBalance: balanceAfter,
-          lastWalletUpdate: new Date(),
-        },
+        { walletBalance: balanceAfter, lastWalletUpdate: new Date() },
         { session }
       );
 
-      // Create wallet transaction record for the deduction
       const walletTransaction = new WalletTransaction({
         companyId,
         plantId,
@@ -399,33 +496,37 @@ exports.claimExpense = async (req, res, next) => {
 
       await walletTransaction.save({ session });
 
-      walletTransactionData = {
-        previous: currentWalletBalance,
-        current: balanceAfter,
-        deducted: expenseAmount,
-      };
-    } else if (
-      shouldDeductFromWallet &&
-      (req.admin.role === 'admin' || req.admin.role === 'owner')
-    ) {
-      // Admin/Owner deducting from selected employee's wallet
+      activityTracker({
+        userId: req.admin._id,
+        companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.expense,
+        subModuleAffected: null,
+        fileAffected: FILE.file_admin_expense,
+        modelAffected: [MODEL_AFFECTED.model_wallet],
+        eventType: WALLET_DEBITED,
+        actionDone: ACTIONS.update,
+        oldData: { expenseId: newExpense._id, plantId, balance: currentWalletBalance },
+        newData: { balance: balanceAfter, deducted: expenseAmount }
+      });
+
+      walletTransactionData = { previous: currentWalletBalance, current: balanceAfter, deducted: expenseAmount };
+    } 
+    // Admin/Owner wallet deduction
+    else if (shouldDeductFromWallet && (req.admin.role === 'admin' || req.admin.role === 'owner')) {
       const targetEmployee = await User.findOne({
-        _id: expenseSubmitterId, // This is the selected employee for admin submissions
+        _id: expenseApproverId,
         companyId,
         removed: false,
       }).session(session);
 
       if (!targetEmployee) {
         await session.abortTransaction();
-        return res.status(404).json({
-          success: false,
-          message: 'Selected employee not found',
-        });
+        return res.status(404).json({ success: false, message: 'Selected employee not found' });
       }
 
       const employeeWalletBalance = targetEmployee.walletBalance || 0;
 
-      // Check if selected employee has sufficient wallet balance
       if (employeeWalletBalance < expenseAmount) {
         await session.abortTransaction();
         return res.status(400).json({
@@ -439,45 +540,48 @@ exports.claimExpense = async (req, res, next) => {
         });
       }
 
-      // Check selected employee's wallet status
       if (targetEmployee.walletStatus === 'suspended') {
         await session.abortTransaction();
-        return res.status(403).json({
-          success: false,
-          message: "Selected employee's wallet has been suspended.",
-        });
+        return res.status(403).json({ success: false, message: "Selected employee's wallet has been suspended." });
       }
 
-      // Deduct amount from selected employee's wallet balance
       const balanceAfter = employeeWalletBalance - expenseAmount;
 
       await User.findByIdAndUpdate(
-        expenseSubmitterId, // The selected employee for admin submissions
-        {
-          walletBalance: balanceAfter,
-          lastWalletUpdate: new Date(),
-        },
+        expenseApproverId,
+        { walletBalance: balanceAfter, lastWalletUpdate: new Date() },
         { session }
       );
 
-      // Create wallet transaction record for the deduction
       const walletTransaction = new WalletTransaction({
         companyId,
         plantId,
-        employeeId:expenseSubmitterId, // The employee whose wallet was debited
+        employeeId: expenseApproverId,
         transactionType: 'debit',
         amount: expenseAmount,
         balanceBefore: employeeWalletBalance,
         balanceAfter,
-        description: `Expense claim by admin - ${category}${
-          subCategory ? ` (${subCategory})` : ''
-        }`,
+        description: `Expense claim by admin - ${category}${subCategory ? ` (${subCategory})` : ''}`,
         relatedExpenseId: newExpense._id,
-        processedBy: req.admin._id, // Admin who processed
+        processedBy: req.admin._id,
         status: 'completed',
       });
 
       await walletTransaction.save({ session });
+
+      activityTracker({
+        userId: req.admin._id,
+        companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.expense,
+        subModuleAffected: null,
+        fileAffected: FILE.file_admin_expense,
+        modelAffected: [MODEL_AFFECTED.model_wallet],
+        eventType: WALLET_DEBITED,
+        actionDone: ACTIONS.update,
+        oldData: { expenseId: newExpense._id, plantId, balance: employeeWalletBalance },
+        newData: { balance: balanceAfter, deducted: expenseAmount }
+      });
 
       walletTransactionData = {
         previous: employeeWalletBalance,
@@ -489,15 +593,64 @@ exports.claimExpense = async (req, res, next) => {
 
     await session.commitTransaction();
 
+    // ------------------ EMAIL NOTIFICATIONS ------------------
+    const employeeForEmail =
+      req.admin.role === 'employee' ? currentUser : await User.findById(expenseApproverId).session(session);
+    const employeeNameForEmail = employeeForEmail?.name || employeeForEmail?.employeeCode || 'N/A';
+    const employeeEmailForEmail = employeeForEmail?.email || '';
+
+    // Employee Email
+    const emailHtmlEmployee = generateMasterTemplate({
+      event_name: masterTemplate.expenseClaimCreated.event_name,
+      action: masterTemplate.expenseClaimCreated.action,
+      message_intro:
+        req.admin.role === 'employee'
+          ? 'You submitted an expense claim.'
+          : 'An expense claim has been submitted on your behalf by admin.',
+      notes: `Expense ID: ${newExpense._id}<br/>Amount: ₹${expenseAmount}<br/>Category: ${category}${
+        subCategory ? ` (${subCategory})` : ''
+      }<br/>Date: ${new Date().toLocaleString()}<br/>Wallet Deducted: ${
+        shouldDeductFromWallet ? 'Yes' : 'No'
+      }`,
+        actionbutton_text: masterTemplate.expenseClaimCreated.actionbutton_text,
+        actionlink: masterTemplate.expenseClaimCreated.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+        fallback_note: masterTemplate.expenseClaimCreated.fallback_note,
+        action_link: masterTemplate.expenseClaimCreated.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+    });
+
+    if (employeeEmailForEmail) {
+      sendEmail(employeeEmailForEmail, masterTemplate.expenseClaimCreated.subject, emailHtmlEmployee);
+    }
+
+    // Admin Email
+    if (req.admin.role === 'admin' || req.admin.role === 'owner') {
+      const emailHtmlAdmin = generateMasterTemplate({
+        event_name: masterTemplate.expenseClaimCreated.event_name,
+        action: masterTemplate.expenseClaimCreated.action,
+        message_intro: `You have submitted an expense claim successfully.`,
+        notes: `Expense ID: ${newExpense._id}<br/>Employee: ${employeeNameForEmail}<br/>Amount: ₹${expenseAmount}<br/>Category: ${category}${
+          subCategory ? ` (${subCategory})` : ''
+        }<br/>Date: ${new Date().toLocaleString()}<br/>Wallet Deducted: ${
+          shouldDeductFromWallet ? 'Yes' : 'No'
+        }`,
+        actionbutton_text: masterTemplate.expenseClaimCreated.actionbutton_text,
+        actionlink: masterTemplate.expenseClaimCreated.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+        fallback_note: masterTemplate.expenseClaimCreated.fallback_note,
+        action_link: masterTemplate.expenseClaimCreated.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+      });
+
+      if (req.admin.email) {
+        sendEmail(req.admin.email, masterTemplate.expenseClaimCreated.subject, emailHtmlAdmin);
+      }
+    }
+
     const responseData = {
       expenseRecord: newExpense,
       message:
         shouldDeductFromWallet && req.admin.role === 'employee'
           ? 'Expense submitted and amount deducted from wallet successfully'
           : shouldDeductFromWallet && (req.admin.role === 'admin' || req.admin.role === 'owner')
-          ? `Expense submitted and amount deducted from ${
-              walletTransactionData?.employeeName || 'selected employee'
-            }'s wallet successfully`
+          ? `Expense submitted and amount deducted from ${walletTransactionData?.employeeName || 'selected employee'}'s wallet successfully`
           : 'Expense submitted successfully (no wallet deduction)',
     };
 
@@ -505,7 +658,7 @@ exports.claimExpense = async (req, res, next) => {
       responseData.walletBalance = walletTransactionData;
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: responseData,
       message: responseData.message,
@@ -518,6 +671,7 @@ exports.claimExpense = async (req, res, next) => {
     session.endSession();
   }
 };
+
 
 exports.getExpenses = async (req, res) => {
   try {
@@ -686,40 +840,29 @@ exports.updateExpense = async (req, res) => {
 
     const { expenseId } = req.params;
     const companyId = req.admin.companyId;
-    const userId = req.admin.id;
+    const userId = req.admin._id;
     const { category, subCategory, status, formData, comment, plantId } = req.body;
 
-    const updateFields = {
-      lastModifiedAt: new Date(),
-    };
-
+    const updateFields = { lastModifiedAt: new Date() };
     if (category) updateFields.category = category;
     if (subCategory) updateFields.subCategory = subCategory;
-    if (formData) {
-      updateFields.formData = typeof formData === 'string' ? JSON.parse(formData) : formData;
-    }
+    if (formData) updateFields.formData = typeof formData === 'string' ? JSON.parse(formData) : formData;
 
-    const expense = await Expense.findOne({
-      _id: expenseId,
-      companyId,
-      plantId,
-    }).session(session);
+    const expense = await Expense.findOne({ _id: expenseId, companyId, plantId })
+      .populate({ path: 'employeeId', select: 'employeeCode email name' })
+      .session(session);
 
     if (!expense) {
       await session.abortTransaction();
-      return res.status(404).json({
-        success: false,
-        message: 'Expense not found for the given company and plant',
-      });
+      return res.status(404).json({ success: false, message: 'Expense not found for the given company and plant' });
     }
 
-    // Check if status is being changed to 'rejected' and expense had wallet deduction
+    const oldExpenseData = expense.toObject();
     const isBeingRejected = status === 'rejected' && expense.status !== 'rejected';
     const hadWalletDeduction = expense.walletDeducted;
 
-    // Handle wallet refund for rejected expenses
+    // Wallet refund
     if (isBeingRejected && hadWalletDeduction) {
-      // Find the original wallet transaction for this expense
       const originalTransaction = await WalletTransaction.findOne({
         relatedExpenseId: expenseId,
         transactionType: 'debit',
@@ -727,25 +870,14 @@ exports.updateExpense = async (req, res) => {
       }).session(session);
 
       if (originalTransaction) {
-        // Find the employee whose wallet was debited
         const employee = await User.findById(originalTransaction.employeeId).session(session);
-
         if (employee) {
           const currentBalance = employee.walletBalance || 0;
           const refundAmount = originalTransaction.amount;
           const newBalance = currentBalance + refundAmount;
 
-          // Update employee wallet balance
-          await User.findByIdAndUpdate(
-            originalTransaction.employeeId,
-            {
-              walletBalance: newBalance,
-              lastWalletUpdate: new Date(),
-            },
-            { session }
-          );
+          await User.findByIdAndUpdate(originalTransaction.employeeId, { walletBalance: newBalance, lastWalletUpdate: new Date() }, { session });
 
-          // Create refund transaction record
           const refundTransaction = new WalletTransaction({
             companyId,
             plantId,
@@ -754,40 +886,163 @@ exports.updateExpense = async (req, res) => {
             amount: refundAmount,
             balanceBefore: currentBalance,
             balanceAfter: newBalance,
-            description: `Refund for rejected expense - ${expense.category}${
-              expense.subCategory ? ` (${expense.subCategory})` : ''
-            }`,
+            description: `Refund for rejected expense - ${expense.category}${expense.subCategory ? ` (${expense.subCategory})` : ''}`,
             relatedExpenseId: expenseId,
             processedBy: userId,
             status: 'completed',
           });
-
           await refundTransaction.save({ session });
 
-          // Mark the expense as refunded
+          activityTracker({
+            userId,
+            companyId,
+            plantId,
+            module: MODULE.expense,
+            subModuleAffected: null,
+            fileAffected: FILE.file_admin_expense,
+            modelAffected: [MODEL_AFFECTED.model_wallet],
+            eventType: WALLET_REFUNDED,
+            actionDone: ACTIONS.update,
+            oldData: { _id: expenseId, plantId, balance: currentBalance },
+            newData: { balance: newBalance, refunded: refundAmount },
+          });
+
           expense.walletRefunded = true;
+
+          // --- EMAILS with button ---
+          const employeeEmail = employee.email || '';
+          if (employeeEmail) {
+            const emailHtmlEmployee = generateMasterTemplate({
+              company_name: req.admin.companyName,
+              user_name: employee.name || employee.employeeCode,
+              event_name: masterTemplate.walletRefunded.event_name,
+              action: masterTemplate.walletRefunded.action,
+              status: masterTemplate.walletRefunded.status,
+              message_intro: 'Your wallet has been refunded due to rejected expense claim by Admin.',
+              notes: `Expense ID: ${expense._id}<br/>Refund Amount: ${refundAmount}<br/>New Balance: ${newBalance}<br/>Date: ${new Date().toLocaleString()}`,
+              actionbutton_text: masterTemplate.walletRefunded.actionbutton_text || 'View Wallet',
+              actionlink: masterTemplate.walletRefunded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+              fallback_note: masterTemplate.walletRefunded.fallback_note,
+              action_link: masterTemplate.walletRefunded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+            });
+            sendEmail(employeeEmail, masterTemplate.walletRefunded.subject, emailHtmlEmployee);
+          }
+
+          if (req.admin.email) {
+            const emailHtmlAdmin = generateMasterTemplate({
+              event_name: masterTemplate.walletRefunded.event_name,
+              action: masterTemplate.walletRefunded.action,
+              status: masterTemplate.walletRefunded.status,
+              message_intro: "You have processed a wallet refund for an employee's rejected expense claim.",
+              notes: `Expense ID: ${expense._id}<br/>Employee ID: ${employee._id}<br/>Refund Amount: ${refundAmount}<br/>New Balance: ${newBalance}<br/>Date: ${new Date().toLocaleString()}`,
+              actionbutton_text: masterTemplate.walletRefunded.actionbutton_text || 'View Wallet',
+              actionlink: masterTemplate.walletRefunded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+              fallback_note: masterTemplate.walletRefunded.fallback_note,
+              action_link: masterTemplate.walletRefunded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+            });
+            sendEmail(req.admin.email, masterTemplate.walletRefunded.subject, emailHtmlAdmin);
+          }
         }
       }
     }
 
-    // Update expense status if provided
     if (status) updateFields.status = status;
-
-    // Update fields
     Object.assign(expense, updateFields);
 
-    // Append files if uploaded
+    // File uploads
     if (req.files && req.files.length > 0) {
-      const uploadedUrls = req.files.map((file) => file.path);
+      const uploadedUrls = req.files.map(file => file.path);
       expense.files.push(...uploadedUrls);
+
+      activityTracker({
+        userId,
+        companyId,
+        plantId,
+        module: MODULE.expense,
+        subModuleAffected: null,
+        fileAffected: FILE.file_admin_expense,
+        modelAffected: [MODEL_AFFECTED.model_expense],
+        eventType: FILE_UPLOADED,
+        actionDone: ACTIONS.update,
+        oldData: { expenseId, plantId, files: oldExpenseData.files },
+        newData: expense.files,
+      });
+
+      const employeeEmail = expense.employeeId?.email || '';
+      if (employeeEmail) {
+        const emailHtml = generateMasterTemplate({
+          event_name: masterTemplate.expenseFileUploaded.event_name,
+          action: masterTemplate.expenseFileUploaded.action,
+          message_intro: 'New file(s) have been uploaded to your expense claim by Admin.',
+          notes: `Expense ID: ${expense._id}<br/>Files: ${uploadedUrls.join('<br/>')}<br/>Date: ${new Date().toLocaleString()}`,
+          actionbutton_text: masterTemplate.expenseFileUploaded.actionbutton_text || 'View Files',
+          actionlink: masterTemplate.expenseFileUploaded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+          fallback_note: masterTemplate.expenseFileUploaded.fallback_note,
+          action_link: masterTemplate.expenseFileUploaded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+        });
+        sendEmail(employeeEmail, masterTemplate.expenseFileUploaded.subject, emailHtml);
+      }
+
+      if (req.admin.email) {
+        const emailHtmlAdmin = generateMasterTemplate({
+          event_name: masterTemplate.expenseFileUploaded.event_name,
+          action: masterTemplate.expenseFileUploaded.action,
+          message_intro: "You have uploaded new file(s) to an employee's expense claim.",
+          notes: `Expense ID: ${expense._id}<br/>Files: ${uploadedUrls.join('<br/>')}<br/>Employee ID: ${expense.employeeId}<br/>Date: ${new Date().toLocaleString()}`,
+          actionbutton_text: masterTemplate.expenseFileUploaded.actionbutton_text || 'View Files',
+          actionlink: masterTemplate.expenseFileUploaded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+          fallback_note: masterTemplate.expenseFileUploaded.fallback_note,
+          action_link: masterTemplate.expenseFileUploaded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+        });
+        sendEmail(req.admin.email, masterTemplate.expenseFileUploaded.subject, emailHtmlAdmin);
+      }
     }
 
-    // Add comment if provided
+    // Comment
     if (comment && comment.trim()) {
-      expense.comments.push({
-        comment: comment.trim(),
-        commentBy: userId,
+      expense.comments.push({ comment: comment.trim(), commentBy: userId });
+      activityTracker({
+        userId,
+        companyId,
+        plantId,
+        module: MODULE.expense,
+        subModuleAffected: null,
+        fileAffected: FILE.file_admin_expense,
+        modelAffected: [MODEL_AFFECTED.model_expense],
+        eventType: COMMENT_ADDED,
+        actionDone: ACTIONS.update,
+        oldData: null,
+        newData: { expenseId, plantId, comment: comment.trim(), commentBy: userId },
       });
+
+      const employeeEmail = expense.employeeId?.email || '';
+      if (employeeEmail) {
+        const emailHtml = generateMasterTemplate({
+          event_name: masterTemplate.expenseCommentAdded.event_name,
+          action: masterTemplate.expenseCommentAdded.action,
+          message_intro: 'A new comment has been added to your expense claim by Admin.',
+          notes: `Expense ID: ${expense._id}<br/>Comment: ${comment.trim()}<br/>Date: ${new Date().toLocaleString()}`,
+          actionbutton_text: masterTemplate.expenseCommentAdded.actionbutton_text || 'View Expense',
+          actionlink: masterTemplate.expenseCommentAdded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+          fallback_note: masterTemplate.expenseCommentAdded.fallback_note,
+          action_link: masterTemplate.expenseCommentAdded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+        });
+        sendEmail(employeeEmail, masterTemplate.expenseCommentAdded.subject, emailHtml);
+      }
+
+      if (req.admin.email) {
+        const emailHtmlAdmin = generateMasterTemplate({
+          event_name: masterTemplate.expenseCommentAdded.event_name,
+          action: masterTemplate.expenseCommentAdded.action,
+          message_intro: "You have added a new comment to an employee's expense claim.",
+          notes: `Expense ID: ${expense._id}<br/>Comment: ${comment.trim()}<br/>Employee ID: ${expense.employeeId}<br/>Date: ${new Date().toLocaleString()}`,
+          actionbutton_text: masterTemplate.expenseCommentAdded.actionbutton_text || 'View Expense',
+          actionlink: masterTemplate.expenseCommentAdded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+          fallback_note: masterTemplate.expenseCommentAdded.fallback_note,
+          action_link: masterTemplate.expenseCommentAdded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+        });
+        sendEmail(req.admin.email, masterTemplate.expenseCommentAdded.subject, emailHtmlAdmin);
+      }
     }
 
     await expense.populate([
@@ -797,62 +1052,129 @@ exports.updateExpense = async (req, res) => {
 
     await expense.save({ session });
 
+    activityTracker({
+      userId,
+      companyId,
+      plantId,
+      module: MODULE.expense,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_expense,
+      modelAffected: [MODEL_AFFECTED.model_expense],
+      eventType: EXPENSE_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData: oldExpenseData,
+      newData: expense.toObject(),
+    });
+
+    // Expense Updated Email
+    if (expense.employeeId?.email) {
+      const emailHtml = generateMasterTemplate({
+        event_name: masterTemplate.expenseUpdated.event_name,
+        action: masterTemplate.expenseUpdated.action,
+        message_intro: 'Your expense has been updated by Admin.',
+        notes: `Expense ID: ${expense._id}<br/>Updated Fields: ${JSON.stringify(updateFields)}<br/>Date: ${new Date().toLocaleString()}`,
+        actionbutton_text: masterTemplate.expenseUpdated.actionbutton_text || 'View Expense',
+        actionlink: masterTemplate.expenseUpdated.actionlink?.replace('<EXPENSE_LINK>', `#`),
+        fallback_note: masterTemplate.expenseUpdated.fallback_note || 'Having trouble with the button?',
+        action_link: masterTemplate.expenseUpdated.action_link?.replace('<EXPENSE_LINK>', `#`),
+      });
+      sendEmail(expense.employeeId.email, masterTemplate.expenseUpdated.subject, emailHtml);
+    }
+
     await session.commitTransaction();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message:
-        isBeingRejected && hadWalletDeduction
-          ? 'Expense rejected and wallet balance refunded successfully'
-          : 'Expense updated successfully',
+      message: isBeingRejected && hadWalletDeduction
+        ? 'Expense rejected and wallet balance refunded successfully'
+        : 'Expense updated successfully',
       expense,
     });
+
   } catch (error) {
     await session.abortTransaction();
     console.error('Update error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error during update',
-    });
+    res.status(500).json({ success: false, message: 'Server error during update' });
   } finally {
     session.endSession();
   }
 };
 
+
 exports.addComment = async (req, res) => {
   try {
     const { expenseId, comment, plantId } = req.body;
     const companyId = req.admin.companyId;
+    const userId = req.admin._id;
 
     if (!expenseId || !comment || !plantId) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
-    // Update and fetch in one call
-    const updatedExpense = await Expense.findOneAndUpdate(
-      { _id: expenseId, companyId },
-      {
-        $push: {
-          comments: {
-            comment,
-            date: new Date(),
-            commentBy: req.admin?.id || null,
-          },
-        },
-      },
-      { new: true }
-    ).populate('comments.commentBy', 'employeeCode email');
+    const expense = await Expense.findOne({ _id: expenseId, companyId });
 
-    if (!updatedExpense) {
-      return res
-        .status(404)
-        .json({ success: false, message: 'Expense not found or company mismatch' });
+    if (!expense) {
+      return res.status(404).json({ success: false, message: 'Expense not found or company mismatch' });
+    }
+
+    const oldComments = [...expense.comments];
+
+    expense.comments.push({ comment: comment.trim(), date: new Date(), commentBy: userId });
+
+    const updatedExpense = await expense.save();
+    await updatedExpense.populate('comments.commentBy', 'employeeCode email');
+
+    activityTracker({
+      userId,
+      companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.expense,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_expense,
+      modelAffected: [MODEL_AFFECTED.model_expense],
+      eventType: COMMENT_ADDED,
+      actionDone: ACTIONS.create,
+      oldData: { expenseId, plantId, comments: oldComments },
+      newData: updatedExpense.comments,
+    });
+
+const expenseWithEmployee = await expense.populate('employeeId', 'email name employeeCode');
+const employeeEmail = expenseWithEmployee.employeeId?.email || '';
+
+    if (employeeEmail) {
+      const emailHtml = generateMasterTemplate({
+        event_name: masterTemplate.expenseCommentAdded.event_name,
+        action: masterTemplate.expenseCommentAdded.action,
+        message_intro: 'A new comment has been added to your expense claim by Admin.',
+        notes: `Expense ID: ${expense._id}<br/>Comment: ${comment.trim()}<br/>Date: ${new Date().toLocaleString()}`,
+        actionbutton_text: masterTemplate.expenseCommentAdded.actionbutton_text,
+        actionlink: masterTemplate.expenseCommentAdded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+        fallback_note: masterTemplate.expenseCommentAdded.fallback_note,
+        action_link: masterTemplate.expenseCommentAdded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+      });
+      sendEmail(employeeEmail, masterTemplate.expenseCommentAdded.subject, emailHtml);
+    }
+
+    const adminEmail = req.admin.email || (await User.findById(req.admin._id).select('email')).email;
+
+    if (adminEmail) {
+      const emailHtmlAdmin = generateMasterTemplate({
+        event_name: masterTemplate.expenseCommentAdded.event_name,
+        action: masterTemplate.expenseCommentAdded.action,
+        message_intro: "You have added a new comment to an employee's expense claim.",
+        notes: `Expense ID: ${expense._id}<br/>Comment: ${comment.trim()}<br/>Employee ID: ${expense.employeeId}<br/>Date: ${new Date().toLocaleString()}`,
+        actionbutton_text: masterTemplate.expenseCommentAdded.actionbutton_text,
+        actionlink: masterTemplate.expenseCommentAdded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+        fallback_note: masterTemplate.expenseCommentAdded.fallback_note,
+        action_link: masterTemplate.expenseCommentAdded.action_link.replace('<APPROVED_REQUEST_LINK>', '#')
+      });
+      sendEmail(adminEmail, masterTemplate.expenseCommentAdded.subject, emailHtmlAdmin);
     }
 
     return res.status(200).json({
       success: true,
       message: 'Comment added',
-      comments: updatedExpense.comments.reverse(), // Optional: latest first
+      comments: updatedExpense.comments.reverse(),
     });
   } catch (err) {
     console.error('Error adding comment:', err);
