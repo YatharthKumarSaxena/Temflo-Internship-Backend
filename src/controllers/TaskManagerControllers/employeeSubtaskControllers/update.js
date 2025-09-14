@@ -1,4 +1,7 @@
 const mongoose = require('mongoose');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { SUBTASK_UPDATED } = require("@/config/activity.enums");
 
 const update = async (req, res) => {
   try {
@@ -25,7 +28,7 @@ const update = async (req, res) => {
         });
       }
 
-      const response = Member.findOne({
+      const response = await Member.findOne({
         userId: req.admin.id,
         projectId: subtask.projectId,
         companyId: req.admin.companyId,
@@ -52,6 +55,8 @@ const update = async (req, res) => {
       comment,
     } = req.body;
 
+    const subtaskOldData = { ...subtask.toObject() };
+
     if (title) subtask.title = title;
     if (description) subtask.description = description;
     if (status) subtask.status = status;
@@ -72,6 +77,34 @@ const update = async (req, res) => {
     }
 
     await subtask.save();
+
+const changedOldData = {};
+const changedNewData = {};
+const oldObj = subtaskOldData;
+const newObj = subtask.toObject();
+
+for (let key in newObj) {
+  if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
+    changedOldData[key] = oldObj[key];
+    changedNewData[key] = newObj[key];
+  }
+}
+
+// Activity Tracker
+activityTracker({
+  userId: req.admin._id,
+  companyId: req.admin.companyId,
+  plantId: req.admin.plantId || null,
+  module: MODULE.taskManager,
+  subModuleAffected: SUBMODULE.employeeSubtask,
+  fileAffected: FILE.file_employee_subtask_update,
+  modelAffected: [MODEL_AFFECTED.model_subtask],
+  eventType: SUBTASK_UPDATED,
+  actionDone: ACTIONS.update,
+  oldData: changedOldData,
+  newData: changedNewData
+});
+
 
     return res.status(200).json({
       success: true,

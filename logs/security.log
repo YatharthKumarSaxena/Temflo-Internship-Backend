@@ -13676,3 +13676,17 @@
 2025-09-13T19:16:53.650Z [INFO] All security headers present - IP: ::1 - URL: /api/expenses/wallet/add-balance - User-Agent: unknown
 2025-09-13T19:18:05.966Z [INFO] All security headers present - IP: ::1 - URL: /api/expenses/wallet/add-balance - User-Agent: unknown
 2025-09-13T19:21:56.108Z [INFO] All security headers present - IP: ::1 - URL: /api/expenses/wallet/add-balance - User-Agent: unknown
+2025-09-14T15:32:30.182Z [INFO] All security headers present - IP: ::1 - URL: /api/login - User-Agent: unknown
+2025-09-14T15:32:39.749Z [INFO] All security headers present - IP: ::1 - URL: /api/login - User-Agent: unknown
+2025-09-14T15:34:51.661Z [INFO] All security headers present - IP: ::1 - URL: /api/task-manager/member/add - User-Agent: unknown
+2025-09-14T15:37:19.999Z [INFO] All security headers present - IP: ::1 - URL: /api/task-manager/task/create/68909048e171c5f1098acfb7 - User-Agent: unknown
+2025-09-14T15:38:29.820Z [INFO] All security headers present - IP: ::1 - URL: /api/task-manager/task/create/68909048e171c5f1098acfb7 - User-Agent: unknown
+2025-09-14T16:14:09.915Z [INFO] All security headers present - IP: ::1 - URL: /api/task-manager/subtask/create/68c6e175a6b24bae561282d0 - User-Agent: unknown
+2025-09-14T16:15:31.553Z [INFO] All security headers present - IP: ::1 - URL: /api/task-manager/subtask/create/68c6e175a6b24bae561282d0 - User-Agent: unknown
+2025-09-14T16:15:52.709Z [INFO] All security headers present - IP: ::1 - URL: /api/task-manager/subtask/create/68c6e175a6b24bae561282d0 - User-Agent: unknown
+2025-09-14T16:18:27.853Z [INFO] All security headers present - IP: ::1 - URL: /api/task-manager/subtask/update/68c6ea38a6b24bae56128366 - User-Agent: unknown
+2025-09-14T16:18:53.337Z [INFO] All security headers present - IP: ::1 - URL: /api/task-manager/subtask/update/68c6ea38a6b24bae56128366 - User-Agent: unknown
+2025-09-14T16:22:48.291Z [INFO] All security headers present - IP: ::1 - URL: /api/task-manager/subtask/update/68c6ea38a6b24bae56128366 - User-Agent: unknown
+2025-09-14T16:24:55.534Z [INFO] All security headers present - IP: ::1 - URL: /api/task-manager/subtask/delete/68c6ea38a6b24bae56128366 - User-Agent: unknown
+2025-09-14T16:28:24.284Z [INFO] All security headers present - IP: ::1 - URL: /api/task-manager/task/update/68c6e175a6b24bae561282d0 - User-Agent: unknown
+2025-09-14T16:31:21.662Z [INFO] All security headers present - IP: ::1 - URL: /api/task-manager/task/delete/68c6e175a6b24bae561282d0 - User-Agent: unknown

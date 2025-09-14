@@ -419,6 +419,10 @@ expenseCommentAdded: {
         event_name: "Task Comment Added",
         action: "Create",
         message_intro: "A new comment has been added to your task.",
+            actionbutton_text: "View Task",
+    actionlink: "<TASK_LINK>", // controller se inject hoga
+    fallback_note: "Having trouble with the button?",
+    action_link: "<TASK_LINK>"
     },
 
     taskAssignedToEmployee: {
@@ -427,6 +431,10 @@ expenseCommentAdded: {
         event_name: "Task Assigned to Employee",
         action: "Create",
         message_intro: "You have been assigned a new task.",
+            actionbutton_text: "View Task",
+    actionlink: "<TASK_LINK>", // controller se inject hoga
+    fallback_note: "Having trouble with the button?",
+    action_link: "<TASK_LINK>"
     },
 
     taskUnassignedFromEmployee: {
@@ -443,7 +451,11 @@ expenseCommentAdded: {
         subject: "Employee Assigned to Project",
         event_name: "Employee Assigned to Project",
         action: "Create",
-        message_intro: "You have been assigned to a project.",
+        message_intro: "You have been assigned to a new project.",
+            actionbutton_text: "View Project",
+    actionlink: "<PROJECT_LINK>", // controller se inject hoga
+    fallback_note: "Having trouble with the button?",
+    action_link: "<PROJECT_LINK>"
     },
 
     employeeRemovedFromProject: {
@@ -453,7 +465,38 @@ expenseCommentAdded: {
         action: "Delete",
         message_intro: "You have been removed from a project.",
     },
+    // 🔹 Task/Subtask Related Events - Missing Templates
+subtaskAssignedToEmployee: {
+    ...defaultConfig,
+    subject: "Subtask Assigned",
+    event_name: "Subtask Assigned to Employee",
+    action: "Create",
+    message_intro: "You have been assigned a new subtask.",
+    actionbutton_text: "View Subtask",
+    actionlink: "<SUBTASK_LINK>", // controller se inject hoga
+    fallback_note: "Having trouble with the button?",
+    action_link: "<SUBTASK_LINK>"
+},
 
+subtaskRemovedFromEmployee: {
+    ...defaultConfig,
+    subject: "Subtask Unassigned",
+    event_name: "Subtask Unassigned from Employee",
+    action: "Delete",
+    message_intro: "A subtask has been unassigned from you."
+},
+
+subtaskCommentAdded: {
+    ...defaultConfig,
+    subject: "New Comment Added to Subtask",
+    event_name: "Subtask Comment Added",
+    action: "Create",
+    message_intro: "A new comment has been added to your subtask.",
+    actionbutton_text: "View Subtask",
+    actionlink: "<SUBTASK_LINK>", // controller se inject hoga
+    fallback_note: "Having trouble with the button?",
+    action_link: "<SUBTASK_LINK>"
+}
 };
 
 module.exports = { masterTemplate };
