@@ -3,6 +3,10 @@ const xlsx = require('xlsx');
 const fs = require('fs');
 const moment = require('moment');
 
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require('@/config/structure.config');
+const { activityTracker } = require('@/utils/activityTracker');
+const { BULK_ATTENDANCE_CREATED } = require('@/config/activity.enums');
+
 const markAttendanceBulk = async (req, res) => {
   try {
     const User = mongoose.model('User');
@@ -29,18 +33,13 @@ const markAttendanceBulk = async (req, res) => {
       employeeCode: { $in: employeeCodes }
     });
     const userMap = {};
-    for (const user of users) {
-      userMap[user.employeeCode] = user;
-    }
+    for (const user of users) userMap[user.employeeCode] = user;
 
     // 3. Fetch Plants
     const plants = await Plant.find({ companyId, plantCode: { $in: plantCodes } });
     const plantMap = {};
-    for (const plant of plants) {
-      plantMap[plant.plantCode] = plant._id;
-    }
+    for (const plant of plants) plantMap[plant.plantCode] = plant._id;
 
-    // 4. Prepare attendance records
     const success = [];
     const failed = [];
 
@@ -57,31 +56,19 @@ const markAttendanceBulk = async (req, res) => {
         continue;
       }
 
-      if(!(status =="present" || status =="absent")){
+      if (!(status == "present" || status == "absent")) {
         failed.push({ ...row, reason: 'Status should be present or absent' });
         continue;
-
       }
 
       const user = userMap[employeeCode];
       const plantId = plantMap[plantCode];
       const date = moment(dateStr, 'YYYY-MM-DD');
-      const inTime = inTimeStr;
-      const outTime = outTimeStr;
 
-
-      if (!user) {
-        failed.push({ ...row, reason: 'User not found' });
-        continue;
-      }
-
-      if (!plantId) {
-        failed.push({ ...row, reason: 'Invalid PlantCode' });
-        continue;
-      }
+      if (!user) { failed.push({ ...row, reason: 'User not found' }); continue; }
+      if (!plantId) { failed.push({ ...row, reason: 'Invalid PlantCode' }); continue; }
 
       try {
-        // Check if attendance already exists
         const existing = await Attendance.findOne({
           userId: user._id,
           date: date.startOf('day').toDate(),
@@ -97,13 +84,29 @@ const markAttendanceBulk = async (req, res) => {
           userId: user._id,
           companyId,
           plantId,
-          inTime: inTime,
-          outTime: outTime,
+          inTime: inTimeStr,
+          outTime: outTimeStr,
           date: date.startOf('day').toDate(),
           status
         });
 
         await attendance.save();
+
+        // 🟢 Activity Tracker: Bulk Attendance Created
+        activityTracker({
+          userId: req.admin._id,
+          companyId: companyId,
+          plantId: plantId,
+          module: MODULE.attendance,
+          subModuleAffected: null,
+          fileAffected: FILE.file_mark_attendance_bulk,
+          modelAffected: [MODEL_AFFECTED.model_attendance],
+          eventType: BULK_ATTENDANCE_CREATED,
+          actionDone: ACTIONS.create,
+          oldData: null,
+          newData: attendance.toObject(),
+        });
+
         success.push({ employeeCode, date: date.format('YYYY-MM-DD') });
 
       } catch (err) {
@@ -124,6 +127,7 @@ const markAttendanceBulk = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Internal server error',
+      error: error.message
     });
   }
 };

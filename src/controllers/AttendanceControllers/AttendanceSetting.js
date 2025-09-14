@@ -6,6 +6,9 @@ const AttendancePolicy = require('../../models/AttendanceModels/AttendancePolicy
 const User = require('../../models/userModels/User')
 const mongoose = require('mongoose')
 const moment = require('moment');
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { ATTENDANCE_SETTINGS_UPDATED, ATTENDANCE_SETTINGS_CREATED, HOLIDAY_ADDED, HOLIDAY_DELETED, ATTENDANCE_WEEKLY_OFF_UPDATED, ATTENDANCE_MARKED_BY_ADMIN, ATTENDANCE_WORKING_HOURS_UPDATED, ATTENDANCE_POLICY_CREATED, ATTENDANCE_POLICY_UPDATED, ATTENDANCE_POLICY_APPLIED_TO_ALL, ATTENDANCE_POLICY_APPLIED_TO_SELECTED, ATTENDANCE_REQUEST_STATUS_UPDATED } = require('@/config/activity.enums');
 
 // Create or update settings for plant
 exports.setSettings = async (req, res) => {
@@ -35,6 +38,21 @@ exports.setSettings = async (req, res) => {
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
+    // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: plantId,
+      module: MODULE.attendance,
+      subModuleAffected: null,
+      fileAffected: FILE.file_attendance_setting,
+      modelAffected: [MODEL_AFFECTED.model_attendanceSetting],
+      eventType: oldData ? ATTENDANCE_SETTINGS_UPDATED : ATTENDANCE_SETTINGS_CREATED,
+      actionDone: oldData ? ACTIONS.update : ACTIONS.create,
+      oldData: oldData ? oldData : null,
+      newData: newData,
+    });
+
     return res.status(200).json({ success: true, settings: updated });
   } catch (err) {
     return res.status(500).json({
@@ -59,13 +77,18 @@ exports.getSettings = async (req, res) => {
 // Add a holiday
 exports.addHoliday = async (req, res) => {
   const { date, occasion, type } = req.body;
-  const { plantId } = req.params; // Assuming companyId is in the route
+  const { plantId } = req.params;
 
   try {
+    // Fetch existing settings to get oldData
+    const existingSettings = await AttendanceSettings.findOne({ companyId: req.admin.companyId, plantId });
+    const oldData = existingSettings ? { holidays: existingSettings.holidays.slice() } : null;
+
+    // Add holiday
     const settings = await AttendanceSettings.findOneAndUpdate(
       { companyId: req.admin.companyId, plantId },
       {
-        $setOnInsert: { plantId, companyId: req.admin.companyId }, // Only set when inserting new doc
+        $setOnInsert: { plantId, companyId: req.admin.companyId },
         $push: { holidays: { date, occasion, type } }
       },
       {
@@ -75,9 +98,31 @@ exports.addHoliday = async (req, res) => {
       }
     );
 
-    res.status(200).json({ success: true, settings });
+    // Prepare newData (only the added holiday)
+    const newData = { holidays: [{ date, occasion, type }] };
+
+    // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: plantId,
+      module: MODULE.attendance,
+      subModuleAffected: null,
+      fileAffected: FILE.file_attendance_setting,
+      modelAffected: [MODEL_AFFECTED.model_attendanceSetting],
+      eventType: HOLIDAY_ADDED,
+      actionDone: ACTIONS.create,
+      oldData: oldData,
+      newData: newData
+    });
+
+    return res.status(200).json({ success: true, settings });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Failed to add holiday', error: err.message });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to add holiday',
+      error: err.message
+    });
   }
 };
 
@@ -85,24 +130,49 @@ exports.deleteHoliday = async (req, res) => {
   const { plantId, holidayId } = req.params;
 
   try {
-    const settings = await AttendanceSettings.findOneAndUpdate(
-      { companyId: req.admin.companyId, plantId },
-      {
-        $pull: { holidays: { _id: holidayId } }
-      },
-      { new: true }
-    );
-
-    if (!settings) {
+    // Fetch existing settings to get oldData
+    const existingSettings = await AttendanceSettings.findOne({ companyId: req.admin.companyId, plantId });
+    if (!existingSettings) {
       return res.status(404).json({ success: false, message: 'Settings not found' });
     }
 
-    res.status(200).json({ success: true, message: 'Holiday deleted', settings });
+    // Find the holiday to delete
+    const holidayToDelete = existingSettings.holidays.find(h => h._id.toString() === holidayId);
+    if (!holidayToDelete) {
+      return res.status(404).json({ success: false, message: 'Holiday not found' });
+    }
+
+    // Delete the holiday
+    const settings = await AttendanceSettings.findOneAndUpdate(
+      { companyId: req.admin.companyId, plantId },
+      { $pull: { holidays: { _id: holidayId } } },
+      { new: true }
+    );
+
+    // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: plantId,
+      module: MODULE.attendance,
+      subModuleAffected: null,
+      fileAffected: FILE.file_attendance_setting,
+      modelAffected: [MODEL_AFFECTED.model_attendanceSetting],
+      eventType: HOLIDAY_DELETED,
+      actionDone: ACTIONS.delete,
+      oldData: { holidays: [holidayToDelete.toObject()] },
+      newData: null
+    });
+
+    return res.status(200).json({ success: true, message: 'Holiday deleted', settings });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Failed to delete holiday', error: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete holiday',
+      error: err.message
+    });
   }
 };
-
 
 
 // Set weekly off
@@ -111,17 +181,36 @@ exports.setWeeklyOff = async (req, res) => {
   const { plantId } = req.params;
 
   try {
+    const existingSettings = await AttendanceSettings.findOne({ plantId, companyId: req.admin.companyId });
+    const oldData = existingSettings ? { weeklyOffs: existingSettings.weeklyOffs } : null;
+
     const settings = await AttendanceSettings.findOneAndUpdate(
-      { plantId,companyId: req.admin.companyId },
+      { plantId, companyId: req.admin.companyId },
       { weeklyOffs },
-      { new: true,upsert: true }
+      { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
-    res.status(200).json({ success: true, settings });
+    // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: plantId,
+      module: MODULE.attendance,
+      subModuleAffected: null,
+      fileAffected: FILE.file_attendance_setting,
+      modelAffected: [MODEL_AFFECTED.model_attendanceSetting],
+      eventType: ATTENDANCE_WEEKLY_OFF_UPDATED,
+      actionDone: existingSettings ? ACTIONS.update : ACTIONS.create,
+      oldData: oldData,
+      newData: { weeklyOffs }
+    });
+
+    return res.status(200).json({ success: true, settings });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to set weekly off', error: err.message });
   }
 };
+
 
 // Admin manually marks attendance for user
 exports.markAttendance = async (req, res) => {
@@ -133,6 +222,21 @@ exports.markAttendance = async (req, res) => {
     if (!employee) {
       return res.status(404).json({ success: false, message: 'Employee not found' });
     }
+
+    const existingAttendance = await Attendance.findOne({
+      userId,
+      plantId,
+      date: {
+        $gte: new Date(new Date(date).setHours(0, 0, 0, 0)),
+        $lte: new Date(new Date(date).setHours(23, 59, 59, 999))
+      }
+    });
+
+    const oldData = existingAttendance ? {
+      inTime: existingAttendance.inTime,
+      outTime: existingAttendance.outTime,
+      status: existingAttendance.status
+    } : null;
 
     const attendance = await Attendance.findOneAndUpdate(
       {
@@ -153,28 +257,33 @@ exports.markAttendance = async (req, res) => {
           approver: employee.supervisor
         }
       },
-      {
-        new: true,
-        upsert: true,
-        setDefaultsOnInsert: true
-      }
+      { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
-    res.status(200).json({
+    // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: plantId,
+      module: MODULE.attendance,
+      subModuleAffected: null,
+      fileAffected: FILE.file_attendance_setting,
+      modelAffected: [MODEL_AFFECTED.model_attendance],
+      eventType: ATTENDANCE_MARKED_BY_ADMIN,
+      actionDone: existingAttendance ? ACTIONS.update : ACTIONS.create,
+      oldData: oldData,
+      newData: { inTime, outTime, status }
+    });
+
+    return res.status(200).json({
       success: true,
       attendance,
       message: 'Attendance marked successfully'
     });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to mark attendance',
-      error: err.message
-    });
+    res.status(500).json({ success: false, message: 'Failed to mark attendance', error: err.message });
   }
 };
-
-
 
 // Set or update working hours for a plant
 exports.setWorkingHours = async (req, res) => {
@@ -182,37 +291,39 @@ exports.setWorkingHours = async (req, res) => {
     const { plantId } = req.params;
     const { start, end, minHoursRequired } = req.body;
 
-    // Basic validation
     if (!start || !end || typeof minHoursRequired !== 'number') {
-      return res.status(400).json({
-        success: false,
-        message: 'start, end, and minHoursRequired are required',
-      });
+      return res.status(400).json({ success: false, message: 'start, end, and minHoursRequired are required' });
     }
 
-    const update = {
-      workingHours: { start, end, minHoursRequired },
-      plant: plantId
-    };
+    const existingSettings = await AttendanceSettings.findOne({ plantId, companyId: req.admin.companyId });
+    const oldData = existingSettings && existingSettings.workingHours ? { workingHours: existingSettings.workingHours } : null;
+
+    const update = { workingHours: { start, end, minHoursRequired }, plant: plantId };
 
     const settings = await AttendanceSettings.findOneAndUpdate(
-      { plantId },
+      { plantId, companyId: req.admin.companyId },
       { $set: update },
-      { new: true, upsert: true }
+      { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
-    return res.status(200).json({
-      success: true,
-      message: 'Working hours updated successfully',
-      settings
+    // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: plantId,
+      module: MODULE.attendance,
+      subModuleAffected: null,
+      fileAffected: FILE.file_attendance_setting,
+      modelAffected: [MODEL_AFFECTED.model_attendanceSetting],
+      eventType: ATTENDANCE_WORKING_HOURS_UPDATED,
+      actionDone: existingSettings ? ACTIONS.update : ACTIONS.create,
+      oldData: oldData,
+      newData: { workingHours: { start, end, minHoursRequired } }
     });
 
+    return res.status(200).json({ success: true, message: 'Working hours updated successfully', settings });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to update working hours',
-      error: err.message
-    });
+    return res.status(500).json({ success: false, message: 'Failed to update working hours', error: err.message });
   }
 };
 
@@ -272,6 +383,20 @@ exports.createAttendancePolicy = async (req,res) => {
       
           await policy.save();
 
+          // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: plantId,
+      module: MODULE.attendance,
+      subModuleAffected: null,
+      fileAffected: FILE.file_attendance_setting,
+      modelAffected: [MODEL_AFFECTED.model_attendancePolicy],
+      eventType: ATTENDANCE_POLICY_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: policy.toObject()
+    });
           return res.status(200).json({
             success: true,
             message: `Attendance policy created successfully`,
@@ -307,6 +432,15 @@ exports.updateAttendancePolicy = async (req,res) => {
       return res.status(400).json({ message: "Required fields are missing" });
     }
 
+    // Fetch old data for activity tracker
+    const existingPolicy = await AttendancePolicy.findOne({
+      companyId: req.admin.companyId,
+      _id: req.params.id
+    });
+
+    if (!existingPolicy) {
+      return res.status(404).json({ success: false, message: 'Policy not found' });
+    }
 
     const updatedData = {
       name,
@@ -329,9 +463,28 @@ exports.updateAttendancePolicy = async (req,res) => {
       { new: true }
     );
 
-    if (!policy) {
-      return res.status(404).json({ success: false, message: 'Policy not found' });
-    }
+    // Determine changed fields only
+    const changedFields = {};
+    Object.keys(updatedData).forEach(key => {
+      if (JSON.stringify(updatedData[key]) !== JSON.stringify(existingPolicy[key])) {
+        changedFields[key] = updatedData[key];
+      }
+    });
+
+    // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: plantId,
+      module: MODULE.attendance,
+      subModuleAffected: null,
+      fileAffected: FILE.file_attendance_setting,
+      modelAffected: [MODEL_AFFECTED.model_attendancePolicy],
+      eventType: ATTENDANCE_POLICY_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData: existingPolicy.toObject(),
+      newData: changedFields
+    });
 
     return res.status(200).json({ success: true, policy });
 
@@ -365,54 +518,71 @@ exports.getAttendancePolicy = async (req,res) =>{
 
 }
 
-exports.applyAttendancePolicy = async (req,res) => {
+// Apply attendance policy to all employees of a plant
+exports.applyAttendancePolicy = async (req, res) => {
   try {
-    const employees = await User.find({companyId:req.admin.companyId,plantId:req.params.plantId});
-    
-    const policy = await AttendancePolicy.findOne({ _id:req.params.policyId,companyId:req.admin.companyId});
+    const employees = await User.find({ companyId: req.admin.companyId, plantId: req.params.plantId });
+    const policy = await AttendancePolicy.findOne({ _id: req.params.policyId, companyId: req.admin.companyId });
 
-    if (employees.length === 0 || policy.length === 0) {
+    if (!employees.length || !policy) {
       return res.status(400).json({ success: false, message: 'No employees or policies found.' });
     }
 
     let createdCount = 0;
 
     for (const employee of employees) {
-      
+      // Fetch old data for activity tracker
+      const oldSetting = await EmployeeAttendanceSetting.findOne({
+        userId: employee._id,
+        companyId: req.admin.companyId,
+      });
+
+      const updatedData = {
+        plantId: req.params.plantId,
+        isLocationBased: policy?.isLocationBased,
+        isApprovalRequired: policy?.isApprovalRequired,
+        isMarkingEnabled: policy?.isMarkingEnabled,
+        location: policy?.location,
+        workingHours: policy?.workingHours,
+        weeklyOffs: policy?.weeklyOffs,
+        remote: policy?.remote,
+      };
+
       await EmployeeAttendanceSetting.updateOne(
-        {
-          userId: employee._id,
-          companyId: req.admin.companyId,
-        },
-        {
-          $set: {
-            plantId: req.params.plantId,
-            isLocationBased: policy?.isLocationBased,
-            isApprovalRequired: policy?.isApprovalRequired,
-            isMarkingEnabled: policy?.isMarkingEnabled,
-            location: policy?.location,
-            workingHours: policy?.workingHours,
-            weeklyOffs: policy?.weeklyOffs,
-            remote: policy?.remote,
-          },
-        },
+        { userId: employee._id, companyId: req.admin.companyId },
+        { $set: updatedData },
         { upsert: true }
       );
 
-        createdCount++;
-      
+      // Activity tracker
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.params.plantId,
+        module: MODULE.attendance,
+        subModuleAffected: null,
+        fileAffected: FILE.file_attendance_setting,
+        modelAffected: [MODEL_AFFECTED.model_employee_attendance_setting],
+        eventType: ATTENDANCE_POLICY_APPLIED_TO_ALL,
+        actionDone: ACTIONS.update,
+        oldData: oldSetting ? oldSetting.toObject() : null,
+        newData: updatedData,
+      });
+
+      createdCount++;
     }
 
     res.json({ success: true, message: `${createdCount} Attendance Policy Updated/Created.` });
-
   } catch (err) {
     console.error('Error Updating Policy:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
-}
+};
 
 
 
+
+// Apply attendance policy to selected employees
 exports.applyAttendancePolicyToSelectedEmployees = async (req, res) => {
   const { plantId, employeeIds, policyId } = req.body;
   const companyId = req.admin.companyId;
@@ -420,47 +590,49 @@ exports.applyAttendancePolicyToSelectedEmployees = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
-  const alreadyApplied = [];
-  const now = new Date();
-
   try {
-    const policy = await AttendancePolicy.findOne({
-      _id: policyId,
-      plantId,
-      companyId
-    }).session(session);
+    const policy = await AttendancePolicy.findOne({ _id: policyId, plantId, companyId }).session(session);
+    if (!policy) throw new Error('Attendance policy not found for this company and plant');
 
-    if (!policy) {
-      throw new Error('Attendance policy not found for this company and plant');
-    }
-
-
-
-    const users = await User.find({
-      _id: { $in: employeeIds }
-    }).select('_id name employeeCode').lean();
+    const users = await User.find({ _id: { $in: employeeIds } }).select('_id name employeeCode').lean();
 
     for (const user of users) {
-    
+      const oldSetting = await EmployeeAttendanceSetting.findOne({
+        userId: user._id,
+        companyId
+      }).session(session);
+
+      const updatedData = {
+        plantId,
+        isLocationBased: policy?.isLocationBased,
+        isApprovalRequired: policy?.isApprovalRequired,
+        isMarkingEnabled: policy?.isMarkingEnabled,
+        location: policy?.location,
+        workingHours: policy?.workingHours,
+        weeklyOffs: policy?.weeklyOffs,
+        remote: policy?.remote,
+      };
+
       await EmployeeAttendanceSetting.updateOne(
-        {
-          userId: user._id,
-          companyId: req.admin.companyId,
-        },
-        {
-          $set: {
-            plantId: plantId,
-            isLocationBased: policy?.isLocationBased,
-            isApprovalRequired: policy?.isApprovalRequired,
-            isMarkingEnabled: policy?.isMarkingEnabled,
-            location: policy?.location,
-            workingHours: policy?.workingHours,
-            weeklyOffs: policy?.weeklyOffs,
-            remote: policy?.remote,
-          },
-        },
+        { userId: user._id, companyId },
+        { $set: updatedData },
         { upsert: true, session }
       );
+
+      // Activity tracker
+      activityTracker({
+        userId: req.admin._id,
+        companyId: companyId,
+        plantId: plantId,
+        module: MODULE.attendance,
+        subModuleAffected: null,
+        fileAffected: FILE.file_attendance_setting,
+        modelAffected: [MODEL_AFFECTED.model_employee_attendance_setting],
+        eventType: ATTENDANCE_POLICY_APPLIED_TO_SELECTED,
+        actionDone: ACTIONS.update,
+        oldData: oldSetting ? oldSetting.toObject() : null,
+        newData: updatedData,
+      });
     }
 
     await session.commitTransaction();
@@ -468,17 +640,12 @@ exports.applyAttendancePolicyToSelectedEmployees = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Attendance policy applied successfully to selected employees.',
-      alreadyApplied // List of users who already had leave applied
+      message: 'Attendance policy applied successfully to selected employees.'
     });
-
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
-    return res.status(500).json({
-      success: false,
-      message: err.message || 'Failed to apply leave policy.'
-    });
+    return res.status(500).json({ success: false, message: err.message || 'Failed to apply leave policy.' });
   }
 };
 
@@ -705,39 +872,56 @@ exports.getAttendanceRequests = async (req,res) =>{
 }
 
 
+
 exports.updateAttendanceRequestStatus = async (req, res) => {
   try {
-    const { status} = req.body;
+    const { status } = req.body;
+    const userId = req.admin._id;
 
     const request = await Attendance.findById(req.params.id);
 
-    if(request.approver != req.admin.id){
-      return res.status(404).json({ success: false, message: `You do not have right to approve attendance.` })
- 
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Attendance request not found' });
     }
 
-    if(request.status == status){
-        return res.status(404).json({ success: false, message: `Attendance Status is already ${status}` })
-
+    if (request.approver != userId) {
+      return res.status(403).json({ success: false, message: `You do not have right to approve attendance.` });
     }
 
-    if(request.status == "pending" && status == "present"){
-      request.status = status;
-      await request.save();
-
-      return res.status(200).json({ success: true,message:"Attendance Aprroved Sucessfully",request });
+    if (request.status === status) {
+      return res.status(400).json({ success: false, message: `Attendance status is already ${status}` });
     }
 
-    if(request.status == "present" && status == "pending"){
-      request.status = status;
-      await request.save();
+    // Save old data for activity tracker
+    const oldData = request.toObject();
 
-      return res.status(200).json({ success: true,message:"Attendance Changed To Pending Sucessfully",request });
-    }
+    // Update status
+    request.status = status;
+    await request.save();
+
+    // Activity tracker
+    activityTracker({
+      userId: userId,
+      companyId: req.admin.companyId,
+      plantId: request.plantId,
+      module: MODULE.attendance,
+      subModuleAffected: null,
+      fileAffected: FILE.file_attendance_setting,
+      modelAffected: [MODEL_AFFECTED.model_attendanceRequest],
+      eventType: ATTENDANCE_REQUEST_STATUS_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData: oldData,
+      newData: request.toObject(),
+    });
+
+    let message = '';
+    if (status === 'present') message = 'Attendance approved successfully';
+    else if (status === 'pending') message = 'Attendance changed to pending successfully';
+
+    return res.status(200).json({ success: true, message, request });
 
   } catch (err) {
+    console.error('Error updating attendance status:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
-

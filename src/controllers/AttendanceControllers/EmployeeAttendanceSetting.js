@@ -1,4 +1,7 @@
-const EmployeeAttendanceSetting = require('../../models/AttendanceModels/AttendanceEmployeeSetting')
+const EmployeeAttendanceSetting = require('../../models/AttendanceModels/AttendanceEmployeeSetting');
+const { EMP_ATTENDANCE_SETTING_CREATED, EMP_ATTENDANCE_SETTING_UPDATED } = require('@/config/activity.enums');
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
 
 const EmpAttendanceSetting = async (req,res) => {
 
@@ -35,12 +38,30 @@ const EmpAttendanceSetting = async (req,res) => {
           remote
         };
     
+        // Fetch old data before update
+        const oldData = await EmployeeAttendanceSetting.findOne({ userId, plantId, companyId: req.admin.companyId });
+
         const updatedSetting = await EmployeeAttendanceSetting.findOneAndUpdate(
           { userId, plantId, companyId:req.admin.companyId },
           { $set: updateData },
           { new: true, upsert: true }
         );
     
+        // Trigger activity tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: plantId,
+      module: MODULE.attendance,
+      subModuleAffected: null,
+      fileAffected: FILE.file_employee_attendance_setting,
+      modelAffected: [MODEL_AFFECTED.model_employeeAttendanceSetting],
+      eventType: oldData ? EMP_ATTENDANCE_SETTING_UPDATED : EMP_ATTENDANCE_SETTING_CREATED,
+      actionDone: oldData ? ACTIONS.update : ACTIONS.create,
+      oldData: oldData ? oldData.toObject() : null,
+      newData: updatedSetting.toObject(),
+    });
+
         res.status(200).json({
           message: "Attendance settings saved successfully.",
           data: updatedSetting
