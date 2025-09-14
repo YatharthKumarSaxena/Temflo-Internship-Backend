@@ -1,15 +1,15 @@
 const mongoose = require('mongoose');
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { PERMISSION_UPDATED } = require("@/config/activity.enums");
 
 const update = async (Model, req, res) => {
   try {
-    const id = req.admin.companyId;
+    const companyId = req.admin.companyId;
     const { employeeId, plantId, features } = req.body;
 
-    const permission = await Model.findOneAndUpdate(
-      { employeeId, plantId, companyId: id },
-      { features },
-      { new: true }
-    );
+    // 1️⃣ Find permission document
+    const permission = await Model.findOne({ employeeId, plantId, companyId });
 
     if (!permission) {
       return res.status(404).json({
@@ -18,8 +18,33 @@ const update = async (Model, req, res) => {
       });
     }
 
-    // Sync permissions to User model
+    // 2️⃣ Save oldData before updating
+    const oldData = JSON.parse(JSON.stringify(permission.features));
+    oldData._id = permission._id;
+    oldData.employeeId = employeeId;
+    oldData.plantId = plantId;
+    
+    // 3️⃣ Update features
+    permission.features = features;
+    await permission.save();
+
+    // 4️⃣ Sync permissions to User model
     await syncUserPermissions(employeeId);
+
+    // 5️⃣ Activity Tracker logging
+    activityTracker({
+      userId: req.admin._id,
+      companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.permission,
+      subModuleAffected: null,
+      fileAffected: FILE.file_permission_update,
+      modelAffected: [MODEL_AFFECTED.model_permission],
+      eventType: PERMISSION_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData: oldData,
+      newData: { note: "This feature is added, rest data is same as old data ", features }
+    });
 
     return res.status(200).json({
       success: true,

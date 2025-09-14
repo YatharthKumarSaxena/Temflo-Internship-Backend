@@ -1,4 +1,7 @@
 const mongoose = require('mongoose');
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { PERMISSION_CREATED } = require("@/config/activity.enums");
 
 const create = async (Model, req, res) => {
   const { employeeId, plantId, features } = req.body;
@@ -32,7 +35,21 @@ const create = async (Model, req, res) => {
     // Sync permissions to User model
     await syncUserPermissions(employeeId);
 
-    res
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: plantId || null,
+      module: MODULE.permission,
+      subModuleAffected: null,
+      fileAffected: FILE.file_permission_create,
+      modelAffected: [MODEL_AFFECTED.model_permission],
+      eventType: PERMISSION_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: newPermission.toObject()
+    });
+
+    return res
       .status(201)
       .json({
         success: true,
