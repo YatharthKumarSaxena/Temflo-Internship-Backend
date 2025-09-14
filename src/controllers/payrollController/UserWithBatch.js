@@ -1,7 +1,9 @@
 const User = require("../../models/userModels/User");
 const UserWithBatch = require("../../models/parollModels/UserWithBatch");
 const Batch = require("../../models/parollModels/Batch");
-
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { USER_WITH_BATCH_CREATED, USER_WITH_BATCH_DELETED, USER_WITH_BATCH_UPDATED } = require("@/config/activity.enums");
 
 const setNoCache = (res) => {
   res.set("Cache-Control", "no-store");
@@ -51,7 +53,24 @@ exports.syncUsers = async (req, res) => {
         isBatchSelected: false,
       });
 
-      inserted.push(await userWithBatch.save());
+      const saved = await userWithBatch.save();
+
+      // Activity Tracker
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.payroll,
+        subModuleAffected: null,
+        fileAffected: FILE.file_UserWithBatch,
+        modelAffected: [MODEL_AFFECTED.model_UserWithBatch],
+        eventType: USER_WITH_BATCH_CREATED,
+        actionDone: ACTIONS.create,
+        oldData: null,
+        newData: saved.toObject()
+      });
+
+      inserted.push(saved);
     }
 
     res.set("Cache-Control", "no-store");
@@ -110,6 +129,22 @@ exports.createUser = async (req, res) => {
     const user = new UserWithBatch(req.body);
     user.isBatchSelected = user.selectedBatch && user.selectedBatch !== "Not selected any batch";
     const saved = await user.save();
+
+    // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.payroll,
+      subModuleAffected: null,
+      fileAffected: FILE.file_UserWithBatch,
+      modelAffected: [MODEL_AFFECTED.model_UserWithBatch],
+      eventType: USER_WITH_BATCH_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: saved.toObject()
+    });
+
     res.status(201).json(saved);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -185,7 +220,7 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-// Update user
+// Update user with batch
 exports.updateUser = async (req, res) => {
   try {
     const updatedData = req.body;
@@ -193,19 +228,69 @@ exports.updateUser = async (req, res) => {
       updatedData.isBatchSelected = updatedData.selectedBatch !== "Not selected any batch";
     }
 
+    const existing = await UserWithBatch.findById(req.params.id);
+    if (!existing) return res.status(404).json({ message: "User not found" });
+
     const updated = await UserWithBatch.findByIdAndUpdate(req.params.id, updatedData, { new: true });
-    if (!updated) return res.status(404).json({ message: "User not found" });
+
+    // 🔹 Extract only changed fields
+    const oldData = {};
+    const newData = {};
+    const oldObj = existing.toObject();
+    const newObj = updated.toObject();
+
+    for (let key in newObj) {
+      if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
+        oldData[key] = oldObj[key];
+        newData[key] = newObj[key];
+      }
+    }
+
+    // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.payroll,
+      subModuleAffected: null,
+      fileAffected: FILE.file_UserWithBatch,
+      modelAffected: [MODEL_AFFECTED.model_UserWithBatch],
+      eventType: USER_WITH_BATCH_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData,
+      newData
+    });
+
+    setNoCache(res);
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
 
+
 // Delete user
 exports.deleteUser = async (req, res) => {
   try {
     const deleted = await UserWithBatch.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ message: "User not found" });
+
+    // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.payroll,
+      subModuleAffected: null,
+      fileAffected: FILE.file_UserWithBatch,
+      modelAffected: [MODEL_AFFECTED.model_UserWithBatch],
+      eventType: USER_WITH_BATCH_DELETED,
+      actionDone: ACTIONS.delete,
+      oldData: deleted.toObject(),
+      newData: null
+    });
+
+    setNoCache(res);
     res.json({ message: "User deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });

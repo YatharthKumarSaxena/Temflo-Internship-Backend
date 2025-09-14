@@ -1,10 +1,15 @@
 const Compensation = require("../../models/parollModels/Compensation");
 const UserWithBatch = require("../../models/parollModels/UserWithBatch");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { COMPENSATION_CREATED, COMPENSATION_DELETED, COMPENSATION_UPDATED } = require("@/config/activity.enums");
 
-// Create Compensation
+// Helper
 const setNoCache = (res) => {
   res.set("Cache-Control", "no-store");
 };
+
+// Create Compensation
 exports.createCompensation = async (req, res) => {
   try {
     const {
@@ -33,8 +38,24 @@ exports.createCompensation = async (req, res) => {
     };
     
     const compensation = new Compensation(payload);
-    setNoCache(res);
     await compensation.save();
+
+    // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.payroll,
+      subModuleAffected: null,
+      fileAffected: FILE.file_compensation,
+      modelAffected: [MODEL_AFFECTED.model_compensation],
+      eventType: COMPENSATION_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: compensation.toObject()
+    });
+
+    setNoCache(res);
     res.status(201).json({ success: true, data: compensation });
   } catch (error) {
     console.error("Create Compensation error:", error);
@@ -52,7 +73,8 @@ exports.getCompensations = async (req, res) => {
     const compensations = await Compensation.find(filter)
       .sort({ effectiveDate: -1 })
       .populate("employeeId", "name email");
-setNoCache(res);
+
+    setNoCache(res);
     res.status(200).json({ success: true, data: compensations });
   } catch (error) {
     console.error("Get Compensations error:", error);
@@ -85,6 +107,7 @@ exports.getSalaryByBatch = async (req, res) => {
         return { ...emp.toObject(), compensation: comp || null };
       })
     );
+
     setNoCache(res);
     res.status(200).json({ success: true, data: results });
   } catch (error) {
@@ -109,7 +132,7 @@ exports.getCompensationById = async (req, res) => {
   }
 };
 
-// Update Compensation
+// Update Compensation (Only changed fields traced)
 exports.updateCompensation = async (req, res) => {
   try {
     const existing = await Compensation.findById(req.params.id);
@@ -122,6 +145,7 @@ exports.updateCompensation = async (req, res) => {
       allowances, deductions, effectiveDate, statutory, statutorySettings,
     } = req.body;
 
+    // Prepare updateData
     const updateData = {
       gross: gross !== undefined ? Number(gross) || 0 : existing.gross,
       basic: basic !== undefined ? Number(basic) || 0 : existing.basic,
@@ -144,18 +168,52 @@ exports.updateCompensation = async (req, res) => {
       effectiveDate: effectiveDate !== undefined ? new Date(effectiveDate) : existing.effectiveDate,
     };
 
-    const compensation = await Compensation.findByIdAndUpdate(
+    // Calculate diff (only changed fields)
+    const diff = {};
+    Object.keys(updateData).forEach((key) => {
+      const oldValue = existing[key];
+      const newValue = updateData[key];
+      // Compare objects deeply if needed
+      const isObject = typeof oldValue === "object" && oldValue !== null;
+      if (
+        (isObject && JSON.stringify(oldValue) !== JSON.stringify(newValue)) ||
+        (!isObject && oldValue !== newValue)
+      ) {
+        diff[key] = { old: oldValue, new: newValue };
+      }
+    });
+
+    const updated = await Compensation.findByIdAndUpdate(
       req.params.id,
       updateData,
       { new: true, runValidators: true }
     );
+
+    // Activity Tracker (only changed fields)
+    if (Object.keys(diff).length > 0) {
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.payroll,
+        subModuleAffected: null,
+        fileAffected: FILE.file_compensation,
+        modelAffected: [MODEL_AFFECTED.model_compensation],
+        eventType: COMPENSATION_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData: diff,
+        newData: null
+      });
+    }
+
     setNoCache(res);
-    res.status(200).json({ success: true, data: compensation });
+    res.status(200).json({ success: true, data: updated });
   } catch (error) {
     console.error("Update Compensation error:", error);
     res.status(400).json({ success: false, error: error.message });
   }
 };
+
 
 // Delete Compensation
 exports.deleteCompensation = async (req, res) => {
@@ -164,6 +222,22 @@ exports.deleteCompensation = async (req, res) => {
     if (!compensation) {
       return res.status(404).json({ success: false, message: "Compensation not found" });
     }
+
+    // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.payroll,
+      subModuleAffected: null,
+      fileAffected: FILE.file_compensation,
+      modelAffected: [MODEL_AFFECTED.model_compensation],
+      eventType: COMPENSATION_DELETED,
+      actionDone: ACTIONS.delete,
+      oldData: compensation.toObject(),
+      newData: null
+    });
+
     setNoCache(res);
     res.status(200).json({ success: true, message: "Compensation deleted successfully" });
   } catch (error) {

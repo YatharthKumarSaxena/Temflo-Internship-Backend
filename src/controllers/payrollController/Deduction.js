@@ -1,8 +1,12 @@
 const Deduction = require("../../models/parollModels/Deduction");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { DEDUCTION_CREATED, DEDUCTION_UPDATED, DEDUCTION_DELETED } = require("@/config/activity.enums");
 
 const setNoCache = (res) => {
   res.set("Cache-Control", "no-store");
 };
+
 // Get all deductions
 exports.getAllDeductions = async (req, res) => {
   try {
@@ -40,6 +44,22 @@ exports.createDeduction = async (req, res) => {
   try {
     const deduction = new Deduction(req.body);
     await deduction.save();
+
+    // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.payroll,
+      subModuleAffected: null,
+      fileAffected: FILE.file_deduction,
+      modelAffected: [MODEL_AFFECTED.model_deduction],
+      eventType: DEDUCTION_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: deduction.toObject()
+    });
+
     setNoCache(res);
     res.status(201).json(deduction);
   } catch (err) {
@@ -50,8 +70,39 @@ exports.createDeduction = async (req, res) => {
 // Update deduction
 exports.updateDeduction = async (req, res) => {
   try {
+    const existing = await Deduction.findById(req.params.id);
+    if (!existing) return res.status(404).json({ message: "Deduction not found" });
+
     const updated = await Deduction.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updated) return res.status(404).json({ message: "Deduction not found" });
+
+    // 🔹 Extract changed fields separately for oldData and newData
+    const oldData = {};
+    const newData = {};
+    const oldObj = existing.toObject();
+    const newObj = updated.toObject();
+
+    for (let key in newObj) {
+      if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
+        oldData[key] = oldObj[key];
+        newData[key] = newObj[key];
+      }
+    }
+
+    // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.payroll,
+      subModuleAffected: null,
+      fileAffected: FILE.file_deduction,
+      modelAffected: [MODEL_AFFECTED.model_deduction],
+      eventType: DEDUCTION_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData, // sirf changed fields ke old values
+      newData  // sirf changed fields ke new values
+    });
+
     setNoCache(res);
     res.json(updated);
   } catch (err) {
@@ -59,11 +110,28 @@ exports.updateDeduction = async (req, res) => {
   }
 };
 
+
 // Delete deduction
 exports.deleteDeduction = async (req, res) => {
   try {
     const deleted = await Deduction.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ message: "Deduction not found" });
+
+    // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.payroll,
+      subModuleAffected: null,
+      fileAffected: FILE.file_deduction,
+      modelAffected: [MODEL_AFFECTED.model_deduction],
+      eventType: DEDUCTION_DELETED,
+      actionDone: ACTIONS.delete,
+      oldData: deleted.toObject(),
+      newData: null
+    });
+
     setNoCache(res);
     res.json({ message: "Deleted successfully" });
   } catch (err) {
