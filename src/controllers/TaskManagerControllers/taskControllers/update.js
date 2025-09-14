@@ -5,7 +5,18 @@ const update = async (req, res) => {
   try {
     const Task = mongoose.model('Task');
 
-    const { title, description, status, priority, assignedTo, dueDate, links, tags, storyPointEstimate } = req.body;
+    const {
+      title,
+      description,
+      status,
+      priority,
+      assignedTo,
+      dueDate,
+      links,
+      tags,
+      storyPointEstimate,
+      comment
+    } = req.body;
 
     const task = await Task.findOne({ _id: req.params.taskId });
 
@@ -24,7 +35,17 @@ const update = async (req, res) => {
     if (dueDate) task.dueDate = dueDate;
     if (links) task.links = links;
     if (tags) task.tags = tags;
-    if (storyPointEstimate) task.storyPointEstimate = storyPointEstimate
+    if (storyPointEstimate) task.storyPointEstimate = storyPointEstimate;
+    console.log("first",comment)
+    if (comment) {
+      const prevComments = task.comments;
+      if (prevComments) {
+        const newComments = [...prevComments, comment];
+        task.comments = newComments;
+      } else {
+        task.comments = [comment]
+      }
+    }
 
     await task.save();
 
