@@ -5,52 +5,38 @@ const read = async (req, res) => {
     const Project = mongoose.model('Project');
     const Member = mongoose.model('Member');
 
-    // check if user is employee
     if (req.admin.role === 'employee') {
-      // find all project, employee is in
-      const projectIds = Member.distinct('projectId', {
+      // Get projectIds where the employee is a member
+      const projectIds = await Member.distinct('projectId', {
         userId: req.admin.id,
         companyId: req.admin.companyId,
-        removed: false, // Only active memberships
+        removed: false,
       });
-      
-      if (projectIds) {
-        const projects = [];
-        projectIds.map(async (project) => {
-          const projectId = project.projectId;
-          const req = await Project.findOne({
-            _id: projectId,
-            companyId: req.admin.companyId,
-            removed: false,
-          });
-          projects.push(req);
-        });
 
-        if (projects.length == 0) {
-          return res.status(404).json({
-            success: false,
-            projects: null,
-            message: 'No Projects found',
-          });
-        } else {
-          return res.status(200).json({
-            success: true,
-            projects,
-            message: 'We found this Projects',
-          });
-        }
-      } else {
+      if (!projectIds || projectIds.length === 0) {
         return res.status(404).json({
           success: false,
           projects: null,
-          message: 'No Projects found',
+          message: 'No projects found for the employee.',
         });
       }
+
+      // Fetch all projects by their IDs
+      const projects = await Project.find({
+        _id: { $in: projectIds },
+        companyId: req.admin.companyId,
+        removed: false,
+      });
+
+      return res.status(200).json({
+        success: true,
+        projects,
+        message: 'Projects found successfully.',
+      });
     } else {
-      return res.status(404).json({
+      return res.status(403).json({
         success: false,
-        projects: null,
-        message: 'You are not an employee',
+        message: 'Only employees can fetch assigned projects.',
       });
     }
   } catch (error) {

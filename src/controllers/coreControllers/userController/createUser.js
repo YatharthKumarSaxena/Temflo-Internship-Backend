@@ -1,5 +1,12 @@
 const mongoose = require('mongoose');
 const { generate: uniqueId } = require('shortid');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { USER_CREATED } = require("@/config/activity.enums");
+const { masterTemplate } = require("@/config/emailTemplate");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { sendEmail } = require("@/utils/emailSender");
+const { generateNanoId } = require('@/utils/idGenerator');
 
 const createUser = async (req, res) => {
   try {
@@ -12,17 +19,17 @@ const createUser = async (req, res) => {
             return res.status(400).json({ success:false, message: 'All fields required' });
     }
 
-    const existingEmpId = await User.findOne({ employeeCode,companyId:req.admin.companyId,removed:false });
+    const existingEmpId = await User.findOne({ employeeCode,removed:false });
         if (existingEmpId) {
             return res.status(400).json({ success:false, message: 'Employee Code already exists' });
         }
 
-    const existingUser = await User.findOne({ email,companyId:req.admin.companyId,removed:false });
+    const existingUser = await User.findOne({ email,removed:false });
         if (existingUser) {
             return res.status(400).json({ success:false, message: 'Email already exists' });
         }
     
-    const deletedUser = await User.findOne({ email,companyId:req.admin.companyId,removed:true });
+    const deletedUser = await User.findOne({ email,removed:true });
         if (deletedUser) {
             return res.status(400).json({ success:false, message: 'User with this email is removed, contact adminstrator' });
     } 
@@ -37,14 +44,66 @@ const createUser = async (req, res) => {
     }
 
     const userResult = await new User(newuser).save();
+
+    console.log("User saved:", userResult);
+    console.log("User ID:", userResult._id);
+
+    if (!userResult || !userResult._id) {
+      return res.status(500).json({ success:false, message:'User creation failed' });
+    }
+
+    // Generate email verification token
+    const token = await generateNanoId();
+
+    const emailToken = {
+      token: token,
+      created: new Date(),
+    };
+
     const userPasswordData = {
         password:passwordHash,
-        emailVerified:true,
         salt,
+        emailVerified: false, // ✅ user ko verify karna hoga
+        emailToken,
         user:userResult._id
     }
+
     await new UserPassword(userPasswordData).save();
 
+    // 🔹 Send Welcome / Verification Email
+    if (email) {
+
+      // Send verification email
+      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const verificationLink = `${baseUrl}/verify/${userResult._id}/${emailToken.token}`;
+
+      const emailConfig = {
+        ...masterTemplate.employeeCreation,
+        user_name: name || "User",
+        actionlink: verificationLink, // dynamic verification link
+        action_link: verificationLink,
+      };
+      const html = generateMasterTemplate(emailConfig);
+      sendEmail(email, emailConfig.subject, html); // fire-and-forget
+    }
+
+    // Activity Tracker logging
+    activityTracker({
+      userId: req.admin._id, // admin ka Mongo ID as userId
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.core,
+      subModuleAffected: SUBMODULE.user,
+      fileAffected: FILE.file_user_createUser,
+      modelAffected: [MODEL_AFFECTED.model_user, MODEL_AFFECTED.model_userPassword],
+      eventType: USER_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: {
+        user: userResult
+      }
+    });
+    
     return res.status(200).json({
       success: true,
       message: 'User Created Successfully',

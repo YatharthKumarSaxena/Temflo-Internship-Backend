@@ -15,7 +15,7 @@ const readP = async (req, res) => {
         removed: false, // Only active memberships
       });
 
-      if (response) {
+      if (response.length > 0) {
         const tasks = await Task.find({
           projectId: req.params.projectId,
           companyId: req.admin.companyId,

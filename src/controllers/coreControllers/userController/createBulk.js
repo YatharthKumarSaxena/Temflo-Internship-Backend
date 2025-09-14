@@ -2,6 +2,14 @@ const mongoose = require('mongoose');
 const { generate: uniqueId } = require('shortid');
 const xlsx = require('xlsx');
 const fs = require('fs');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { USERS_CREATED_BULK } = require("@/config/activity.enums");
+const { masterTemplate } = require("@/config/emailTemplate");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { sendEmail } = require("@/utils/emailSender");
+const { EMAIL_TOKEN_EXPIRY } = require("@/config/token.config");
+const { generateNanoId } = require('@/utils/idGenerator');
 
 const createBulk = async (req, res) => {
   try {
@@ -98,15 +106,37 @@ const createBulk = async (req, res) => {
 
         const savedUser = await newUser.save();
 
+            // Generate email verification token
+        const token = await generateNanoId();
+
+        const emailToken = {
+          token: token,
+          created: new Date(),
+         };
+
         const userPasswordData = new UserPassword({
           password: passwordHash,
-          emailVerified: true,
           salt,
+          emailVerified: false,
+          emailToken,
           user: savedUser._id
         });
 
         await userPasswordData.save();
-        success.push({ email, employeeCode });
+
+              // Send verification email
+              const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+              const verificationLink = `${baseUrl}/verify/${savedUser._id}/${emailToken.token}`;
+        
+              const emailConfig = {
+                ...masterTemplate.employeeCreation,
+                user_name: emp.Name || "User",
+                actionlink: verificationLink, // dynamic verification link
+                action_link: verificationLink,
+              };
+              const html = generateMasterTemplate(emailConfig);
+              sendEmail(email, emailConfig.subject, html); // fire-and-forget
+        success.push(savedUser.toObject());
 
         existingEmailSet.add(email);
         existingCodeSet.add(employeeCode);
@@ -118,6 +148,24 @@ const createBulk = async (req, res) => {
 
     fs.unlinkSync(file.path); // Cleanup uploaded Excel file
 
+for (const user of success) {
+
+  activityTracker({
+    userId: req.admin._id,
+    companyId: req.admin.companyId,
+    plantId: req.admin.plantId || null,
+    module: MODULE.core,
+    subModuleAffected: SUBMODULE.user,
+    fileAffected: FILE.file_user_createBulk,
+    modelAffected: [MODEL_AFFECTED.model_user, MODEL_AFFECTED.model_userPassword],
+    eventType: USERS_CREATED_BULK,
+    actionDone: ACTIONS.create,
+    oldData: null,
+    newData: user
+  });
+}
+
+    
     return res.status(200).json({
       success: true,
       message: 'Bulk user upload complete',

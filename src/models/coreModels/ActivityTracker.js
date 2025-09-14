@@ -16,6 +16,7 @@ const activitySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Plant',
     required: false,
+    default: null
   },
   module: {
     type: String,
@@ -30,7 +31,8 @@ const activitySchema = new mongoose.Schema({
   subModuleAffected: {
     type: String,
     enum: Object.values(SUBMODULE),
-    required: true,
+    required: false,
+    default: null
   },
   modelAffected: {
     type: [String],

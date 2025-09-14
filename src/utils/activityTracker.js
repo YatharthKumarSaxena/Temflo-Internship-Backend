@@ -1,43 +1,23 @@
-const Activity = require('@/models/coreModels/ActivityTracker');
-const { errorMessage } = require('@/config/error-handler.config');
-const { logWithTime } = require('./time-stamps');
+const { activityMethod, kafkaBroker, rabbitMQUrl } = require("@/config/loggerConfig");
+const {  asyncDBActivityTracker } = require("./asyncActivityTracker");
 
-const activityTracker = async ({
-  userId,
-  companyId,
-  plantId,
-  module,
-  subModuleAffected,
-  fileAffected,
-  modelAffected,
-  eventType,
-  actionDone,
-  oldData = null,
-  newData = null,
-}) => {
+const activityTracker = async (data) => {
   try {
-    await Activity.create({
-      userId,
-      companyId,
-      plantId,
-      module,
-      subModuleAffected,
-      fileAffected,
-      modelAffected,
-      eventType,
-      actionDone,
-      oldData,
-      newData,
-    });
-
-    return true;
+    switch (activityMethod) {
+      case 'rabbitmq':
+        return sendToRabbitMQ(data, rabbitMQUrl);
+      case 'kafka':
+        return sendToKafka(data, kafkaBroker);
+      default:
+        return asyncDBActivityTracker(data); // current DB save
+    }
   } catch (err) {
-    logWithTime('❌ Internal Error: An Error occurred while saving the Activity Tracker');
+    logWithTime('❌ Error in Activity Tracker');
     errorMessage(err);
     return false;
   }
 };
 
 module.exports = {
-  activityTracker,
-};
+  activityTracker
+}

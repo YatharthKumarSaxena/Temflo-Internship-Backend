@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const { generate: uniqueId } = require('shortid');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { USER_PASSWORD_UPDATED } = require("@/config/activity.enums");
 
 const updatePassword = async (req, res) => {
   const UserPassword = mongoose.model('UserPassword');
@@ -57,6 +60,20 @@ const updatePassword = async (req, res) => {
     });
   }
 
+    // Activity Tracker logging
+    activityTracker({
+      userId: req.admin._id, // admin ka Mongo ID as userId
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.core,
+      subModuleAffected: SUBMODULE.setting,
+      fileAffected: FILE.file_setting_updatePassword,
+      modelAffected: [MODEL_AFFECTED.model_userPassword],
+      eventType: USER_PASSWORD_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData: { passwordChanged: false },
+      newData: { passwordChanged: true }
+    });
   return res.status(200).json({
     success: true,
     result: {},

@@ -15,7 +15,7 @@ const readW = async (req, res) => {
         removed: false, // Only active memberships
       });
       
-      if (projectIds) {
+      if (projectIds.length > 0 ) {
         const projects = [];
         projectIds.map(async (project) => {
           const projectId = project.projectId;

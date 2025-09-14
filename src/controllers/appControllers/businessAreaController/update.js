@@ -1,35 +1,51 @@
-const update= async (Model, req, res) => {
+const { BUSINESS_AREA_UPDATED } = require("@/config/activity.enums");
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+
+const update = async (Model, req, res) => {
   try {
-    const  id  = req.admin.companyId; // Admin ID passed in URL
-    const {
-      description
-    } = req.body;
+    const companyId = req.admin.companyId;
 
-    const updatedBusinessArea = await Model.findOneAndUpdate(
-        { _id: req.params.id, companyId: id }, 
-        { description },                
-        { new: true }                   
-      );
+    const { description } = req.body;
 
-    if (!updatedBusinessArea) {
-      return res.status(404).json({
-        success: false,
-        message: 'Business Area not found or you do not have access to this business area.',
-      });
+    // single query: update + return old document
+    const oldBusinessArea = await Model.findOneAndUpdate(
+      { _id: req.params.id, companyId: companyId },
+      { description },
+      { new: false }  // return pre-update doc
+    );
+
+    if (!oldBusinessArea) {
+      return throwDBResourceNotFoundError(res, "Business Area");
     }
 
+    logWithTime(`✅ 🎯 Business Area Updated Successfully 🚀`);
 
-    return res.status(200).json({
+    // Activity Tracker logging
+    activityTracker({
+      userId: req.admin._id,
+      companyId: companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.app,
+      subModuleAffected: SUBMODULE.business,
+      fileAffected: FILE.file_business_update,
+      modelAffected: [MODEL_AFFECTED.model_company],
+      eventType: BUSINESS_AREA_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData: { _id: req.params.id, description: oldBusinessArea.description },
+      newData: { description },
+    });
+
+    return res.status(OK).json({
       success: true,
-      result: updatedBusinessArea,
-      message: 'Business Area updated successfully',
+      result: { ...oldBusinessArea.toObject(), description }, // updated version
+      message: "Business Area updated successfully",
     });
+
   } catch (error) {
-    console.error('Update Admin Error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-    });
+    logWithTime("❌ Internal Error: Failed to update Business Area 🗑️");
+    errorMessage(error);
+    return throwInternalServerError(res);
   }
 };
 

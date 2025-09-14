@@ -1,428 +1,474 @@
-const UserModel = require('../../../models/userModels/User');
-const UserPassword = require('../../../models/userModels/UserPassword');
-const bcrypt = require('bcryptjs');
-const { generate: uniqueId } = require('shortid');
+const UserModel = require('../../../models/userModels/User')
+const { USER_BANK_DETAIL_UPDATED, USER_AADHAR_UPDATED, USER_ADDRESS_UPDATED, USER_EMERGENCY_CONTACT_UPDATED, USER_PAN_UPDATED, USER_EXPERIENCE_ADDED, USER_DEGREE_ADDED, USER_INFO_UPDATED } = require("@/config/activity.enums");
+const { errorMessage, throwInternalServerError, throwDBResourceNotFoundError, throwMissingFieldsError } = require("@/config/error-handler.config");
+const { logWithTime } = require("@/utils/time-stamps");
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { OK } = require('@/config/httpStatus.config');
 
 class UpdateController {
+
   updateInfo = async (req, res, next) => {
     try {
-      // Check the type and get _id accordingly
       const _id = req.params.id;
+      const companyId = req.admin.companyId;
+
       const {
-        firstName,
-        middleName,
-        lastName,
-        bloodGroup,
-        gender,
-        dob,
-        contactNumber,
-        emailPersonal,
-        department,
-        dateOfJoining,
-        designation,
-        supervisor,
-        role,
-        status,
+        firstName, middleName, lastName,
+        bloodGroup, gender, dob,
+        contactNumber, emailPersonal,
+        department, dateOfJoining, designation, supervisor
       } = req.body;
 
-      const updatedUser = await UserModel.findByIdAndUpdate(
-        { _id, companyId: req.admin.companyId },
+      // ⚡ single query: update + return old
+      const oldUser = await UserModel.findOneAndUpdate(
+        { _id, companyId },
         {
           $set: {
-            mobile: contactNumber,
-            'employeeInfo.firstName': firstName,
-            'employeeInfo.middleName': middleName,
-            'employeeInfo.lastName': lastName,
-            'employeeInfo.bloodGroup': bloodGroup,
-            'employeeInfo.gender': gender,
-            'employeeInfo.dob': dob,
-            'employeeInfo.emailPersonal': emailPersonal,
-            'employeeInfo.department': department,
-            'employeeInfo.dateOfJoining': dateOfJoining,
-            'employeeInfo.designation': designation,
-            supervisor: supervisor,
-            status: status,
-            role: role,
-          },
+            "mobile": contactNumber,
+            "employeeInfo.firstName": firstName,
+            "employeeInfo.middleName": middleName,
+            "employeeInfo.lastName": lastName,
+            "employeeInfo.bloodGroup": bloodGroup,
+            "employeeInfo.gender": gender,
+            "employeeInfo.dob": dob,
+            "employeeInfo.emailPersonal": emailPersonal,
+            "employeeInfo.department": department,
+            "employeeInfo.dateOfJoining": dateOfJoining,
+            "employeeInfo.designation": designation,
+            // "employeeInfo.supervisor": supervisor
+          }
         },
-        { new: true }
+        { new: false } // return old doc
       );
 
-      if (!updatedUser) {
-        return res.status(404).json({ success: false, message: 'Employee not found' });
-      }
+      if (!oldUser) return throwDBResourceNotFoundError(res, "Employee");
 
-      return res.status(200).json({
+      const oldData = {
+        userId: _id,
+        ...oldUser.employeeInfo.toObject(),
+        mobile: oldUser.mobile,
+      };
+
+      const newData = {
+        firstName, middleName, lastName, bloodGroup, gender, dob,
+        emailPersonal, department, dateOfJoining, designation,
+        mobile: contactNumber,
+      };
+
+      logWithTime(`✅ 🎯 Employee Information by Admin Updated Successfully 🚀`);
+
+      activityTracker({
+        userId: req.admin._id,
+        companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.core,
+        subModuleAffected: SUBMODULE.user,
+        fileAffected: FILE.file_user_update,
+        modelAffected: [MODEL_AFFECTED.model_user],
+        eventType: USER_INFO_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData, newData
+      });
+
+      return res.status(OK).json({
         success: true,
         message: 'Employee information updated successfully',
-        employee: updatedUser,
+        employee: { ...oldUser.toObject(), ...{ employeeInfo: newData } }
       });
+
     } catch (error) {
-      console.error(error);
-      return res
-        .status(500)
-        .json({ success: false, message: 'Error updating employee information' });
+      logWithTime("❌ Internal Error: Failed to update Employee Information by Admin 🗑️");
+      errorMessage(error);
+      return throwInternalServerError(res);
     }
   };
 
   updateAddress = async (req, res, next) => {
     try {
       const _id = req.params.id;
-
+      const companyId = req.admin.companyId;
       const { permanentAddress, presentAddress } = req.body;
 
-      const updatedUser = await UserModel.findByIdAndUpdate(
-        { _id, companyId: req.admin.companyId },
+      const oldUser = await UserModel.findOneAndUpdate(
+        { _id, companyId },
         {
           $set: {
-            'address.permanentAddress.address': permanentAddress.address,
-            'address.permanentAddress.country': permanentAddress.country,
-            'address.permanentAddress.state': permanentAddress.state,
-            'address.permanentAddress.city': permanentAddress.city,
-            'address.presentAddress.address': presentAddress.address,
-            'address.presentAddress.country': presentAddress.country,
-            'address.presentAddress.state': presentAddress.state,
-            'address.presentAddress.city': presentAddress.city,
-          },
+            "address.permanentAddress": permanentAddress,
+            "address.presentAddress": presentAddress,
+          }
         },
-        { new: true }
+        { new: false }
       );
 
-      if (!updatedUser) {
-        return res.status(404).json({ success: false, message: 'Employee not found' });
-      }
+      if (!oldUser) return throwDBResourceNotFoundError(res, "Employee");
 
-      return res.status(200).json({
+      const oldData = {
+        userId: _id,
+        permanentAddress: oldUser.address.permanentAddress,
+        presentAddress: oldUser.address.presentAddress,
+      };
+
+      const newData = { permanentAddress, presentAddress };
+
+      logWithTime(`✅ 🎯 Employee Address by Admin Updated Successfully 🚀`);
+
+      activityTracker({
+        userId: req.admin._id,
+        companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.core,
+        subModuleAffected: SUBMODULE.user,
+        fileAffected: FILE.file_user_update,
+        modelAffected: [MODEL_AFFECTED.model_user],
+        eventType: USER_ADDRESS_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData, newData
+      });
+
+      return res.status(OK).json({
         success: true,
         message: 'Employee information updated successfully',
-        employee: updatedUser,
+        employee: { ...oldUser.toObject(), address: newData }
       });
+
     } catch (error) {
-      console.error(error);
-      return res
-        .status(500)
-        .json({ success: false, message: 'Error updating employee information' });
+      logWithTime("❌ Internal Error: Failed to update address of Employee by Admin 🗑️");
+      errorMessage(error);
+      return throwInternalServerError(res);
     }
   };
 
   updateEmergencyContact = async (req, res, next) => {
     try {
       const _id = req.params.id;
-
+      const companyId = req.admin.companyId;
       const { name, address, number, email } = req.body;
 
-      const updatedUser = await UserModel.findByIdAndUpdate(
-        { _id, comapanyId: req.admin.companyId },
+      const oldUser = await UserModel.findOneAndUpdate(
+        { _id, companyId },
         {
           $set: {
-            'emergencyContact.name': name,
-            'emergencyContact.address': address,
-            'emergencyContact.number': number,
-            'emergencyContact.email': email,
-          },
+            "emergencyContact.name": name,
+            "emergencyContact.address": address,
+            "emergencyContact.number": number,
+            "emergencyContact.email": email,
+          }
         },
-        { new: true }
+        { new: false }
       );
 
-      if (!updatedUser) {
-        return res.status(404).json({ success: false, message: 'Employee not found' });
-      }
+      if (!oldUser) return throwDBResourceNotFoundError(res, "Employee");
 
-      return res.status(200).json({
+      const oldData = { userId: _id, ...oldUser.emergencyContact.toObject() };
+      const newData = { name, address, number, email };
+
+      logWithTime(`✅ 🎯 Employee Emergency Contact By Admin Updated Successfully 🚀`);
+
+      activityTracker({
+        userId: req.admin._id,
+        companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.core,
+        subModuleAffected: SUBMODULE.profile,
+        fileAffected: FILE.file_profile_update,
+        modelAffected: [MODEL_AFFECTED.model_user],
+        eventType: USER_EMERGENCY_CONTACT_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData, newData
+      });
+
+      return res.status(OK).json({
         success: true,
         message: 'Employee information updated successfully',
-        employee: updatedUser,
+        employee: { ...oldUser.toObject(), emergencyContact: newData }
       });
+
     } catch (error) {
-      console.error(error);
-      return res.status(500).json({
-        success: false,
-        message: 'Error updating employee information',
-        error: error.message,
-      });
+      logWithTime("❌ Internal Error: Failed to update emergency contact number of Employee by Admin 🗑️");
+      errorMessage(error);
+      return throwInternalServerError(res);
     }
   };
 
   updateBankDetail = async (req, res, next) => {
     try {
       const file = req.file;
+      const filename = file && file.filename;
+
       const _id = req.params.id;
-      const { accountNumber, bankName, ifscCode, accountType, accountHolder, documentPresent } =
-        req.body;
+      const companyId = req.admin.companyId;
 
-      let filename = '';
+      const { accountNumber, bankName, ifscCode, accountType, accountHolder } = req.body;
 
-      if (file) {
-        filename = file.path; // New file uploaded
-      } else if (documentPresent === 'true' || documentPresent === true) {
-        const existingUser = await UserModel.findOne({
-          _id,
-          companyId: req.admin.companyId,
-        });
-
-        if (!existingUser) {
-          return res.status(404).json({ success: false, message: 'Employee not found' });
-        }
-
-        filename = existingUser.bankDetail?.document || '';
-      } else {
-        return res.status(400).json({
-          success: false,
-          message: 'No document uploaded or marked as present',
-        });
-      }
-
-      const updatedUser = await UserModel.findByIdAndUpdate(
-        { _id, companyId: req.admin.companyId },
+      const oldUser = await UserModel.findOneAndUpdate(
+        { _id, companyId },
         {
           $set: {
-            'bankDetail.accountNumber': accountNumber,
-            'bankDetail.bankName': bankName,
-            'bankDetail.ifscCode': ifscCode,
-            'bankDetail.accountType': accountType,
-            'bankDetail.accountHolder': accountHolder,
-            'bankDetail.document': filename,
-          },
+            "bankDetail.accountNumber": accountNumber,
+            "bankDetail.bankName": bankName,
+            "bankDetail.ifscCode": ifscCode,
+            "bankDetail.accountType": accountType,
+            "bankDetail.accountHolder": accountHolder,
+            "bankDetail.document": filename
+          }
         },
-        { new: true }
+        { new: false }
       );
 
-      if (!updatedUser) {
-        return res.status(404).json({ success: false, message: 'Employee not found' });
-      }
+      if (!oldUser) return throwDBResourceNotFoundError(res, "Employee");
 
-      return res.status(200).json({
+      const oldData = { userId: _id, ...oldUser.bankDetail.toObject?.() };
+      const newData = { accountNumber, bankName, ifscCode, accountType, accountHolder, document: filename };
+
+      logWithTime(`✅ 🎯 Employee Bank Detail by Admin Updated Successfully 🚀`);
+
+      activityTracker({
+        userId: req.admin._id,
+        companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.core,
+        subModuleAffected: SUBMODULE.profile,
+        fileAffected: FILE.file_profile_update,
+        modelAffected: [MODEL_AFFECTED.model_user],
+        eventType: USER_BANK_DETAIL_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData, newData
+      });
+
+      return res.status(OK).json({
         success: true,
         message: 'Employee information updated successfully',
-        employee: updatedUser,
+        employee: { ...oldUser.toObject(), bankDetail: newData }
       });
+
     } catch (error) {
-      console.error(error);
-      return res
-        .status(500)
-        .json({ success: false, message: 'Error updating employee information' });
+      logWithTime("❌ Internal Error: Failed to update bank details of Employee by Admin 🗑️");
+      errorMessage(error);
+      return throwInternalServerError(res);
     }
   };
+
 
   updateDegreeInfo = async (req, res, next) => {
     try {
       const file = req.file;
-      const filename = req.file.path;
+      const filename = file && file.filename;
 
       const _id = req.params.id;
-
+      const companyId = req.admin.companyId;
       const { degree, institute, year, percentage, key } = req.body;
 
       if (!degree || !institute || !year || !percentage || !file)
-        return res.status(404).json({ success: false, message: 'All field requireed' });
+        return throwMissingFieldsError(res, "All fields");
 
-      const user = await UserModel.findOne({ _id, companyId: req.admin.companyId });
-
-      if (!user) {
-        return res.status(404).json({ success: false, message: 'User not found' });
-      }
-
-      // Destructure the degree fields from the request body
       const newDegree = {
         degree,
         institute,
         year,
         percentage,
         key,
-        document: filename, // Add file path (if uploaded)
+        document: filename
       };
 
-      // Push new degree to the degreeInfo array
-      user.degreeInfo.push(newDegree);
+      // Single query -> old user returned
+      const oldUser = await UserModel.findOneAndUpdate(
+        { _id, companyId },
+        { $push: { degreeInfo: newDegree } },
+        { new: false } // returns old doc before update
+      );
 
-      // Save the updated user information
-      await user.save();
+      if (!oldUser) return throwDBResourceNotFoundError(res, "User");
 
-      return res.status(200).json({
-        success: true,
-        message: 'Degree information updated successfully',
-        degreeInfo: user.degreeInfo,
+      const oldData = { userId: _id, degreeInfo: oldUser.degreeInfo.slice() };
+      const newData = { degreeInfo: [...oldUser.degreeInfo, newDegree] };
+
+      logWithTime(`✅ 🎯 Employee Degree Information by Admin Updated Successfully 🚀`);
+
+      activityTracker({
+        userId: req.admin._id,
+        companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.core,
+        subModuleAffected: SUBMODULE.profile,
+        fileAffected: FILE.file_profile_update,
+        modelAffected: [MODEL_AFFECTED.model_user],
+        eventType: USER_DEGREE_ADDED,
+        actionDone: ACTIONS.update,
+        oldData,
+        newData
       });
+
+      return res.status(OK).json({
+        success: true,
+        message: "Degree information updated successfully",
+        degreeInfo: newData.degreeInfo
+      });
+
     } catch (error) {
-      console.error(error);
-      return res
-        .status(500)
-        .json({ success: false, message: 'Error updating employee information' });
+      logWithTime("❌ Internal Error: Failed to update Degree Information 🗑️");
+      errorMessage(error);
+      return throwInternalServerError(res);
     }
   };
+
 
   updateExperienceInfo = async (req, res, next) => {
     try {
       const file = req.file;
-      const filename = req.file.path;
+      const filename = file && file.filename;
 
       const _id = req.params.id;
-
+      const companyId = req.admin.companyId;
       const { company, position, dateOfEntry, dateOfExit, key } = req.body;
 
       if (!company || !position || !dateOfEntry || !dateOfExit || !file)
-        return res.status(404).json({ success: false, message: 'All field requireed' });
+        return throwMissingFieldsError(res, "All fields");
 
-      const user = await UserModel.findOne({ _id, companyId: req.admin.companyId });
-
-      if (!user) {
-        return res.status(404).json({ success: false, message: 'User not found' });
-      }
-
-      // Destructure the degree fields from the request body
       const newExperience = {
         company,
         position,
         dateOfEntry,
         dateOfExit,
         key,
-        document: filename, // Add file path (if uploaded)
+        document: filename
       };
 
-      // Push new degree to the degreeInfo array
-      user.experience.push(newExperience);
+      const oldUser = await UserModel.findOneAndUpdate(
+        { _id, companyId },
+        { $push: { experience: newExperience } },
+        { new: false }
+      );
 
-      // Save the updated user information
-      await user.save();
+      if (!oldUser) return throwDBResourceNotFoundError(res, "User");
 
-      return res.status(200).json({
-        success: true,
-        message: 'Experience information updated successfully',
-        experienceInfo: user.experience,
+      const oldData = { userId: _id, experience: oldUser.experience.slice() };
+      const newData = { experience: [...oldUser.experience, newExperience] };
+
+      logWithTime(`✅ 🎯 Employee Experience Information by Admin Updated Successfully 🚀`);
+
+      activityTracker({
+        userId: req.admin._id,
+        companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.core,
+        subModuleAffected: SUBMODULE.profile,
+        fileAffected: FILE.file_profile_update,
+        modelAffected: [MODEL_AFFECTED.model_user],
+        eventType: USER_EXPERIENCE_ADDED,
+        actionDone: ACTIONS.update,
+        oldData,
+        newData
       });
+
+      return res.status(OK).json({
+        success: true,
+        message: "Experience information updated successfully",
+        experienceInfo: newData.experience
+      });
+
     } catch (error) {
-      console.error(error);
-      return res
-        .status(500)
-        .json({ success: false, message: 'Error updating employee information' });
+      logWithTime("❌ Internal Error: Failed to update Experience Information 🗑️");
+      errorMessage(error);
+      return throwInternalServerError(res);
     }
   };
+
+
 
   updatePan = async (req, res, next) => {
     try {
       const file = req.file;
-      const filename = req.file.path;
+      const filename = file && file.filename;
 
-      if (!file) return res.status(404).json({ success: false, message: 'All field required' });
+      if (!file) return throwMissingFieldsError(res, "All fields");
 
       const _id = req.params.id;
+      const companyId = req.admin.companyId;
 
-      const updatedUser = await UserModel.findByIdAndUpdate(
-        { _id, companyId: req.admin.companyId },
-        {
-          $set: {
-            'panaddhar.panCard': filename,
-          },
-        },
-        { new: true }
+      const oldUser = await UserModel.findOneAndUpdate(
+        { _id, companyId },
+        { $set: { "panaddhar.panCard": filename } },
+        { new: false }
       );
 
-      if (!updatedUser) {
-        return res.status(404).json({ success: false, message: 'Employee not found' });
-      }
+      if (!oldUser) return throwDBResourceNotFoundError(res, "Employee");
 
-      return res.status(200).json({
-        success: true,
-        message: 'Employee information updated successfully',
-        employee: updatedUser,
+      logWithTime(`✅ 🎯 Employee PAN Information by Admin Updated Successfully 🚀`);
+
+      const oldData = { userId: _id, panCard: oldUser.panaddhar?.panCard || null };
+      const newData = { panCard: filename };
+
+      activityTracker({
+        userId: req.admin._id,
+        companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.core,
+        subModuleAffected: SUBMODULE.profile,
+        fileAffected: FILE.file_profile_update,
+        modelAffected: [MODEL_AFFECTED.model_user],
+        eventType: USER_PAN_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData,
+        newData
       });
+
+      return res.status(OK).json({ success: true, message: "Employee information updated successfully", employee: { ...oldUser.toObject(), panaddhar: { ...oldUser.panaddhar, panCard: filename } } });
+
     } catch (error) {
-      console.log(error);
-      return res
-        .status(500)
-        .json({ success: false, message: 'Error updating employee information' });
+      logWithTime("❌ Internal Error: Failed to update PAN 🗑️");
+      errorMessage(error);
+      return throwInternalServerError(res);
     }
   };
 
   updateAadhar = async (req, res, next) => {
     try {
       const file = req.file;
-      const filename = req.file.path;
+      const filename = file && file.filename;
 
-      if (!file) return res.status(404).json({ success: false, message: 'All field Required' });
+      if (!file) return throwMissingFieldsError(res, "All fields");
 
       const _id = req.params.id;
-      const updatedUser = await UserModel.findByIdAndUpdate(
-        { _id, companyId: req.admin.companyId },
-        {
-          $set: {
-            'panaddhar.aadharCard': filename,
-          },
-        },
-        { new: true }
+      const companyId = req.admin.companyId;
+
+      const oldUser = await UserModel.findOneAndUpdate(
+        { _id, companyId },
+        { $set: { "panaddhar.aadharCard": filename } },
+        { new: false }
       );
 
-      if (!updatedUser) {
-        return res.status(404).json({ success: false, message: 'Employee not found' });
-      }
+      if (!oldUser) return throwDBResourceNotFoundError(res, "Employee");
 
-      return res.status(200).json({
-        success: true,
-        message: 'Employee information updated successfully',
-        employee: updatedUser,
+      logWithTime(`✅ 🎯 Employee Aadhar Information by Admin Updated Successfully 🚀`);
+
+      const oldData = { userId: _id, aadharCard: oldUser.panaddhar?.aadharCard || null };
+      const newData = { aadharCard: filename };
+
+      activityTracker({
+        userId: req.admin._id,
+        companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.core,
+        subModuleAffected: SUBMODULE.profile,
+        fileAffected: FILE.file_profile_update,
+        modelAffected: [MODEL_AFFECTED.model_user],
+        eventType: USER_AADHAR_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData,
+        newData
       });
+
+      return res.status(OK).json({ success: true, message: "Employee information updated successfully", employee: { ...oldUser.toObject(), panaddhar: { ...oldUser.panaddhar, aadharCard: filename } } });
+
     } catch (error) {
-      console.log(error);
-      return res
-        .status(500)
-        .json({ success: false, message: 'Error updating employee information' });
+      logWithTime("❌ Internal Error: Failed to update Aadhar 🗑️");
+      errorMessage(error);
+      return throwInternalServerError(res);
     }
   };
 
-  updatePassword = async (req, res, next) => {
-    const { password, confirmPassword } = req.body;
-    const id = req.params.id;
-
-    if (!id) {
-      return res.status(400).json({ msg: 'User ID is required in query.' });
-    }
-
-    if (!password || !confirmPassword) {
-      return res.status(400).json({ msg: 'New password and confirm password are required.' });
-    }
-
-    if (password.length < 8) {
-      return res.status(400).json({ msg: 'The new password must be at least 8 characters long.' });
-    }
-
-    if (password !== confirmPassword) {
-      return res.status(400).json({ msg: 'New password and confirm password do not match.' });
-    }
-
-    // Step 1: Fetch existing password entry
-    const existingPasswordDoc = await UserPassword.findOne({
-      user: id,
-      removed: false,
-    });
-
-    if (!existingPasswordDoc) {
-      return res.status(404).json({ msg: 'Password record not found.' });
-    }
-
-    // Step 2: Generate and update new password
-    const salt = uniqueId();
-    const passwordHash = bcrypt.hashSync(salt + password);
-
-    const resultPassword = await UserPassword.findOneAndUpdate(
-      { user: id, removed: false },
-      { $set: { password: passwordHash, salt } },
-      { new: true }
-    ).exec();
-
-    if (!resultPassword) {
-      return res.status(403).json({
-        success: false,
-        result: null,
-        message: "User password couldn't be updated correctly.",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      result: {},
-      message: 'Password updated successfully',
-    });
-  };
 }
+
 
 module.exports = new UpdateController();

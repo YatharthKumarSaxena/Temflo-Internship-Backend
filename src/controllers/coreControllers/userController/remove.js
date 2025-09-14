@@ -1,36 +1,57 @@
 const mongoose = require('mongoose');
+const { USER_DELETED } = require("@/config/activity.enums");
+const { errorMessage, throwInternalServerError, throwMissingFieldsError, throwInvalidResourceError, throwDBResourceNotFoundError } = require("@/config/error-handler.config");
+const { logWithTime } = require("@/utils/time-stamps");
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { OK } = require('@/config/httpStatus.config');
 
-const remove= async ( req, res) => {
-    try {
-      const User = mongoose.model('User');
-      const  id  = req.admin.companyId; 
-       
-      const updatedBusinessArea = await User.findOneAndUpdate(
-          { _id: req.params.id, companyId: id }, 
-          { removed:true },                
-          { new: true }                   
-        );
-  
-      if (!updatedBusinessArea) {
-        return res.status(404).json({
-          success: false,
-          message: 'User not found or you do not have access to delete this user.',
-        });
-      }
-  
-  
-      return res.status(200).json({
-        success: true,
-        message: 'User Deleted successfully',
-      });
-    } catch (error) {
-      console.error('Update Admin Error:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-      });
+const remove = async (req, res) => {
+  try {
+    const User = mongoose.model('User');
+    const companyId = req.admin.companyId;
+    const id = req.params.id;
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: id, companyId: companyId },
+      { removed: true },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return throwDBResourceNotFoundError(res, "User");
     }
-  };
-  
-  module.exports = remove;
-  
+
+    logWithTime(`✅ 🎯 User Information (Experience and Degree) Deleted Successfully 🚀`);
+
+    // Activity Tracker logging
+    activityTracker({
+      userId: req.admin._id, // admin ka Mongo ID as userId
+      companyId: companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.core,
+      subModuleAffected: SUBMODULE.user,
+      fileAffected: FILE.file_user_remove,
+      modelAffected: [MODEL_AFFECTED.model_user],
+      eventType: USER_DELETED,
+      actionDone: ACTIONS.delete,
+      oldData: {
+        userId: id,
+        removed: false
+      },
+      newData: {
+        removed: true
+      }
+    });
+
+    return res.status(OK).json({
+      success: true,
+      message: 'User Deleted successfully',
+    });
+  } catch (error) {
+    logWithTime("❌ Internal Error: Failed to delete User 🗑️");
+    errorMessage(error);
+    return throwInternalServerError(res);
+  }
+};
+
+module.exports = remove;

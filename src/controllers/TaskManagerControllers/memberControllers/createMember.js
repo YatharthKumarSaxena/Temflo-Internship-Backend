@@ -5,7 +5,7 @@ const createMember = async (req, res) => {
     const Member = mongoose.model('Member');
     const Workspace = mongoose.model('Workspace');
 
-    const { userId, workspaceId, projectId, taskId } = req.body;
+    const { userId, workspaceId, projectId} = req.body;
 
     if (!userId || !workspaceId || !projectId) {
       return res.status(400).json({ success: false, message: 'All required fields missing' });

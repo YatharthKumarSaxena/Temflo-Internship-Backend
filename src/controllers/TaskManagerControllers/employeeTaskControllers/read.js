@@ -5,54 +5,41 @@ const read = async (req, res) => {
     const Task = mongoose.model('Task');
     const Member = mongoose.model('Member');
 
-    // check if user is employee
-    if (req.admin.role === 'employee') {
-      // find all task, employee is in
-      const response = Member.distinct('projectId', {
-        userId: req.admin.id,
-        companyId: req.admin.companyId,
-        removed: false, // Only active memberships
-      });
-      
-      if (response) {
-        const tasks = [];
-        response.map(async (project) => {
-          const projectId = project._id;
-          const req = await Task.findAll({
-            projectId,
-            companyId: req.admin.companyId,
-            removed: false,
-          });
-          tasks.push(...req)
-        });
-
-        if (tasks.length == 0) {
-          return res.status(404).json({
-            success: false,
-            tasks: null,
-            message: 'No Tasks found',
-          });
-        } else {
-          return res.status(200).json({
-            success: true,
-            tasks,
-            message: 'We found this Tasks',
-          });
-        }
-      } else {
-        return res.status(404).json({
-          success: false,
-          tasks: null,
-          message: 'No Tasks found',
-        });
-      }
-    } else {
-      return res.status(404).json({
+    // Check if user is an employee
+    if (req.admin.role !== 'employee') {
+      return res.status(403).json({
         success: false,
-        tasks: null,
-        message: 'You are not an employee',
+        message: 'Only employees can fetch assigned tasks.',
       });
     }
+
+    // 1. Get projectIds where this employee is a member
+    const projectIds = await Member.distinct('projectId', {
+      userId: req.admin.id,
+      companyId: req.admin.companyId,
+      removed: false,
+    });
+
+    if (!projectIds || projectIds.length === 0) {
+      return res.status(404).json({
+        success: false,
+        tasks: [],
+        message: 'No project memberships found for the employee.',
+      });
+    }
+
+    // 2. Find all tasks under these project IDs
+    const tasks = await Task.find({
+      projectId: { $in: projectIds },
+      companyId: req.admin.companyId,
+      removed: false,
+    });
+
+    return res.status(200).json({
+      success: true,
+      tasks,
+      message: tasks.length ? 'Tasks found successfully.' : 'No tasks available for this employee.',
+    });
   } catch (error) {
     console.error('Tasks Reading Error:', error);
     return res.status(500).json({
