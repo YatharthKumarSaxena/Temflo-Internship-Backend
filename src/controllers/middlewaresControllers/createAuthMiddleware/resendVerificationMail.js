@@ -84,7 +84,7 @@ const resendVerificationEmail = async (req, res, { userModel }) => {
     await adminPassword.save();
 
     // ✅ 7. Build the new verification link
-    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
     const verificationLink = `${baseUrl}/verify/${admin._id}/${newToken}`;
 
     // ✅ 8. Send the verification email
