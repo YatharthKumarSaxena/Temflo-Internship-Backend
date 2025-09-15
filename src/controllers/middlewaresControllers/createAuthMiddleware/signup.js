@@ -42,6 +42,15 @@ const signUp = async (req, res, { userModel }) => {
       return throwMissingFieldsError(res, 'All fields required');
     }
 
+    // Validate company code: exactly 4 chars, must contain letters and digits
+    const isValidCompanyCode = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{4}$/.test(code || '');
+    if (!isValidCompanyCode) {
+      return throwMissingFieldsError(
+        res,
+        'Invalid Company Code. Use 4 characters with letters and digits'
+      );
+    }
+
     // Check if email already exists
     const existingAdmin = await Admin.findOne({ email });
     if (existingAdmin) {

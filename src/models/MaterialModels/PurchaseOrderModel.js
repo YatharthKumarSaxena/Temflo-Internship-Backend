@@ -7,11 +7,13 @@ const purchaseOrderSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      minlength: 10,
+      maxlength: 10,
+      match: [/^\d{10}$/, 'Purchase Order code must be exactly 10 digits'],
       default: function () {
-        // Auto-generate 10 digits + Year
-        const year = new Date().getFullYear();
+        // Auto-generate exactly 10-digit numeric code
         const randomNum = Math.floor(1000000000 + Math.random() * 9000000000);
-        return `${randomNum}${year}`;
+        return String(randomNum);
       },
     },
     plant: {
@@ -22,7 +24,7 @@ const purchaseOrderSchema = new mongoose.Schema(
     supplier: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Supplier',
-      required: true,
+      required: false,
     },
     purchasePeriod: {
       startDate: {
@@ -58,9 +60,7 @@ const purchaseOrderSchema = new mongoose.Schema(
         material: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'Material',
-          required: function () {
-            return this.purchaseType === 'Material' || this.purchaseType === 'Services';
-          },
+          required: false,
         },
         quantity: {
           type: Number,
@@ -181,6 +181,11 @@ const purchaseOrderSchema = new mongoose.Schema(
 // Pre-save middleware for validation
 purchaseOrderSchema.pre('save', async function (next) {
   try {
+    // Validate maximum line items limit
+    if (this.lineItems && this.lineItems.length > 50) {
+      return next(new Error('Maximum 50 line items allowed per purchase order'));
+    }
+
     // Validate financial year for purchase period
     const startDate = this.purchasePeriod.startDate;
     const endDate = this.purchasePeriod.endDate;

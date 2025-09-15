@@ -8,7 +8,7 @@
 
 exports.catchErrors = (fn) => {
   return function (req, res, next) {
-    return fn(req, res, next).catch((error) => {
+    return fn.call(this, req, res, next).catch((error) => {
       if (error.name == 'ValidationError') {
         return res.status(400).json({
           success: false,

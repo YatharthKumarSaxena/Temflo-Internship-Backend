@@ -10,7 +10,22 @@ class SupplierController {
         ...req.body,
         createdBy: req.user.id,
         approvalStatus: 'draft', // Start as draft
+        makerChecker: {
+          maker: req.user.id,
+          allowMakerToSelectChecker: true,
+        },
       };
+
+      // If a checker comes in payload, enforce maker-checker separation
+      if (
+        supplierData.makerChecker?.checker &&
+        supplierData.makerChecker.checker.toString() === req.user.id.toString()
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: 'Maker cannot be assigned as checker',
+        });
+      }
 
       // Validate pin code
       if (supplierData.pinCode && !pinCodeValidation.isValidPinCode(supplierData.pinCode)) {
@@ -69,7 +84,7 @@ class SupplierController {
       }
 
       // Status filter
-      if (status) {
+      if (status && status !== 'all') {
         query.status = status;
       }
 
@@ -268,6 +283,27 @@ class SupplierController {
           success: false,
           message: 'Only pending suppliers can be approved/rejected',
         });
+      }
+
+      // If a specific checker is assigned, only that checker can act
+      if (supplier.makerChecker?.checker) {
+        if (supplier.makerChecker.checker.toString() !== req.user.id.toString()) {
+          return res.status(403).json({
+            success: false,
+            message: 'Only the assigned checker can approve/reject',
+          });
+        }
+      } else {
+        // No checker assigned: ensure the approver is not the maker
+        if (
+          supplier.makerChecker?.maker &&
+          supplier.makerChecker.maker.toString() === req.user.id.toString()
+        ) {
+          return res.status(403).json({
+            success: false,
+            message: 'Maker cannot approve their own supplier',
+          });
+        }
       }
 
       supplier.approvalStatus = action;
