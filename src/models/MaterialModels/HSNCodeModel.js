@@ -35,6 +35,11 @@ const hsnCodeSchema = new mongoose.Schema(
       enum: ['active', 'inactive'],
       default: 'active',
     },
+    companyId: {
+      type: String,
+      required: true,
+      immutable: true,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -55,5 +60,18 @@ hsnCodeSchema.index({ hsnCode: 1 });
 hsnCodeSchema.index({ description: 1 });
 hsnCodeSchema.index({ category: 1 });
 hsnCodeSchema.index({ status: 1 });
+
+// Add validity period fields (fromDate/toDate)
+hsnCodeSchema.add({
+  fromDate: {
+    type: Date,
+    required: true,
+  },
+  toDate: {
+    type: Date,
+    required: true,
+    default: () => new Date('9999-12-31T00:00:00.000Z'),
+  },
+});
 
 module.exports = mongoose.model('HSNCode', hsnCodeSchema);

@@ -10,6 +10,14 @@ class PurchaseOrderController {
   // Create new purchase order
   async createPurchaseOrder(req, res) {
     try {
+      // Validate line items limit
+      if (req.body.lineItems && req.body.lineItems.length > 50) {
+        return res.status(400).json({
+          success: false,
+          message: 'Maximum 50 line items allowed per purchase order',
+        });
+      }
+
       const poData = {
         ...req.body,
         createdBy: req.user.id,
@@ -146,6 +154,14 @@ class PurchaseOrderController {
   // Update purchase order
   async updatePurchaseOrder(req, res) {
     try {
+      // Validate line items limit
+      if (req.body.lineItems && req.body.lineItems.length > 50) {
+        return res.status(400).json({
+          success: false,
+          message: 'Maximum 50 line items allowed per purchase order',
+        });
+      }
+
       const updateData = {
         ...req.body,
         updatedBy: req.user.id,

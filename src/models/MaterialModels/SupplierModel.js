@@ -186,10 +186,6 @@ const supplierSchema = new mongoose.Schema(
         },
       },
     ],
-    tdsCode: {
-      type: String,
-      trim: true,
-    },
     documents: {
       panCard: {
         fileName: String,
@@ -249,6 +245,144 @@ const supplierSchema = new mongoose.Schema(
         },
       },
     ],
+
+    // Verification fields
+    verificationStatus: {
+      type: String,
+      enum: ['pending', 'verified', 'failed', 'partially_verified', 'not_required'],
+      default: 'pending',
+    },
+
+    verificationDetails: {
+      pan: {
+        status: {
+          type: String,
+          enum: ['pending', 'verified', 'failed', 'not_required'],
+          default: 'pending',
+        },
+        verifiedAt: Date,
+        verifiedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        verificationData: mongoose.Schema.Types.Mixed,
+        errorMessage: String,
+        isManualOverride: {
+          type: Boolean,
+          default: false,
+        },
+      },
+      tan: {
+        status: {
+          type: String,
+          enum: ['pending', 'verified', 'failed', 'not_required'],
+          default: 'pending',
+        },
+        verifiedAt: Date,
+        verifiedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        verificationData: mongoose.Schema.Types.Mixed,
+        errorMessage: String,
+        isManualOverride: {
+          type: Boolean,
+          default: false,
+        },
+      },
+      gstin: {
+        status: {
+          type: String,
+          enum: ['pending', 'verified', 'failed', 'not_required'],
+          default: 'pending',
+        },
+        verifiedAt: Date,
+        verifiedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        verificationData: mongoose.Schema.Types.Mixed,
+        errorMessage: String,
+        isManualOverride: {
+          type: Boolean,
+          default: false,
+        },
+      },
+      msme: {
+        status: {
+          type: String,
+          enum: ['pending', 'verified', 'failed', 'not_required'],
+          default: 'pending',
+        },
+        verifiedAt: Date,
+        verifiedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        verificationData: mongoose.Schema.Types.Mixed,
+        errorMessage: String,
+        isManualOverride: {
+          type: Boolean,
+          default: false,
+        },
+      },
+      bankAccounts: [
+        {
+          accountNumber: String,
+          ifscCode: String,
+          status: {
+            type: String,
+            enum: ['pending', 'verified', 'failed', 'not_required'],
+            default: 'pending',
+          },
+          verifiedAt: Date,
+          verifiedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+          },
+          verificationData: mongoose.Schema.Types.Mixed,
+          errorMessage: String,
+          isManualOverride: {
+            type: Boolean,
+            default: false,
+          },
+        },
+      ],
+    },
+
+    // Maker-Checker fields
+    makerChecker: {
+      maker: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+      },
+      checker: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      checkerAssignedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      checkerAssignedAt: Date,
+      checkerComments: String,
+      checkerAction: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: 'pending',
+      },
+      checkerActionAt: Date,
+      allowMakerToSelectChecker: {
+        type: Boolean,
+        default: true,
+      },
+    },
+    companyId: {
+      type: String,
+      required: true,
+      immutable: true,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
