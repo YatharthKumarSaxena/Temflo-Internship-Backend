@@ -20,6 +20,7 @@ const jwtSecurityConfig = {
 const enhancedJwtVerification = (userModel = 'User') => {
   return async (req, res, next) => {
     try {
+      // Try to get token from Authorization header first, then from cookies
       const token = req.headers.authorization?.split(' ')[1] || req.cookies?.token;
 
       if (!token) {

@@ -17,7 +17,8 @@ const logout = async (req, res, { userModel }) => {
         secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true',
         sameSite:
           process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'None' : 'Lax'),
-        domain: process.env.COOKIE_DOMAIN || undefined,
+        // Remove domain restriction for cross-origin cookie access
+        // domain: process.env.COOKIE_DOMAIN || undefined,
         path: process.env.COOKIE_PATH || '/',
       })
       .clearCookie('refreshToken', {
@@ -25,7 +26,8 @@ const logout = async (req, res, { userModel }) => {
         secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true',
         sameSite:
           process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'None' : 'Lax'),
-        domain: process.env.COOKIE_DOMAIN || undefined,
+        // Remove domain restriction for cross-origin cookie access
+        // domain: process.env.COOKIE_DOMAIN || undefined,
         path: process.env.COOKIE_PATH || '/',
       });
 
@@ -44,7 +46,8 @@ const logout = async (req, res, { userModel }) => {
         secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true',
         sameSite:
           process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'None' : 'Lax'),
-        domain: process.env.COOKIE_DOMAIN || undefined,
+        // Remove domain restriction for cross-origin cookie access
+        // domain: process.env.COOKIE_DOMAIN || undefined,
         path: process.env.COOKIE_PATH || '/',
       })
       .clearCookie('refreshToken', {
@@ -52,7 +55,8 @@ const logout = async (req, res, { userModel }) => {
         secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true',
         sameSite:
           process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'None' : 'Lax'),
-        domain: process.env.COOKIE_DOMAIN || undefined,
+        // Remove domain restriction for cross-origin cookie access
+        // domain: process.env.COOKIE_DOMAIN || undefined,
         path: process.env.COOKIE_PATH || '/',
       });
 
