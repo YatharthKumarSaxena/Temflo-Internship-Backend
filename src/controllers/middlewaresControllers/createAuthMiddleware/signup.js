@@ -97,7 +97,7 @@ const signUp = async (req, res, { userModel }) => {
     await new AdminPassword(adminPasswordData).save();
 
     // Send verification email
-    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
     const verificationLink = `${baseUrl}/verify/${adminResult._id}/${emailToken.token}`;
 
     const emailHtml = emailVerfication({
