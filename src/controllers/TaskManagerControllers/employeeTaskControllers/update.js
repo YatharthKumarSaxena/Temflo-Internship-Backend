@@ -1,4 +1,7 @@
 const mongoose = require('mongoose');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { TASK_UPDATED } = require("@/config/activity.enums");
 
 const update = async (req, res) => {
   // params TaskId
@@ -27,7 +30,9 @@ const update = async (req, res) => {
       });
     }
 
-    const response = Member.findOne({
+    const taskOldData = { ...task.toObject() };
+
+    const response = await Member.findOne({
       userId: req.admin.id,
       projectId: task.projectId,
       companyId: req.admin.companyId,
@@ -75,6 +80,33 @@ const update = async (req, res) => {
     }
 
     await task.save();
+
+    const changedOldData = {};
+const changedNewData = {};
+const oldObj = taskOldData;
+const newObj = task.toObject();
+
+for (let key in newObj) {
+  if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
+    changedOldData[key] = oldObj[key];
+    changedNewData[key] = newObj[key];
+  }
+}
+
+
+    activityTracker({
+  userId: req.admin._id,
+  companyId: req.admin.companyId,
+  plantId: req.admin.plantId || null,
+  module: MODULE.taskManager,
+  subModuleAffected: SUBMODULE.employeeTask,
+  fileAffected: FILE.file_employee_task_update, // Ensure this is defined
+  modelAffected: [MODEL_AFFECTED.model_task],
+  eventType: TASK_UPDATED,
+  actionDone: ACTIONS.update,
+oldData: changedOldData,
+newData: changedNewData
+});
 
     return res.status(200).json({
       success: true,

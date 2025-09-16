@@ -1,4 +1,7 @@
 const mongoose = require('mongoose');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { PROJECT_CREATED } = require("@/config/activity.enums");
 
 const createProject = async (req, res) => {
   try {
@@ -36,6 +39,22 @@ const createProject = async (req, res) => {
 
     await project.save();
 
+    // 🔹 Activity Tracker logging
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: plantId || null,
+      module: MODULE.taskManager,
+      subModuleAffected: SUBMODULE.project,
+      fileAffected: FILE.file_create_project,
+      modelAffected: [MODEL_AFFECTED.model_project],
+      eventType: PROJECT_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: project.toObject()
+    });
+
+    
     return res.status(200).json({
       success: true,
       message: 'Project Created Successfully',

@@ -1,4 +1,7 @@
+const { NOTIFICATION_CREATED, NOTIFICATION_DELETED, NOTIFICATION_MARKED_ALL_AS_READ, NOTIFICATION_MARKED_AS_READ } = require('@/config/activity.enums');
 const Notification = require('../../models/coreModels/Notification');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
 
 class NotificationController {
   // Create a new notification
@@ -29,6 +32,21 @@ class NotificationController {
 
       await notification.save();
 
+      // 🟢 Activity Tracker: Notification Created
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.notification,
+        subModuleAffected: null,
+        fileAffected: FILE.file_index,
+        modelAffected: [MODEL_AFFECTED.model_notification],
+        eventType: NOTIFICATION_CREATED,
+        actionDone: ACTIONS.create,
+        oldData: null,
+        newData: notification.toObject(),
+      });
+
       return res.status(201).json({
         success: true,
         message: 'Notification created successfully',
@@ -39,6 +57,7 @@ class NotificationController {
       return res.status(500).json({
         success: false,
         message: 'Internal server error',
+        error: error.message,
       });
     }
   };
@@ -140,6 +159,20 @@ class NotificationController {
         });
       }
 
+      // ✅ Activity Tracker Integration
+      await activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.notification,
+        subModuleAffected: null,
+        fileAffected: FILE.file_index,
+        modelAffected: [MODEL_AFFECTED.model_notification],
+        eventType: NOTIFICATION_MARKED_AS_READ,
+        oldData: { _id: id, isRead: notification.isRead.slice(0, -1) }, // Before marking
+        newData: { isRead: notification.isRead },             // After marking
+      });
+
       return res.status(200).json({
         success: true,
         message: 'Notification marked as read',
@@ -160,14 +193,20 @@ class NotificationController {
       const userRole = req.admin.role;
       const currentTime = new Date();
 
+      const notificationsToUpdate = await Notification.find({
+        companyId: req.admin.companyId,
+        isActive: true,
+        $or: [{ scheduledFor: null }, { scheduledFor: { $lte: currentTime } }],
+        $or: [{ expiresAt: null }, { expiresAt: { $gte: currentTime } }],
+        $or: [{ targetUsers: 'all' }, { targetUsers: userRole }],
+        'isRead.userId': { $ne: userId },
+      });
+
+      const oldData = notificationsToUpdate.map(n => ({ _id: n._id, isRead: n.isRead }));
+
       await Notification.updateMany(
         {
-          companyId: req.admin.companyId,
-          isActive: true,
-          $or: [{ scheduledFor: null }, { scheduledFor: { $lte: currentTime } }],
-          $or: [{ expiresAt: null }, { expiresAt: { $gte: currentTime } }],
-          $or: [{ targetUsers: 'all' }, { targetUsers: userRole }],
-          'isRead.userId': { $ne: userId },
+          _id: { $in: notificationsToUpdate.map(n => n._id) }
         },
         {
           $push: {
@@ -178,6 +217,20 @@ class NotificationController {
           },
         }
       );
+
+      // ✅ Activity Tracker Integration
+      await activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.notification,
+        subModuleAffected: null,
+        fileAffected: FILE.file_index,
+        modelAffected: [MODEL_AFFECTED.model_notification],
+        eventType: NOTIFICATION_MARKED_ALL_AS_READ,
+        oldData: oldData,
+        newData: 'All marked as read by user',
+      });
 
       return res.status(200).json({
         success: true,
@@ -221,7 +274,6 @@ class NotificationController {
     }
   };
 
-  // Delete notification (only for admins/owners)
   delete = async (req, res) => {
     try {
       const { id } = req.params;
@@ -245,6 +297,25 @@ class NotificationController {
           message: 'Notification not found',
         });
       }
+
+      // ✅ Activity Tracker Integration
+      await activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.notification,
+        subModuleAffected: null,
+        fileAffected: FILE.file_index,
+        modelAffected: [MODEL_AFFECTED.model_notification],
+        eventType: NOTIFICATION_DELETED,
+        oldData: {
+          _id: id,
+          isActive: true
+        },
+        newData: {
+          isActive: false
+        }
+      });
 
       return res.status(200).json({
         success: true,

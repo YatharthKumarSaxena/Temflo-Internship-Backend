@@ -95,6 +95,7 @@ exports.generateMasterTemplate = (config = {}) => {
         padding: 32px;
         font-size: 16px;
         line-height: 1.6;
+        color: #ffffff;
       }
       .details {
         margin-top: 24px;
@@ -102,6 +103,7 @@ exports.generateMasterTemplate = (config = {}) => {
         background-color: #263238;
         border-left: 4px solid #2196f3;
         border-radius: 8px;
+        color: #e0e0e0;
       }
       .details p {
         margin: 10px 0;

@@ -1,9 +1,16 @@
 const mongoose = require('mongoose');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { SUBTASK_CREATED } = require("@/config/activity.enums");
+const { masterTemplate } = require("@/config/emailTemplate");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { sendEmail } = require("@/utils/emailSender");
 
 const createSubtask = async (req, res) => {
   try {
     const Subtask = mongoose.model('Subtask');
     const Task = mongoose.model('Task');
+    const User = mongoose.model('User'); // ✅ User model for email
 
     const {
       title,
@@ -43,7 +50,7 @@ const createSubtask = async (req, res) => {
       projectId,
       taskId: req.params.taskId,
       companyId: req.admin.companyId,
-      plantId, // ✅ taken from task
+      plantId, 
       status,
       priority,
       assignedTo,
@@ -54,8 +61,49 @@ const createSubtask = async (req, res) => {
       storyPointEstimate
     });
 
-    console.log('subtask', subtask);
     await subtask.save();
+
+    // ✅ 4. Activity Tracker logging
+    await activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.taskManager,
+      subModuleAffected: SUBMODULE.subtask,
+      fileAffected: FILE.file_subtask_create,
+      modelAffected: [MODEL_AFFECTED.model_subtask],
+      eventType: SUBTASK_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: subtask.toObject(),
+    });
+
+    // 🔹 Email Notification (if assignedTo exists)
+    if (assignedTo) {
+      const assignedUser = await User.findById(assignedTo);
+      if (assignedUser && assignedUser.email) {
+        const emailHtml = generateMasterTemplate({
+          company_name: req.admin.companyName,
+          user_name: assignedUser.name,
+          event_name: masterTemplate.subtaskAssignedToEmployee.event_name,
+          action: masterTemplate.subtaskAssignedToEmployee.action,
+          status: 'Assigned',
+          message_intro: `You have been assigned a new subtask.`,
+          notes: `
+            Subtask Title: ${subtask.title}<br/>
+            Task ID: ${task._id}<br/>
+            Project ID: ${projectId}<br/>
+            Assigned By: ${req.admin.name}<br/>
+            Due Date: ${subtask.dueDate || 'N/A'}<br/>
+          `,
+          actionbutton_text: "View Subtask",
+          actionlink: `http://localhost:3000/tasks/${task._id}/subtasks/${subtask._id}`,
+          action_link: `http://localhost:3000/tasks/${task._id}/subtasks/${subtask._id}`
+        });
+
+        sendEmail(assignedUser.email, masterTemplate.subtaskAssignedToEmployee.subject, emailHtml);
+      }
+    }
 
     return res.status(200).json({
       success: true,

@@ -1,11 +1,19 @@
 const mongoose = require('mongoose');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { MEMBER_CREATED } = require("@/config/activity.enums");
+const { masterTemplate } = require("@/config/emailTemplate");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { sendEmail } = require("@/utils/emailSender");
 
 const createMember = async (req, res) => {
   try {
     const Member = mongoose.model('Member');
     const Workspace = mongoose.model('Workspace');
+    const Project = mongoose.model('Project');
+    const User = mongoose.model('User');
 
-    const { userId, workspaceId, projectId} = req.body;
+    const { userId, workspaceId, projectId, taskId } = req.body;
 
     if (!userId || !workspaceId || !projectId) {
       return res.status(400).json({ success: false, message: 'All required fields missing' });
@@ -13,9 +21,7 @@ const createMember = async (req, res) => {
 
     // 1. Fetch workspace to get plantId
     const workspace = await Workspace.findById(workspaceId);
-    if (!workspace) {
-      return res.status(404).json({ success: false, message: 'Workspace not found' });
-    }
+    if (!workspace) return res.status(404).json({ success: false, message: 'Workspace not found' });
 
     const plantId = workspace.plantId;
 
@@ -23,20 +29,12 @@ const createMember = async (req, res) => {
     const prevMember = await Member.findOne({ projectId, userId });
 
     if (prevMember) {
-      // If previously removed, re-add
       if (prevMember.removed === true) {
         prevMember.removed = false;
         await prevMember.save();
-        return res.status(200).json({
-          success: true,
-          message: 'Previous Member Found, Readded Successfully',
-        });
+        return res.status(200).json({ success: true, message: 'Previous Member Found, Readded Successfully' });
       }
-      // Already added
-      return res.status(200).json({
-        success: true,
-        message: 'Previous Member Found, Cannot Readd',
-      });
+      return res.status(200).json({ success: true, message: 'Previous Member Found, Cannot Readd' });
     }
 
     // 3. Create new member
@@ -45,10 +43,55 @@ const createMember = async (req, res) => {
       workspaceId,
       projectId,
       companyId: req.admin.companyId,
-      plantId, // now taken from workspace
+      plantId,
     });
 
     await member.save();
+
+    // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: plantId || null,
+      module: MODULE.taskManager,
+      subModuleAffected: SUBMODULE.member,
+      fileAffected: FILE.file_create_member,
+      modelAffected: [MODEL_AFFECTED.model_member],
+      eventType: MEMBER_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: member.toObject()
+    });
+
+    // 🔹 Email Notification (Employee Assigned to Project)
+    const assignedUser = await User.findById(userId); 
+    const project = await Project.findById(projectId); // fetch project name/details
+
+    if (assignedUser && assignedUser.email) {
+      const requestDate = new Date().toLocaleString();
+      const projectDetails = `
+        Project Name: ${project?.name || 'N/A'}<br/>
+        Project ID: ${projectId}<br/>
+        Workspace: ${workspace.name}<br/>
+        Assigned By: ${req.admin.name}<br/>
+        Date: ${requestDate}
+      `;
+
+      const emailHtml = generateMasterTemplate({
+        company_name: req.admin.companyName,
+        user_name: assignedUser.name,
+        event_name: masterTemplate.employeeAssignedToProject.event_name,
+        action: masterTemplate.employeeAssignedToProject.action,
+        status: 'Assigned',
+        message_intro: `You have been assigned to a new project.`,
+        notes: projectDetails,
+        actionbutton_text: "View Project",
+        actionlink: `http://localhost:3000/projects/${projectId}`,
+        action_link: `http://localhost:3000/projects/${projectId}`
+      });
+
+      sendEmail(assignedUser.email, masterTemplate.employeeAssignedToProject.subject, emailHtml);
+    }
 
     return res.status(200).json({
       success: true,

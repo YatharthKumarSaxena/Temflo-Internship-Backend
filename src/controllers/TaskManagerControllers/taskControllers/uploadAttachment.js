@@ -2,6 +2,9 @@ const mongoose = require('mongoose');
 const upload = require('@/services/file-upload');
 const fs = require('fs');
 const path = require('path');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { TASK_ATTACHMENT_ADDED } = require("@/config/activity.enums");
 
 const uploadAttachment = async (req, res) => {
   try {
@@ -21,7 +24,6 @@ const uploadAttachment = async (req, res) => {
       });
     }
 
-    // Use multer middleware to handle file upload
     const uploadMiddleware = upload.single('taskAttachment');
     
     uploadMiddleware(req, res, async (err) => {
@@ -40,20 +42,37 @@ const uploadAttachment = async (req, res) => {
       }
 
       try {
-        // Create attachment object
         const attachment = {
           fileName: req.file.filename,
           originalName: req.file.originalname,
           filePath: req.file.path,
           fileSize: req.file.size,
           mimeType: req.file.mimetype,
-          uploadedBy: req.admin.id,
+          uploadedBy: req.admin._id,
           uploadedAt: new Date(),
         };
 
-        // Add attachment to task
+        // 🔹 Store old attachments
+        const oldAttachments = [...task.attachments];
+
+        // Add new attachment
         task.attachments.push(attachment);
         await task.save();
+
+        // 🔹 Activity Tracker logging
+        activityTracker({
+          userId: req.admin._id,
+          companyId: req.admin.companyId,
+          plantId: req.admin.plantId || null,
+          module: MODULE.taskManager,
+          subModuleAffected: SUBMODULE.task,
+          fileAffected: FILE.file_task_attachment_uploaded,
+          modelAffected: [MODEL_AFFECTED.model_task],
+          eventType: TASK_ATTACHMENT_ADDED,
+          actionDone: ACTIONS.create,
+          oldData: { attachments: oldAttachments },
+          newData: { note: "New attachment added", newAttachment: attachment }
+        });
 
         return res.status(200).json({
           success: true,
@@ -61,7 +80,6 @@ const uploadAttachment = async (req, res) => {
           attachment: attachment,
         });
       } catch (error) {
-        // Clean up uploaded file if database save fails
         if (req.file && req.file.path) {
           fs.unlink(req.file.path, (unlinkErr) => {
             if (unlinkErr) console.error('Error deleting uploaded file:', unlinkErr);

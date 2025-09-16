@@ -1,4 +1,7 @@
 const Policy = require('../../models/coreModels/Policy')
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { POLICY_UPDATED, POLICY_CREATED } = require("@/config/activity.enums");
 
 class UpdateController{
 
@@ -23,8 +26,28 @@ class UpdateController{
 
     if (policy) {
       // Policy document found — push into array
+      const oldData = JSON.parse(JSON.stringify(policy.policies));
+
       policy.policies.push(newPolicyEntry);
       await policy.save();
+
+      // 🔹 Activity Tracker logging
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.policy,
+        subModuleAffected: null,
+        fileAffected: FILE.file_policy_update,
+        modelAffected: [MODEL_AFFECTED.model_policy],
+        eventType: POLICY_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData: oldData,
+        newData: {
+          newEntry: newPolicyEntry,
+          note: "Rest data is same as old data"
+        }
+      });
 
       return res.status(200).json({
         success: true,
@@ -39,6 +62,21 @@ class UpdateController{
       });
 
       await policy.save();
+
+      // 🔹 Activity Tracker logging
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.policy,
+        subModuleAffected: null,
+        fileAffected: FILE.file_policy_update,
+        modelAffected: [MODEL_AFFECTED.model_policy],
+        eventType: POLICY_CREATED,
+        actionDone: ACTIONS.update,
+        oldData: null,
+        newData: newPolicyEntry
+      });
 
       return res.status(201).json({
         success: true,

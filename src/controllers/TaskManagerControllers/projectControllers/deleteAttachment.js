@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { PROJECT_ATTACHMENT_DELETED } = require("@/config/activity.enums");
 
 const deleteAttachment = async (req, res) => {
   try {
@@ -45,6 +48,21 @@ const deleteAttachment = async (req, res) => {
     // Remove attachment from project
     project.attachments.splice(attachmentIndex, 1);
     await project.save();
+
+    // 🔹 Activity Tracker logging
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || project.plantId || null,
+      module: MODULE.taskManager,
+      subModuleAffected: SUBMODULE.project,
+      fileAffected: FILE.file_project_attachment_deleted, // ensure defined in your FILE config
+      modelAffected: [MODEL_AFFECTED.model_project],
+      eventType: PROJECT_ATTACHMENT_DELETED,
+      actionDone: ACTIONS.delete,
+      oldData: attachment,
+      newData: { note: "Attachment removed from project" }
+    });
 
     return res.status(200).json({
       success: true,

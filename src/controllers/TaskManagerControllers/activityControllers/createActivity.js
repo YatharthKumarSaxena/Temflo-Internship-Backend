@@ -1,4 +1,7 @@
 const mongoose = require('mongoose');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { ACTIVITY_CREATED } = require("@/config/activity.enums");
 
 const createActivity = async (req, res) => {
   try {
@@ -11,15 +14,30 @@ const createActivity = async (req, res) => {
     }
 
     const activity = new Activity({
-      companyId: req.admin.companyId,
+      companyId: req.user.companyId,
       plantId,
       projectId,
-      activityBy: req.admin.id,
+      activityBy: req.user._id,
       types,
       text,
     });
     console.log('activity', activity);
-    activity.save();
+    await activity.save();
+
+    // 🔹 Activity Tracker logging
+    activityTracker({
+      userId: req.user._id,
+      companyId: req.user.companyId,
+      plantId: plantId || null,
+      module: MODULE.taskManager,
+      subModuleAffected: SUBMODULE.activity,
+      fileAffected: FILE.file_create_activity,
+      modelAffected: [MODEL_AFFECTED.model_activity],
+      eventType: ACTIVITY_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: activity.toObject()
+    });
 
     return res.status(200).json({
       success: true,

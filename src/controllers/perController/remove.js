@@ -1,4 +1,7 @@
 const mongoose = require('mongoose');
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { PERMISSION_REMOVED } = require("@/config/activity.enums");
 
 const remove = async (Model, req, res) => {
   try {
@@ -14,6 +17,24 @@ const remove = async (Model, req, res) => {
 
     // Sync permissions to User model after deletion
     await syncUserPermissions(permission.employeeId);
+
+    // --- Activity Tracker for Workspace soft delete
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.permission,
+      subModuleAffected: null,
+      fileAffected: FILE.file_permission_remove,
+      modelAffected: [MODEL_AFFECTED.model_permission],
+      eventType: PERMISSION_REMOVED,
+      actionDone: ACTIONS.delete,
+      oldData: permission.toObject(),
+      newData: {
+        note: "All fields same as Old Data, Soft deletion is Done",
+        removed: true
+      }
+    });
 
     return res.status(200).json({
       success: true,

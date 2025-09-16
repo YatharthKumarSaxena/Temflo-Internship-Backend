@@ -45,9 +45,6 @@ const createUser = async (req, res) => {
 
     const userResult = await new User(newuser).save();
 
-    console.log("User saved:", userResult);
-    console.log("User ID:", userResult._id);
-
     if (!userResult || !userResult._id) {
       return res.status(500).json({ success:false, message:'User creation failed' });
     }
