@@ -14,7 +14,7 @@ const DepartmentSchema = new mongoose.Schema(
     departmentCode: {
       type: String,
       required: true,
-      match: /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{1,6}$/,
+      match: /^[A-Za-z0-9]{1,6}$/,
     },
     description: {
       type: String,

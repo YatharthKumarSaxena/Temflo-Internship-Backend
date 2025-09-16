@@ -2,6 +2,7 @@ const Supplier = require('../../models/MaterialModels/SupplierModel');
 const VerificationConfig = require('../../models/MaterialModels/VerificationConfigModel');
 const governmentVerificationService = require('../../services/governmentVerificationService');
 const { catchErrors } = require('@/handlers/errorHandlers');
+const DEBUG_VERIFICATION = process.env.DEBUG_VERIFICATION === 'true';
 
 class SupplierVerificationController {
   /**
@@ -67,7 +68,7 @@ class SupplierVerificationController {
           },
         });
       } catch (error) {
-        console.error(`Error verifying ${fieldType}:`, error);
+        if (DEBUG_VERIFICATION) console.error(`Error verifying ${fieldType}:`, error);
         res.json({
           success: true,
           data: {
@@ -78,7 +79,7 @@ class SupplierVerificationController {
         });
       }
     } catch (error) {
-      console.error('Error in verifyField:', error);
+      if (DEBUG_VERIFICATION) console.error('Error in verifyField:', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -221,7 +222,7 @@ class SupplierVerificationController {
 
           verificationResults[type] = result;
         } catch (error) {
-          console.error(`Error verifying ${type}:`, error);
+          if (DEBUG_VERIFICATION) console.error(`Error verifying ${type}:`, error);
           errors.push({ type, error: error.message });
         }
       }

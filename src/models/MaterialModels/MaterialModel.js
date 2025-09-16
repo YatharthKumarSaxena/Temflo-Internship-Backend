@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 const GeneralLedger = require('./GeneralLedgerModel');
 
-// Material code must be 6-character alphanumeric and include both letters and numbers
-const MATERIAL_CODE_REGEX = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{6}$/;
+// Material code must be exactly 6 alphanumeric characters (letters and/or digits)
+const MATERIAL_CODE_REGEX = /^[A-Za-z0-9]{6}$/;
 
 function generateMaterialCode() {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -12,9 +12,8 @@ function generateMaterialCode() {
       const randomIndex = Math.floor(Math.random() * characters.length);
       candidate += characters.charAt(randomIndex);
     }
-    if (/[A-Za-z]/.test(candidate) && /\d/.test(candidate)) {
-      return candidate;
-    }
+    // Any 6-character alphanumeric is acceptable (letters-only, digits-only, or mix)
+    return candidate;
   }
 }
 
@@ -47,8 +46,7 @@ const materialSchema = new mongoose.Schema(
         validator: function (value) {
           return MATERIAL_CODE_REGEX.test(value);
         },
-        message:
-          'Material code must be 6 characters, alphanumeric, and include letters and numbers',
+        message: 'Material code must be exactly 6 letters and/or digits',
       },
     },
     materialName: {

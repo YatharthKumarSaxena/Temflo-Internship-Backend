@@ -5,11 +5,11 @@ const create = async (Model, req, res) => {
     const { departmentCode, description } = req.body;
     const companyId = req.admin.companyId;
 
-    // Validate departmentCode → must be alphanumeric up to 10 characters
-    if (!departmentCode || !/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{1,6}$/.test(departmentCode)) {
+    // Validate departmentCode → 1-6 alphanumeric characters (letters and/or digits)
+    if (!departmentCode || !/^[A-Za-z0-9]{1,6}$/.test(departmentCode)) {
       return res.status(400).json({
         success: false,
-        message: 'Department Code must contain letters and digits (max 6 characters).',
+        message: 'Department Code must be 1-6 letters and/or digits.',
       });
     }
 

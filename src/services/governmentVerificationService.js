@@ -1,4 +1,5 @@
 const axios = require('axios');
+const DEBUG_VERIFICATION = process.env.DEBUG_VERIFICATION === 'true';
 
 /**
  * Government Verification Service
@@ -39,7 +40,7 @@ class GovernmentVerificationService {
         source: 'income_tax_department',
       };
     } catch (error) {
-      console.error('PAN verification error:', error);
+      if (DEBUG_VERIFICATION) console.error('PAN verification error:', error);
       return {
         isValid: false,
         error: error.message,
@@ -73,7 +74,7 @@ class GovernmentVerificationService {
         source: 'income_tax_department',
       };
     } catch (error) {
-      console.error('TAN verification error:', error);
+      if (DEBUG_VERIFICATION) console.error('TAN verification error:', error);
       return {
         isValid: false,
         error: error.message,
@@ -107,7 +108,7 @@ class GovernmentVerificationService {
         source: 'gst_department',
       };
     } catch (error) {
-      console.error('GSTIN verification error:', error);
+      if (DEBUG_VERIFICATION) console.error('GSTIN verification error:', error);
       return {
         isValid: false,
         error: error.message,
@@ -141,7 +142,7 @@ class GovernmentVerificationService {
         source: 'msme_department',
       };
     } catch (error) {
-      console.error('MSME verification error:', error);
+      if (DEBUG_VERIFICATION) console.error('MSME verification error:', error);
       return {
         isValid: false,
         error: error.message,
@@ -177,7 +178,7 @@ class GovernmentVerificationService {
         source: 'npci_bank_api',
       };
     } catch (error) {
-      console.error('Bank verification error:', error);
+      if (DEBUG_VERIFICATION) console.error('Bank verification error:', error);
       return {
         isValid: false,
         error: error.message,
@@ -257,7 +258,7 @@ class GovernmentVerificationService {
 
       return verificationResults;
     } catch (error) {
-      console.error('Supplier verification error:', error);
+      if (DEBUG_VERIFICATION) console.error('Supplier verification error:', error);
       verificationResults.overallStatus = 'error';
       verificationResults.error = error.message;
       return verificationResults;
@@ -281,7 +282,7 @@ class GovernmentVerificationService {
         return response;
       } catch (error) {
         lastError = error;
-        console.warn(`API call attempt ${attempt} failed:`, error.message);
+        if (DEBUG_VERIFICATION) console.warn(`API call attempt ${attempt} failed:`, error.message);
 
         if (attempt < this.apiConfig.retries) {
           await this.delay(this.apiConfig.retryDelay * attempt);

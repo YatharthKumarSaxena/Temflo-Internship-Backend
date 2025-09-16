@@ -19,10 +19,7 @@ class MaterialController {
       while (attempt < maxAttempts) {
         try {
           // Let model pre-validate generate a unique code when missing/invalid
-          if (
-            materialData.materialCode &&
-            !/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{6}$/.test(materialData.materialCode)
-          ) {
+          if (materialData.materialCode && !/^[A-Za-z0-9]{6}$/.test(materialData.materialCode)) {
             materialData.materialCode = undefined;
           }
 
