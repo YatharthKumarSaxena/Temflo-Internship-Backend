@@ -5,11 +5,11 @@ const create = async (Model, req, res) => {
     const { segmentCode, description } = req.body;
     const companyId = req.admin.companyId;
 
-    // Validate segmentCode → must be alphanumeric up to 10 characters
-    if (!segmentCode || !/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{1,5}$/.test(segmentCode)) {
+    // Validate segmentCode → 1-5 alphanumeric characters (letters and/or digits)
+    if (!segmentCode || !/^[A-Za-z0-9]{1,5}$/.test(segmentCode)) {
       return res.status(400).json({
         success: false,
-        message: 'Business Segment Code must contain letters and digits (max 5 characters).',
+        message: 'Business Segment Code must be 1-5 letters and/or digits.',
       });
     }
 

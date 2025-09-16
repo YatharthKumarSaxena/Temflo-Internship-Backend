@@ -17,7 +17,7 @@ const CostProfitCenterSchema = new mongoose.Schema({
   costProfitCode: {
     type: String,
     required: true,
-    match: /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{1,5}$/,
+    match: /^[A-Za-z0-9]{1,5}$/,
     immutable: true,
   },
   description: {

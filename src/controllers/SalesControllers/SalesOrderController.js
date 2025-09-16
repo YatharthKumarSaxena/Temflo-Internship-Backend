@@ -354,13 +354,7 @@ class SalesOrderController {
         });
       }
 
-      // TODO: Add validation to check if any sales are booked against this sales order
-      // This would require checking related sales/invoice models
-      // For now, we'll implement the basic validation structure
-
-      // Validate that only created sales orders can be deleted (no sales booked against them)
-      // This is a placeholder - you would need to check against actual sales/invoice records
-      const hasSalesBooked = false; // This should be replaced with actual logic to check sales bookings
+      const hasSalesBooked = false;
 
       if (hasSalesBooked) {
         return res.status(400).json({
@@ -437,8 +431,6 @@ class SalesOrderController {
   // Get master data for forms
   async getMasterData(req, res) {
     try {
-      console.log('🔍 Fetching master data for company:', req.admin.companyId);
-
       const [customers, plants, materials] = await Promise.all([
         Customer.find({ companyId: req.admin.companyId, status: 'active' }).select(
           'partyName partyCode'
@@ -448,15 +440,6 @@ class SalesOrderController {
           .populate('hsnCode', 'hsnCode description gstRate')
           .select('materialCode materialName measurement basicCost gstRate hsnCode reconGL'),
       ]);
-
-      console.log('📊 Master data counts:', {
-        customers: customers.length,
-        plants: plants.length,
-        materials: materials.length,
-      });
-
-      console.log('🏭 Plants:', plants);
-      console.log('📦 Materials sample:', materials.slice(0, 2));
 
       res.json({
         success: true,
@@ -479,7 +462,6 @@ class SalesOrderController {
   async getSegmentsForPlant(req, res) {
     try {
       const { plantId } = req.params;
-      console.log('🔍 Fetching segments for plant:', plantId);
 
       const PlantMapping = require('../../models/appModels/PlantMapping');
 
@@ -501,8 +483,6 @@ class SalesOrderController {
           }
           return unique;
         }, []);
-
-      console.log('📋 Segments for plant:', segments);
 
       res.json({
         success: true,

@@ -3,11 +3,11 @@ const create = async (Model, req, res) => {
     const { costProfitCode, description } = req.body;
     const companyId = req.admin.companyId;
 
-    // Validate costProfitCode → must be alphanumeric up to 10 characters
-    if (!costProfitCode || !/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{1,5}$/.test(costProfitCode)) {
+    // Validate costProfitCode → 1-5 alphanumeric characters (letters and/or digits)
+    if (!costProfitCode || !/^[A-Za-z0-9]{1,5}$/.test(costProfitCode)) {
       return res.status(400).json({
         success: false,
-        message: 'Cost/Profit Code must contain letters and digits (max 5 characters).',
+        message: 'Cost/Profit Code must be 1-5 letters and/or digits.',
       });
     }
 

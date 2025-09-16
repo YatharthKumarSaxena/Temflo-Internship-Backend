@@ -216,6 +216,12 @@ const UserSchema = new Schema({
     type: String,
     enum: ['Financial', 'Calendar'],
   },
+  // Optional financial year period like "2025-2026" or start year "2025"
+  financialYear: {
+    type: String,
+    match: /^\d{4}(-\d{4})?$/,
+    required: false,
+  },
   currency: {
     type: String,
     default: 'INR',
@@ -226,7 +232,7 @@ const UserSchema = new Schema({
   },
   code: {
     type: String,
-    match: /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{4}$/,
+    match: /^[A-Za-z\d]{4}$/,
     immutable: true,
     required: function () {
       return this.role === 'admin' || this.role === 'owner';
