@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Permission = require('../../../models/userModels/Permission');
-const Plant = require('../../../models/appModels/Plant'); // Adjust if needed
+const Plant = require('../../../models/appModels/Plant'); // Adjust path if needed
+const UserPassword = require('../../../models/userModels/UserPassword'); // Add this import
 
 const paginatedList = async (req, res) => {
   try {
@@ -14,7 +15,6 @@ const paginatedList = async (req, res) => {
 
     const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
 
-    // Init search arrays
     const searchFields = [];
     let plantIds = [];
 
@@ -33,7 +33,6 @@ const paginatedList = async (req, res) => {
       }
     }
 
-    // Base query
     const baseQuery = {
       removed: false,
       companyId: req.admin.companyId,
@@ -41,7 +40,6 @@ const paginatedList = async (req, res) => {
       ...(filter && equal ? { [filter]: equal } : {}),
     };
 
-    // Plant permissions for employee
     if (req.admin.role === 'employee') {
       const permissions = await Permission.find({ employeeId: req.admin._id });
       const allowedPlantIds = permissions.map((p) => p.plantId);
@@ -51,7 +49,6 @@ const paginatedList = async (req, res) => {
       baseQuery.plantId = { $in: allowedPlantIds };
     }
 
-    // If plant search is applied
     if (plantIds.length > 0) {
       baseQuery.$or = [
         ...(searchFields.length > 0 ? searchFields : []),
@@ -65,12 +62,24 @@ const paginatedList = async (req, res) => {
       .skip(skip)
       .limit(limit)
       .sort({ [sortBy]: sortValue, _id: 1 })
-      .populate('plantId') // needed for display
+      .populate('plantId')
       .exec();
 
     const countPromise = User.countDocuments(baseQuery);
 
-    const [result, count] = await Promise.all([resultsPromise, countPromise]);
+    let [users, count] = await Promise.all([resultsPromise, countPromise]);
+
+    // ✅ Fetch isEmailVerified from UserPassword model
+    const userIds = users.map((u) => u._id);
+    const userPasswords = await UserPassword.find({ user: { $in: userIds } }).select('user emailVerified');
+    const passwordMap = new Map(userPasswords.map((up) => [String(up.user), up.emailVerified]));
+
+    // ✅ Attach emailVerified flag to each user
+    const result = users.map((user) => {
+      const userObj = user.toObject();
+      userObj.isEmailVerified = passwordMap.get(String(user._id)) || false;
+      return userObj;
+    });
 
     const pages = Math.ceil(count / limit);
     const pagination = { page, pages, count };

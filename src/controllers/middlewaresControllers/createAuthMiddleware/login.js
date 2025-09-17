@@ -67,7 +67,6 @@ const login = async (req, res, { userModel }) => {
 
   // Check if admin/owner user has verified email
   if (
-    (user.role === ROLE_TYPES.OWNER || user.role === ROLE_TYPES.ADMIN) &&
     !databasePassword.emailVerified
   ) {
     return res.status(403).json({

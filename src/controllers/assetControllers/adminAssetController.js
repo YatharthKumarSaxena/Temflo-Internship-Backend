@@ -15,13 +15,13 @@ const { sendEmail } = require("@/utils/emailSender");
 // create Asset Type
 exports.createAssetType = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, description,plantId } = req.body;
 
-    if (!name) {
+    if (!name || !plantId) {
       res.status(500).json({ success: false, message: 'All field Required' });
     }
 
-    const assetTypes = new AssetType({ companyId: req.admin.companyId, name, description });
+    const assetTypes = new AssetType({ companyId: req.admin.companyId,plantId, name, description });
     await assetTypes.save();
 
     activityTracker({
@@ -46,14 +46,23 @@ exports.createAssetType = async (req, res) => {
 };
 
 // 4. Get all policies for a company
+
 exports.getAssetType = async (req, res) => {
   try {
-    const assetTypes = await AssetType.find({ companyId: req.admin.companyId });
+    const query = { companyId: req.admin.companyId };
+
+    if (req.query.filter === 'plantId' && req.query.equal) {
+      query.plantId = req.query.equal;
+    }
+
+    const assetTypes = await AssetType.find(query);
     res.json({ success: true, assetTypes });
   } catch (err) {
+    console.error('Error fetching asset types:', err);
     res.status(500).json({ success: false, message: 'Failed To Fetch Asset Types' });
   }
 };
+
 
 exports.deleteAssetType = async (req, res) => {
   try {
@@ -175,6 +184,30 @@ exports.addAsset = async (req, res) => {
         success: false,
         message: 'Asset with this serial number already exists in the company.',
       });
+    }
+
+    // Validate dates
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize time for date comparison
+
+    if (purchaseDate) {
+      const parsedPurchase = new Date(purchaseDate);
+      if (parsedPurchase > today) {
+        return res.status(400).json({
+          success: false,
+          message: 'Purchase date cannot be in the future.',
+        });
+      }
+    }
+
+    if (expiryDate) {
+      const parsedExpiry = new Date(expiryDate);
+      if (parsedExpiry <= today) {
+        return res.status(400).json({
+          success: false,
+          message: 'Expiry date must be in the future.',
+        });
+      }
     }
 
     // Clean up empty string values for ObjectId fields
@@ -492,6 +525,13 @@ exports.updateAsset = async (req, res) => {
   }
 };
 
+function excelDateToJSDate(serial) {
+  const utc_days = Math.floor(serial - 25569);
+  const utc_value = utc_days * 86400;
+  const date_info = new Date(utc_value * 1000);
+  return new Date(date_info.toISOString().split('T')[0]);
+}
+
 exports.createBulkAssets = async (req, res) => {
   const filePath = req.file.path;
   const Asset = mongoose.model('Asset');
@@ -500,65 +540,139 @@ exports.createBulkAssets = async (req, res) => {
 
   try {
     const companyId = req.admin.companyId;
+    const plantId = req.params.plantId;
+
+    if (!plantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please Select Plant',
+      });
+    }
 
     // Read Excel
     const workbook = xlsx.readFile(filePath);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const assetsData = xlsx.utils.sheet_to_json(sheet);
 
-    // Get unique assetTypeNames and employeeCodes
+    // Get unique assetTypeNames, employeeCodes, and serialNumbers
     const assetTypeNames = [...new Set(assetsData.map((a) => a['AssetType']).filter(Boolean))];
-
     const employeeCodes = [
       ...new Set(assetsData.flatMap((a) => [a['AssignedTo'], a['Responsible']]).filter(Boolean)),
     ];
+    const serialNumbers = [...new Set(assetsData.map((a) => a['SerialNumber']).filter(Boolean))];
 
-    // Fetch AssetTypes and Users
-    const assetTypes = await AssetType.find({ companyId, name: { $in: assetTypeNames } });
+    // Fetch AssetTypes, Users, and Existing Assets with same serialNumbers
+    const assetTypes = await AssetType.find({ companyId, plantId, name: { $in: assetTypeNames } });
     const users = await User.find({
       companyId,
+      plantId,
       employeeCode: { $in: employeeCodes },
       removed: false,
     });
+    const existingAssets = await Asset.find({
+      companyId,
+      plantId,
+      serialNumber: { $in: serialNumbers },
+    });
 
-    // Create maps for quick lookup
+    // Create maps
     const assetTypeMap = Object.fromEntries(assetTypes.map((a) => [a.name, a._id]));
     const userMap = Object.fromEntries(users.map((u) => [u.employeeCode, u._id]));
+    const existingSerialSet = new Set(existingAssets.map((a) => a.serialNumber));
+
     const created = [],
       failed = [];
+    const isValidDate = (d) => !isNaN(new Date(d).getTime());
+    const isFutureDate = (d) => new Date(d) > new Date();
+    
 
     for (const row of assetsData) {
       try {
         const assetTypeId = assetTypeMap[row['AssetType']];
         const assignedToId = userMap[row['AssignedTo']] || null;
         const responsibleId = userMap[row['Responsible']] || null;
+        const serial = row['SerialNumber'];
+        const PurchaseDate = row['PurchaseDate'];
+        const ExpiryDate = row['ExpiryDate']
 
-        if (!row.Name || !assetTypeId || !row['SerialNumber']) {
-          failed.push({ row, reason: 'Missing required fields (Name, Serial Number, Asset Type)' });
+        if (!row.Name || !serial) {
+          failed.push({ row, reason: 'Missing required fields (Name, Serial Number)' });
           continue;
+        }
+
+        if (existingSerialSet.has(serial)) {
+          failed.push({ row, reason: 'Duplicate Entry: Serial Number already exists in this plant' });
+          continue;
+        }
+
+        if (!assetTypeId) {
+          failed.push({ row, reason: 'Invalid Asset Type' });
+          continue;
+        }
+
+        if (row['AssignedTo'] && !assignedToId) {
+          failed.push({ row, reason: 'AssignedTo employee not found in this plant' });
+          continue;
+        }
+
+        if (row['Responsible'] && !responsibleId) {
+          failed.push({ row, reason: 'Responsible: Employee not found in this plant' });
+          continue;
+        }
+
+        let purchaseDateObj = null;
+        if (PurchaseDate) {
+          const parsedPurchaseDate = typeof PurchaseDate === 'number' ? excelDateToJSDate(PurchaseDate) : new Date(PurchaseDate);
+          if (!isValidDate(parsedPurchaseDate)) {
+            failed.push({ row, reason: 'Invalid Purchase Date format' });
+            continue;
+          }
+          if (isFutureDate(parsedPurchaseDate)) {
+            failed.push({ row, reason: 'Purchase Date cannot be in the future' });
+            continue;
+          }
+          purchaseDateObj = parsedPurchaseDate;
+        }
+
+        let expiryDateObj = null;
+        
+      if (ExpiryDate) {
+        const parsedExpiryDate = typeof ExpiryDate === 'number' ? excelDateToJSDate(ExpiryDate) : new Date(ExpiryDate);
+        if (!isValidDate(parsedExpiryDate)) {
+          failed.push({ row, reason: 'Invalid Expiry Date format' });
+          continue;
+        }
+        if (!isFutureDate(parsedExpiryDate)) {
+          failed.push({ row, reason: 'Expiry Date must be a future date' });
+          continue;
+        }
+        expiryDateObj = parsedExpiryDate;
         }
 
         const newAsset = new Asset({
           name: row.Name,
-          serialNumber: row['SerialNumber'],
+          serialNumber: serial,
           description: row.Description || '',
           status: row.Status || 'Available',
           assignedTo: assignedToId,
           responsible: responsibleId,
-          purchaseDate: row['PurchaseDate'] ? new Date(row['PurchaseDate']) : null,
-          expiryDate: row['ExpiryDate'] ? new Date(row['ExpiryDate']) : null,
+          purchaseDate: purchaseDateObj,
+          expiryDate: expiryDateObj,
           location: row.Location || '',
           manufacturer: row.Manufacturer || '',
           assetType: assetTypeId,
           companyId,
-          plantId: req.params.plantId,
+          plantId,
           enabled: true,
         });
 
         await newAsset.save();
         created.push({ name: newAsset.name, serialNumber: newAsset.serialNumber });
 
-        // Activity Tracker for each successfully created asset
+        // Prevent further duplicates in this loop
+        existingSerialSet.add(serial);
+
+        // Activity Tracker
         activityTracker({
           userId: req.admin._id,
           companyId: companyId,
@@ -593,10 +707,10 @@ exports.createBulkAssets = async (req, res) => {
       message: 'Internal server error',
     });
   } finally {
-    // Always delete the temp file
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   }
 };
+
 
 // Import AssetTransfer model at the top with other imports
 const AssetTransfer = require('../../models/AssetModels/AssetTransfer');
