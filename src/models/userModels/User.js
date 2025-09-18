@@ -207,7 +207,7 @@ const UserSchema = new Schema({
   },
   msmeNumber: {
     type: String,
-    match: /^\d{19}$/,
+    match: /^UDYAM[A-Z]{4}\d{7}$/,
     required: function () {
       return this.msmeRegistered === true;
     },

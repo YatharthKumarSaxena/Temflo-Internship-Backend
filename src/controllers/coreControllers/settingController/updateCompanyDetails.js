@@ -101,11 +101,14 @@ const updateCompanyDetails = async (req, res) => {
           .status(400)
           .json({ success: false, message: 'MSME Number is required when MSME Registered is Yes' });
       }
-      const msmeRegex = /^\d{19}$/;
-      if (!msmeRegex.test(msmeNumber)) {
-        return res
-          .status(400)
-          .json({ success: false, message: 'Enter a valid 19-digit Udyam Registration Number' });
+      // UDYAM + 4 letters + 7 digits
+      const msmeRegex = /^UDYAM[A-Z]{4}\d{7}$/;
+      if (!msmeRegex.test(String(msmeNumber).toUpperCase())) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Enter a valid UDYAM Registration Number (format: 'UDYAM' + 4 letters + 7 digits)",
+        });
       }
     }
 

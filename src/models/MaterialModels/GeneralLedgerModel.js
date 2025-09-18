@@ -63,4 +63,4 @@ generalLedgerSchema.index({ accountName: 1 });
 generalLedgerSchema.index({ accountType: 1 });
 generalLedgerSchema.index({ category: 1 });
 
-module.exports = mongoose.model('GeneralLedger', generalLedgerSchema);
+module.exports = mongoose.model('MaterialGeneralLedger', generalLedgerSchema);
