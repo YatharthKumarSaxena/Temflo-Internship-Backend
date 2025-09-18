@@ -32,6 +32,12 @@ class HSNController {
           message: 'HSN Code already exists',
         });
       }
+      if (error.message && error.message.includes('overlapping validity period')) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
       throw error;
     }
   }
@@ -146,6 +152,12 @@ class HSNController {
         return res.status(400).json({
           success: false,
           message: 'HSN Code already exists',
+        });
+      }
+      if (error.message && error.message.includes('overlapping validity period')) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
         });
       }
       throw error;

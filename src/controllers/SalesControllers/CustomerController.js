@@ -2,6 +2,32 @@ const Customer = require('../../models/SalesModels/CustomerModel');
 const { indianStates, countries, pinCodeValidation } = require('../../config/indianStates');
 
 class CustomerController {
+  // Validate mandatory documents based on business rules
+  validateMandatoryDocuments(customerData) {
+    const errors = [];
+
+    if (!customerData?.documents?.panCard?.fileUrl) {
+      errors.push('PAN Card document is mandatory for all customers');
+    }
+
+    if (!customerData?.documents?.bankDetails?.fileUrl) {
+      errors.push('Bank Details document is mandatory for all customers');
+    }
+
+    if (
+      (customerData?.gstRegistered === 'Yes' || customerData?.gstRegistered === 'Composite') &&
+      !customerData?.documents?.gstinCertificate?.fileUrl
+    ) {
+      errors.push('GSTIN Certificate document is mandatory when GST Registered is Yes/Composite');
+    }
+
+    if (customerData?.msme && !customerData?.documents?.msmeCertificate?.fileUrl) {
+      errors.push('MSME Certificate document is mandatory when MSME registration is enabled');
+    }
+
+    return errors;
+  }
+
   // Create new customer
   async createCustomer(req, res) {
     try {
@@ -18,6 +44,16 @@ class CustomerController {
         enteredBy: req.user.id,
         status: 'active',
       };
+
+      // Validate mandatory documents
+      const documentValidationErrors = this.validateMandatoryDocuments(customerData);
+      if (documentValidationErrors.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Document validation failed',
+          errors: documentValidationErrors,
+        });
+      }
 
       console.log('📋 Processed customer data:', customerData);
 
@@ -326,6 +362,16 @@ class CustomerController {
         lastChangeBy: req.user.id,
         lastChangeDate: new Date(),
       };
+
+      // Validate mandatory documents on update as well
+      const documentValidationErrors = this.validateMandatoryDocuments(customerData);
+      if (documentValidationErrors.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Document validation failed',
+          errors: documentValidationErrors,
+        });
+      }
 
       // Remove fields that shouldn't be updated
       delete customerData.partyCode;

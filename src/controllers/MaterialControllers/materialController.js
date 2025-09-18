@@ -12,17 +12,23 @@ class MaterialController {
         createdBy: req.user.id,
       };
 
+      // Enforce manual materialCode presence and format (6 alphanumeric)
+      if (!materialData.materialCode || !/^[A-Za-z0-9]{6}$/.test(materialData.materialCode)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Material code is required and must be 6 letters/digits (A-Z, 0-9)'.replace(
+            '..',
+            '.'
+          ),
+        });
+      }
+
       const maxAttempts = 3;
       let attempt = 0;
       let lastError = null;
 
       while (attempt < maxAttempts) {
         try {
-          // Let model pre-validate generate a unique code when missing/invalid
-          if (materialData.materialCode && !/^[A-Za-z0-9]{6}$/.test(materialData.materialCode)) {
-            materialData.materialCode = undefined;
-          }
-
           const material = new Material(materialData);
           await material.save();
 
@@ -41,7 +47,6 @@ class MaterialController {
           lastError = err;
           if (err && err.code === 11000) {
             attempt += 1;
-            materialData.materialCode = undefined;
             continue;
           }
           throw err;

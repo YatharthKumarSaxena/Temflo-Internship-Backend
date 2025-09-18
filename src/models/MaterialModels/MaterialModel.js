@@ -176,23 +176,8 @@ const materialSchema = new mongoose.Schema(
   }
 );
 
-// Expose as a model static for use outside the schema file
-materialSchema.statics.generateUniqueMaterialCode = async function () {
-  return generateUniqueMaterialCode(this);
-};
-
-// Ensure a material code is present and unique before validation if not provided
-materialSchema.pre('validate', async function (next) {
-  try {
-    const needsCode = !this.materialCode || !MATERIAL_CODE_REGEX.test(this.materialCode);
-    if (needsCode) {
-      this.materialCode = await this.constructor.generateUniqueMaterialCode();
-    }
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
+// Remove auto-generation to enforce manual entry of materialCode
+// Keep only schema-level validation and uniqueness constraints
 
 // Pre-save middleware to validate HSN code based on category
 materialSchema.pre('save', async function (next) {

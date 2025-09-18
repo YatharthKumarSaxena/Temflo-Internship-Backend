@@ -55,6 +55,7 @@ const assignmentRouter = require('./routes/appRoutes/assignmentRoutes'); // Assi
 const customerRouter = require('./routes/SalesRoutes/customerRoutes'); // Sales Management - Customer routes
 const salesOrderRouter = require('./routes/SalesRoutes/salesOrderRoutes'); // Sales Management - Sales Order routes
 const salesVerificationConfigRouter = require('./routes/SalesRoutes/salesVerificationConfigRoutes'); // Sales Management - Verification config routes
+const faMasterRoutes = require('./routes/financeRoutes/faMasterRoutes');
 
 const runCrons = require('./cron');
 
@@ -129,6 +130,7 @@ app.use(
 
 app.use('/api/payroll', adminAuth.isValidAuthToken, payrollApiRouter); // ✅ payroll route
 app.use('/api/assignment', adminAuth.isValidAuthToken, assignmentRouter); // Assignment routes
+app.use('/api/finance', adminAuth.isValidAuthToken, faMasterRoutes);
 
 // app.use('/download', coreDownloadRouter);
 // app.use('/public', corePublicRouter);

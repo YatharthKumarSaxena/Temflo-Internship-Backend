@@ -116,6 +116,13 @@ const customerSchema = new mongoose.Schema(
     msmeRegistrationNumber: {
       type: String,
       trim: true,
+      validate: {
+        validator: function (v) {
+          if (!v) return !this.msme; // allow empty if not MSME
+          return /^UDYAM[A-Z]{4}\d{7}$/.test(String(v).toUpperCase());
+        },
+        message: "Enter a valid UDYAM Registration Number (format: 'UDYAM' + 4 letters + 7 digits)",
+      },
     },
     exemptedForGst: {
       type: Boolean,
