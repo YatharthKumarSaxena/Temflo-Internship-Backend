@@ -23,16 +23,16 @@ router.route('/setting/updatePassword').patch(catchErrors(settingController.upda
 router.route('/update-user-password/:id').patch(catchErrors(userControllerInstance.updatePassword))
 
 // ------------------------------API to create User in Company---------------------------
-router.route('/employee/create').post(catchErrors(userController.create));
+router.route('/employee/create').post(checkPermission("manage_employee"),requireWriteAccess,catchErrors(userController.create));
 router.route('/employee/list').get(catchErrors(userController.paginatedList));
 router.route('/employee/read/:id').get(catchErrors(userController.read));
-router.route('/employee/delete/:id').delete(catchErrors(userController.remove));
-router.route('/employee/create-in-bulk').post(uploadExcel.single('excelsheet'),catchErrors(userController.createBulk))
+router.route('/employee/delete/:id').delete(checkPermission("manage_employee"),requireWriteAccess,catchErrors(userController.remove));
+router.route('/employee/create-in-bulk').post(checkPermission("manage_employee"),requireWriteAccess,uploadExcel.single('excelsheet'),catchErrors(userController.createBulk))
 router.route('/employee/count').get(catchErrors(userController.countUsers))
 router.route('/plant/count').get(catchErrors(userController.countPlants))
 router.route('/asset/count').get(catchErrors(userController.countAssets))
 router.route('/employee/search-employee-list').get(catchErrors(userController.employeeList))
-router.route('/employee/download-excel-list').get(catchErrors(userController.downloadFile))
+router.route('/employee/download-excel-list').get(checkPermission("manage_employee"),requireReadAccess,catchErrors(userController.downloadFile))
 router.route('/get-user-activities').get(catchErrors(getAdminActivities));
 router.route('/get-my-activities').get(catchErrors(getUserActivities));
 

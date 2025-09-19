@@ -11,17 +11,29 @@ const remove = async (req, res) => {
     const User = mongoose.model('User');
     const companyId = req.admin.companyId;
     const id = req.params.id;
-    const updatedUser = await User.findOneAndUpdate(
-      { _id: id, companyId: companyId },
-      { removed: true },
-      { new: true }
-    );
-
-    if (!updatedUser) {
-      return throwDBResourceNotFoundError(res, "User");
+    
+    const {removed} = req.body;
+    if (typeof removed !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'activate (true/false) must be provided in body',
+      });
     }
 
-    logWithTime(`✅ 🎯 User Information (Experience and Degree) Deleted Successfully 🚀`);
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+
+    const newRemovedStatus = removed;
+
+    user.removed = newRemovedStatus;
+    await user.save();
+
 
     // Activity Tracker logging
     activityTracker({
@@ -45,10 +57,10 @@ const remove = async (req, res) => {
 
     return res.status(OK).json({
       success: true,
-      message: 'User Deleted successfully',
+      message: `User ${removed ? 'activated' : 'deactivated'} successfully`,
     });
   } catch (error) {
-    logWithTime("❌ Internal Error: Failed to delete User 🗑️");
+    logWithTime("❌ Internal Error: Failed to Deactivate/Activate User 🗑️");
     errorMessage(error);
     return throwInternalServerError(res);
   }

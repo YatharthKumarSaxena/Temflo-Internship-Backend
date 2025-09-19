@@ -1,60 +1,125 @@
 const mongoose = require('mongoose');
-const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
-const { activityTracker } = require("@/utils/activityTracker");
-const { PROJECT_DELETED } = require("@/config/activity.enums");
+const {
+  MODEL_AFFECTED,
+  MODULE,
+  SUBMODULE,
+  ACTIONS,
+  FILE
+} = require('@/config/structure.config');
+const { activityTracker } = require('@/utils/activityTracker');
+const {
+  PROJECT_DELETED,
+  TASK_REMOVED,
+  SUBTASK_DELETED
+} = require('@/config/activity.enums');
 
 const remove = async (req, res) => {
-  // params projectId
   try {
     const Project = mongoose.model('Project');
     const Task = mongoose.model('Task');
+    const Subtask = mongoose.model('Subtask');
 
-    const project = await Project.findOne({ _id: req.params.projectId, removed: false });
+    const { projectId } = req.params;
+    const { removed } = req.body;
 
-    if (!project) {
-        return res.status(404).json({
+    if (typeof removed !== 'boolean') {
+      return res.status(400).json({
         success: false,
-        message: 'No Project Found To Delete',
+        message: 'removed (true/false) must be provided in body',
       });
     }
 
-    const task = await Task.find({ projectId: req.params.projectId, removed: false });
+    // 1. Fetch Project
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: 'Project not found',
+      });
+    }
 
-    // To Delete Task
-    task?.map(async (taskId) => {
-        const task = await Task.findOne({_id:taskId})
-        task.removed = true
-        await task.save()
-    })
+    const newRemovedStatus = removed;
+    const projectOldData = { ...project.toObject() };
 
-    // To Delete Project
-    project.removed = true 
-    await project.save()
+    // 2. Update all related tasks
+    const tasks = await Task.find({ projectId });
+    for (const task of tasks) {
+      const taskOldData = { ...task.toObject() };
 
-    // Activity tracker for Member soft delete
+      const subtasks = await Subtask.find({ taskId: task._id });
+      for (const subtask of subtasks) {
+        const subtaskOldData = { ...subtask.toObject() };
+
+        subtask.removed = newRemovedStatus;
+        await subtask.save();
+
+        activityTracker({
+          userId: req.user._id,
+          companyId: req.user.companyId,
+          plantId: req.user.plantId || null,
+          module: MODULE.taskManager,
+          subModuleAffected: SUBMODULE.project,
+          fileAffected: FILE.file_remove_project,
+          modelAffected: [MODEL_AFFECTED.model_subtask],
+          eventType: SUBTASK_DELETED,
+          actionDone: ACTIONS.delete,
+          oldData: subtaskOldData,
+          newData: {
+            removed: newRemovedStatus,
+            note: "Soft delete toggled",
+          },
+        });
+      }
+
+      task.removed = newRemovedStatus;
+      await task.save();
+
+      activityTracker({
+        userId: req.user._id,
+        companyId: req.user.companyId,
+        plantId: req.user.plantId || null,
+        module: MODULE.taskManager,
+        subModuleAffected: SUBMODULE.project,
+        fileAffected: FILE.file_remove_project,
+        modelAffected: [MODEL_AFFECTED.model_task],
+        eventType: TASK_REMOVED,
+        actionDone: ACTIONS.delete,
+        oldData: taskOldData,
+        newData: {
+          removed: newRemovedStatus,
+          note: "Soft delete toggled",
+        },
+      });
+    }
+
+    // 3. Update project
+    project.removed = newRemovedStatus;
+    await project.save();
+
     activityTracker({
-      userId: req.admin._id,
-      companyId: req.admin.companyId,
-      plantId: req.admin.plantId || null,
+      userId: req.user._id,
+      companyId: req.user.companyId,
+      plantId: req.user.plantId || null,
       module: MODULE.taskManager,
       subModuleAffected: SUBMODULE.project,
       fileAffected: FILE.file_remove_project,
       modelAffected: [MODEL_AFFECTED.model_project],
       eventType: PROJECT_DELETED,
       actionDone: ACTIONS.delete,
-      oldData: project.toObject(),
+      oldData: projectOldData,
       newData: {
-        note: "All fields same as Old Data, Soft deletion is Done",
-        removed: true
-      }
+        removed: newRemovedStatus,
+        note: "Soft delete toggled",
+      },
     });
 
     return res.status(200).json({
       success: true,
-      message: 'Project Deleted Successfully',
+      message: `Project ${removed ? 'deactivated' : 'activated'} successfully`,
     });
+
   } catch (error) {
-    console.error('Project Deletion Error:', error);
+    console.error('Toggle Project Error:', error);
     return res.status(500).json({
       success: false,
       message: 'Internal server error',
