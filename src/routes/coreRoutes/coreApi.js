@@ -32,7 +32,7 @@ router.route('/employee/count').get(catchErrors(userController.countUsers))
 router.route('/plant/count').get(catchErrors(userController.countPlants))
 router.route('/asset/count').get(catchErrors(userController.countAssets))
 router.route('/employee/search-employee-list').get(catchErrors(userController.employeeList))
-router.route('/employee/download-excel-list').get(checkPermission("manage_employee"),requireReadAccess,catchErrors(userController.downloadFile))
+router.route('/employee/download-excel-list').get(isAdminOrOwner,catchErrors(userController.downloadFile))
 router.route('/get-user-activities').get(catchErrors(getAdminActivities));
 router.route('/get-my-activities').get(catchErrors(getUserActivities));
 
