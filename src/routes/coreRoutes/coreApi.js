@@ -26,7 +26,7 @@ router.route('/update-user-password/:id').patch(catchErrors(userControllerInstan
 router.route('/employee/create').post(checkPermission("manage_employee"),requireWriteAccess,catchErrors(userController.create));
 router.route('/employee/list').get(catchErrors(userController.paginatedList));
 router.route('/employee/read/:id').get(catchErrors(userController.read));
-router.route('/employee/delete/:id').delete(checkPermission("manage_employee"),requireWriteAccess,catchErrors(userController.remove));
+router.route('/employee/delete/:id').patch(checkPermission("manage_employee"),requireWriteAccess,catchErrors(userController.remove));
 router.route('/employee/create-in-bulk').post(checkPermission("manage_employee"),requireWriteAccess,uploadExcel.single('excelsheet'),catchErrors(userController.createBulk))
 router.route('/employee/count').get(catchErrors(userController.countUsers))
 router.route('/plant/count').get(catchErrors(userController.countPlants))

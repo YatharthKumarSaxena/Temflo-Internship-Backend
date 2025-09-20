@@ -57,7 +57,7 @@ const remove = async (req, res) => {
 
     return res.status(OK).json({
       success: true,
-      message: `User ${removed ? 'activated' : 'deactivated'} successfully`,
+      message: `User ${!removed ? 'activated' : 'deactivated'} successfully`,
     });
   } catch (error) {
     logWithTime("❌ Internal Error: Failed to Deactivate/Activate User 🗑️");
