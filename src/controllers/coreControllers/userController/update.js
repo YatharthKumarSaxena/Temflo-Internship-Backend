@@ -5,6 +5,9 @@ const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { OK } = require('@/config/httpStatus.config');
+const UserPassword = require('../../../models/userModels/UserPassword')
+const bcrypt = require('bcryptjs');
+const { generate: uniqueId } = require('shortid');
 
 class UpdateController {
 
@@ -194,7 +197,7 @@ class UpdateController {
   updateBankDetail = async (req, res, next) => {
     try {
       const file = req.file;
-      const filename = file && file.filename;
+      const filename = req.file.path;
 
       const _id = req.params.id;
       const companyId = req.admin.companyId;
@@ -253,7 +256,8 @@ class UpdateController {
   updateDegreeInfo = async (req, res, next) => {
     try {
       const file = req.file;
-      const filename = file && file.filename;
+      const filename = req.file.path;
+
 
       const _id = req.params.id;
       const companyId = req.admin.companyId;
@@ -316,7 +320,7 @@ class UpdateController {
   updateExperienceInfo = async (req, res, next) => {
     try {
       const file = req.file;
-      const filename = file && file.filename;
+      const filename = req.file.path;
 
       const _id = req.params.id;
       const companyId = req.admin.companyId;
@@ -379,7 +383,7 @@ class UpdateController {
   updatePan = async (req, res, next) => {
     try {
       const file = req.file;
-      const filename = file && file.filename;
+      const filename = req.file.path;
 
       if (!file) return throwMissingFieldsError(res, "All fields");
 
@@ -425,7 +429,7 @@ class UpdateController {
   updateAadhar = async (req, res, next) => {
     try {
       const file = req.file;
-      const filename = file && file.filename;
+      const filename = req.file.path;
 
       if (!file) return throwMissingFieldsError(res, "All fields");
 
@@ -467,6 +471,64 @@ class UpdateController {
       return throwInternalServerError(res);
     }
   };
+
+
+  updatePassword = async (req,res,next) =>{
+
+    const { password, confirmPassword } = req.body;
+    const id = req.params.id;
+
+    if (!id) {
+        return res.status(400).json({ msg: 'User ID is required in query.' });
+    }
+
+    if (!password || !confirmPassword) {
+        return res.status(400).json({ msg: 'New password and confirm password are required.' });
+    }
+
+    if (password.length < 8) {
+        return res.status(400).json({ msg: 'The new password must be at least 8 characters long.' });
+    }
+
+    if (password !== confirmPassword) {
+        return res.status(400).json({ msg: 'New password and confirm password do not match.' });
+    }
+
+    // Step 1: Fetch existing password entry
+    const existingPasswordDoc = await UserPassword.findOne({
+        user: id,
+        removed: false,
+    });
+
+    if (!existingPasswordDoc) {
+        return res.status(404).json({ msg: 'Password record not found.' });
+    }
+
+    // Step 2: Generate and update new password
+    const salt = uniqueId();
+    const passwordHash = bcrypt.hashSync(salt + password);
+
+    const resultPassword = await UserPassword.findOneAndUpdate(
+        { user: id, removed: false },
+        { $set: { password: passwordHash, salt } },
+        { new: true }
+    ).exec();
+
+    if (!resultPassword) {
+        return res.status(403).json({
+        success: false,
+        result: null,
+        message: "User password couldn't be updated correctly.",
+        });
+    }
+
+    return res.status(200).json({
+        success: true,
+        result: {},
+        message: 'Password updated successfully',
+    });
+
+}
 
 }
 
