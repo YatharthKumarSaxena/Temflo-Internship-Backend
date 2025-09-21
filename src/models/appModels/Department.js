@@ -1,34 +1,28 @@
 const mongoose = require('mongoose');
 
-const DepartmentSchema = new mongoose.Schema({
+const DepartmentSchema = new mongoose.Schema(
+  {
     removed: {
-        type: Boolean,
-        default: false,
-      },
-      enabled: {
-        type: Boolean,
-        default: true,
-      },
-      companyId:{
-        type: String,
-        required: true,
-        immutable: true 
-    },   
-    description:{
-        type: String,
+      type: Boolean,
+      default: false,
+    },
+    companyId: {
+      type: String,
+      required: true,
+      immutable: true,
     },
     departmentCode: {
-        type: String,
-        required: true,
-        match: /^\d{6}$/,
-        immutable: true
+      type: String,
+      required: true,
+      match: /^[A-Za-z0-9]{1,6}$/,
     },
-    plant:{
-        type: mongoose.Schema.ObjectId, ref: 'Plant',
-        immutable: true,
-        required: true,
-      },
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+  },
+  { timestamps: true }
+);
 
-})
-
-module.exports = mongoose.model('Department',DepartmentSchema)
+module.exports = mongoose.model('Department', DepartmentSchema);

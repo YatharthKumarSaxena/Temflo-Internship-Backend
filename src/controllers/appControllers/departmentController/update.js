@@ -1,54 +1,44 @@
-const { OK } = require("@/config/httpStatus.config");
-const { DEPARTMENT_UPDATED } = require("@/config/activity.enums");
-const { errorMessage, throwInternalServerError, throwDBResourceNotFoundError } = require("@/config/error-handler.config");
-const { logWithTime } = require("@/utils/time-stamps");
-const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
-const { activityTracker } = require("@/utils/activityTracker");
-
 const update = async (Model, req, res) => {
-  try {
-    const companyId = req.admin.companyId;
-    const { description } = req.body;
-
-    // single query: update + return old document
-    const oldDepartment = await Model.findOneAndUpdate(
-      { _id: req.params.id, companyId: companyId },
-      { description },
-      { new: false }  // return pre-update document
-    );
-
-    if (!oldDepartment) {
-      return throwDBResourceNotFoundError(res, "Department");
+    try {
+      const { id } = req.params; // Business Segment ID from URL
+      const { description } = req.body;
+  
+      // Validate description
+      if (!description || typeof description !== "string" || !description.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Description is required and must be a non-empty string.",
+        });
+      }
+  
+      // Update only description
+      const updatedSegment = await Model.findOneAndUpdate(
+        { _id: id, companyId: req.admin.companyId, removed: false },
+        { description: description.trim() },
+        { new: true }
+      );
+  
+      if (!updatedSegment) {
+        return res.status(404).json({
+          success: false,
+          message: "Deprtment not found.",
+        });
+      }
+  
+      return res.status(200).json({
+        success: true,
+        result: updatedSegment,
+        message: "Department description updated successfully.",
+      });
+  
+    } catch (error) {
+      console.error("Update Department Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
     }
-
-    logWithTime(`✅ 🎯 Department Updated Successfully 🚀`);
-
-    // Activity Tracker logging
-    activityTracker({
-      userId: req.admin._id,
-      companyId: companyId,
-      plantId: req.admin.plantId || null,
-      module: MODULE.app,
-      subModuleAffected: SUBMODULE.department,
-      fileAffected: FILE.file_department_update,
-      modelAffected: [MODEL_AFFECTED.model_department],
-      eventType: DEPARTMENT_UPDATED,
-      actionDone: ACTIONS.update,
-      oldData: { _id: req.params.id, description: oldDepartment.description },
-      newData: { description },
-    });
-
-    return res.status(OK).json({
-      success: true,
-      result: { ...oldDepartment.toObject(), description }, // updated version return
-      message: "Department updated successfully",
-    });
-
-  } catch (error) {
-    logWithTime("❌ Internal Error: Failed to update Department 🗑️");
-    errorMessage(error);
-    return throwInternalServerError(res);
-  }
-};
-
-module.exports = update;
+  };
+  
+  module.exports = update;
+  

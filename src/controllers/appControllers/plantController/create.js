@@ -18,6 +18,9 @@ const create = async (Model, req, res) => {
     if (existing) {
       return throwConflictError(res, 'Plant with this code already exists for your company.');
     }
+  } catch (e) {
+    // Non-blocking: if company not found, proceed without defaulting
+  }
 
     const result = await new Model({
       ...req.body,
