@@ -250,35 +250,15 @@ class AssignmentController {
   // Delete department assignment
   async deleteDepartmentAssignment(req, res) {
     try {
-      const { assignmentId } = req.params;
-
-      // Check if assignment exists
-      const assignment = await DepartmentAssignment.findOne({
-        _id: assignmentId,
-        companyId: req.admin.companyId,
-        removed: false,
+      return res.status(404).json({
+        success: false,
+        message: 'You Can Not delete the Assigned Department',
       });
-
-      if (!assignment) {
-        return res.status(404).json({
-          success: false,
-          message: 'Assignment not found',
-        });
-      }
-
-      // Soft delete by setting removed to true
-      await DepartmentAssignment.findByIdAndUpdate(assignmentId, {
-        removed: true,
-        updated: new Date(),
-      });
-
-      res.status(200).json({
-        success: true,
-        message: 'Assignment deleted successfully',
-      });
+  
+     
     } catch (error) {
-      console.error('Assignment deletion error:', error);
-      res.status(500).json({
+      console.error('Update Admin Error:', error);
+      return res.status(500).json({
         success: false,
         message: 'Internal server error',
       });

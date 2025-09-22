@@ -68,15 +68,7 @@ const resendVerificationEmail = async (req, res, { userModel }) => {
     const baseUrl = settings['frontend_url'] || process.env.FRONTEND_URL || 'http://localhost:3000';
     const verificationLink = `${baseUrl}/verify/${user._id}/${newToken}`;
 
-<<<<<<< HEAD
     // Send email
-=======
-    // ✅ 7. Build the new verification link
-    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
-    const verificationLink = `${baseUrl}/verify/${admin._id}/${newToken}`;
-
-    // ✅ 8. Send the verification email
->>>>>>> erp
     const emailHtml = emailVerfication({
       title: 'Resend: Verify your email',
       name: user.name,

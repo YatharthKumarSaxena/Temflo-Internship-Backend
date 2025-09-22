@@ -21,9 +21,23 @@ const create = async (Model, req, res) => {
       });
     }
 
+    // Check if department already exists in the same company
+    const existing = await Model.findOne({
+      departmentCode,
+      companyId,
+      removed: { $ne: true }, // ensure not soft-deleted
+    });
+
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: 'Department with this code already exists in the company.',
+      });
+    }
+
     req.body.removed = false;
 
-    // Create the new business segment
+    // Create the new department
     const result = await new Model({
       ...req.body,
       companyId,
@@ -34,6 +48,7 @@ const create = async (Model, req, res) => {
       result,
       message: 'Successfully Added Department',
     });
+
   } catch (error) {
     console.error('Error adding Department:', error);
     return res.status(500).json({
