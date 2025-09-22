@@ -1,10 +1,9 @@
-const GSTModel = require("../../../models/appModels/GstinNumber");
+const GSTModel = require('../../../models/appModels/GstinNumber');
 
 const create = async (Model, req, res) => {
   try {
     const { gstinNumber, businessArea } = req.body;
     const companyId = req.admin?.companyId;
-    
 
     // 1. Check GSTIN existence
     const gstRecord = await GSTModel.findOne({
@@ -19,7 +18,15 @@ const create = async (Model, req, res) => {
       });
     }
 
-    // 2. Check uniqueness of business area
+    // 2. Validate Business Area → must be exactly 4 digits
+    if (!businessArea || !/^\d{4}$/.test(businessArea)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Business Area Code must contain 4 digits.',
+      });
+    }
+
+    // 3. Check uniqueness of business area
     const existingBusinessArea = await Model.findOne({
       businessArea,
       companyId,
@@ -33,24 +40,20 @@ const create = async (Model, req, res) => {
       });
     }
 
-    // 3. Save new entry
+    // 4. Save new entry
     req.body.removed = false;
     const result = await new Model({
       ...req.body,
       companyId,
     }).save();
-    
+
     await result.populate('gstinNumber');
-    
-
-
 
     return res.status(200).json({
       success: true,
       result,
       message: 'Successfully Added Business Area',
     });
-
   } catch (err) {
     return res.status(500).json({
       success: false,

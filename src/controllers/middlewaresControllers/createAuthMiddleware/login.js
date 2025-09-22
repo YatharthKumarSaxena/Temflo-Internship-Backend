@@ -37,7 +37,7 @@ const login = async (req, res, { userModel }) => {
     });
   }
 
-  const user = await UserModel.findOne({ email: email, removed: false });
+  const user = await UserModel.findOne({ email: email });
 
   // console.log(user);
   if (!user)
@@ -53,7 +53,7 @@ const login = async (req, res, { userModel }) => {
     return res.status(409).json({
       success: false,
       result: null,
-      message: 'Your account is deleted, contact your account adminstrator',
+      message: 'Your account is deleted/disabled, contact your account adminstrator',
     });
 
   // Check if password record exists
@@ -67,7 +67,6 @@ const login = async (req, res, { userModel }) => {
 
   // Check if admin/owner user has verified email
   if (
-    (user.role === ROLE_TYPES.OWNER || user.role === ROLE_TYPES.ADMIN) &&
     !databasePassword.emailVerified
   ) {
     return res.status(403).json({

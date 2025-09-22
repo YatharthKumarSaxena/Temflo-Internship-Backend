@@ -10,19 +10,36 @@ const create = async (Model, req, res) => {
   try {
     const companyId = req.admin.companyId; // Company ID from admin token
 
-    // Creating a new document in the collection
-    req.body.removed = false;
+  const existing = await Model.findOne({
+    plantCode: req.body.plantCode,
+    companyId: req.admin.companyId,
+    removed: false,
+  });
 
-    const existing = await Model.findOne({ plantCode: req.body.plantCode, companyId: companyId, removed: false });
+  if (existing) {
+    return res.status(400).json({
+      success: false,
+      message: 'Plant with this code already exists for your company.',
+    });
+  }
 
-    if (existing) {
-      return throwConflictError(res, 'Plant with this code already exists for your company.');
+  // If country is not provided, attempt to default it from the Company master
+  try {
+    if (!req.body.country && req.admin?.companyId) {
+      const Company = mongoose.model('Company');
+      const companyDoc = await Company.findById(req.admin.companyId).lean();
+      if (companyDoc?.country) {
+        req.body.country = companyDoc.country;
+      }
     }
+  } catch (e) {
+    // Non-blocking: if company not found, proceed without defaulting
+  }
 
-    const result = await new Model({
-      ...req.body,
-      companyId: req.admin.companyId
-    }).save();
+  const result = await new Model({
+    ...req.body,
+    companyId: req.admin.companyId,
+  }).save();
 
     logWithTime(`✅ 🎯 Plant Created Successfully 🚀`);
     // Activity Tracker logging

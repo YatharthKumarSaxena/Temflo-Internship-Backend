@@ -6,8 +6,14 @@ class HSNController {
     try {
       const hsnData = {
         ...req.body,
+        companyId: req.admin.companyId,
         createdBy: req.user.id,
       };
+
+      // Ensure default toDate if not provided
+      if (!hsnData.toDate) {
+        hsnData.toDate = new Date('9999-12-31T00:00:00.000Z');
+      }
 
       const hsnCode = new HSNCode(hsnData);
       await hsnCode.save();
@@ -26,6 +32,12 @@ class HSNController {
           message: 'HSN Code already exists',
         });
       }
+      if (error.message && error.message.includes('overlapping validity period')) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
       throw error;
     }
   }
@@ -35,7 +47,7 @@ class HSNController {
     try {
       const { page = 1, limit = 10, search, category, status } = req.query;
 
-      const query = {};
+      const query = { companyId: req.admin.companyId };
 
       // Search filter
       if (search) {
@@ -111,6 +123,11 @@ class HSNController {
         updatedBy: req.user.id,
       };
 
+      // Normalize toDate default if explicitly cleared
+      if (Object.prototype.hasOwnProperty.call(req.body, 'toDate') && !req.body.toDate) {
+        updateData.toDate = new Date('9999-12-31T00:00:00.000Z');
+      }
+
       const hsnCode = await HSNCode.findByIdAndUpdate(req.params.id, updateData, {
         new: true,
         runValidators: true,
@@ -135,6 +152,12 @@ class HSNController {
         return res.status(400).json({
           success: false,
           message: 'HSN Code already exists',
+        });
+      }
+      if (error.message && error.message.includes('overlapping validity period')) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
         });
       }
       throw error;
@@ -165,7 +188,7 @@ class HSNController {
   // Get HSN codes for dropdown (active only)
   async getHSNCodesDropdown(req, res) {
     try {
-      const hsnCodes = await HSNCode.find({ status: 'active' })
+      const hsnCodes = await HSNCode.find({ companyId: req.admin.companyId, status: 'active' })
         .select('hsnCode description gstRate category')
         .sort({ hsnCode: 1 });
 
@@ -183,6 +206,7 @@ class HSNController {
     try {
       const { category } = req.params;
       const hsnCodes = await HSNCode.find({
+        companyId: req.admin.companyId,
         category,
         status: 'active',
       })
@@ -201,12 +225,19 @@ class HSNController {
   // Get HSN code statistics
   async getHSNStats(req, res) {
     try {
-      const totalHSNCodes = await HSNCode.countDocuments();
-      const activeHSNCodes = await HSNCode.countDocuments({ status: 'active' });
-      const inactiveHSNCodes = await HSNCode.countDocuments({ status: 'inactive' });
+      const totalHSNCodes = await HSNCode.countDocuments({ companyId: req.admin.companyId });
+      const activeHSNCodes = await HSNCode.countDocuments({
+        companyId: req.admin.companyId,
+        status: 'active',
+      });
+      const inactiveHSNCodes = await HSNCode.countDocuments({
+        companyId: req.admin.companyId,
+        status: 'inactive',
+      });
 
       // Category-wise count
       const categoryStats = await HSNCode.aggregate([
+        { $match: { companyId: req.admin.companyId } },
         {
           $group: {
             _id: '$category',
@@ -217,6 +248,7 @@ class HSNController {
 
       // GST Rate-wise count
       const gstRateStats = await HSNCode.aggregate([
+        { $match: { companyId: req.admin.companyId } },
         {
           $group: {
             _id: '$gstRate',
@@ -262,6 +294,7 @@ class HSNController {
         try {
           const hsnCode = new HSNCode({
             ...hsnData,
+            companyId: req.admin.companyId,
             createdBy: req.user.id,
           });
           await hsnCode.save();

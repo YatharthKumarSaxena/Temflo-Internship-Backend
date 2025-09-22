@@ -218,7 +218,7 @@ class UpdateController {
   updateBankDetail = async (req, res, next) => {
     try {
       const file = req.file;
-      const filename = file && file.filename;
+      const filename = req.file.path;
 
       const _id = req.admin._id;
       const companyId = req.admin.companyId;
@@ -277,7 +277,7 @@ class UpdateController {
   updateDegreeInfo = async (req, res, next) => {
     try {
       const file = req.file;
-      const filename = file && file.filename;
+      const filename = req.file.path;
 
       const _id = req.admin._id;
       const companyId = req.admin.companyId;
@@ -345,7 +345,7 @@ class UpdateController {
   updateExperienceInfo = async (req, res, next) => {
     try {
       const file = req.file;
-      const filename = file && file.filename;
+      const filename = req.file.path;
 
       const _id = req.admin._id;
       const companyId = req.admin.companyId;
@@ -415,7 +415,7 @@ class UpdateController {
   updatePan = async (req, res, next) => {
     try {
       const file = req.file;
-      const filename = file && file.filename;
+      const filename = req.file.path;
 
       if (!file) return throwMissingFieldsError(res, "All fields");
 
@@ -467,7 +467,7 @@ class UpdateController {
   updateAadhar = async (req, res, next) => {
     try {
       const file = req.file;
-      const filename = file && file.filename;
+      const filename = req.file.path;
 
       if (!file) return throwMissingFieldsError(res, "All fields");
 
@@ -535,6 +535,8 @@ class UpdateController {
       return throwInternalServerError(res);
     }
   };
+
+  
 
 }
 

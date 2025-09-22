@@ -7,6 +7,12 @@ const AssetTypeSchema = new mongoose.Schema({
     required: true,
     immutable: true,
   },
+  plantId:{
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'Plant'
+    
+  },
   name: { type: String, required: true },
   description: String,
   createdAt: { type: Date, default: Date.now },

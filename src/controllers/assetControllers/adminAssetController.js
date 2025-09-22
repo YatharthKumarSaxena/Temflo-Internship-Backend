@@ -5,18 +5,38 @@ const mongoose = require('mongoose');
 const xlsx = require('xlsx');
 const fs = require('fs');
 const path = require('path');
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { PERMISSION_CREATED, ASSET_TYPE_CREATED, ASSET_TYPE_DELETED, ASSET_TYPE_UPDATED, ASSET_ADDED, ASSET_DELETED, ASSET_UPDATED, ASSET_BULK_CREATED, ASSET_TRANSFER_APPROVED, ASSET_TRANSFER_REJECTED } = require("@/config/activity.enums");
+const { masterTemplate } = require("@/config/emailTemplate");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { sendEmail } = require("@/utils/emailSender");
 
 // create Asset Type
 exports.createAssetType = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, description,plantId } = req.body;
 
-    if (!name) {
+    if (!name || !plantId) {
       res.status(500).json({ success: false, message: 'All field Required' });
     }
 
-    const assetTypes = new AssetType({ companyId: req.admin.companyId, name, description });
+    const assetTypes = new AssetType({ companyId: req.admin.companyId,plantId, name, description });
     await assetTypes.save();
+
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.asset,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_asset,
+      modelAffected: [MODEL_AFFECTED.model_assetType],
+      eventType: ASSET_TYPE_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: assetTypes.toObject()
+    });
 
     res.status(200).json({ success: true, message: 'Asset Type created successfully', assetTypes });
   } catch (err) {
@@ -26,19 +46,49 @@ exports.createAssetType = async (req, res) => {
 };
 
 // 4. Get all policies for a company
+
 exports.getAssetType = async (req, res) => {
   try {
-    const assetTypes = await AssetType.find({ companyId: req.admin.companyId });
+    const query = { companyId: req.admin.companyId };
+
+    if (req.query.filter === 'plantId' && req.query.equal) {
+      query.plantId = req.query.equal;
+    }
+
+    const assetTypes = await AssetType.find(query);
     res.json({ success: true, assetTypes });
   } catch (err) {
+    console.error('Error fetching asset types:', err);
     res.status(500).json({ success: false, message: 'Failed To Fetch Asset Types' });
   }
 };
 
+
 exports.deleteAssetType = async (req, res) => {
   try {
-    await AssetType.findOneAndDelete({ companyId: req.admin.companyId, _id: req.params.id });
-    res.json({ success: true, message: 'Asset Type deleted' });
+    // Fetch the asset type first
+    const assetType = await AssetType.findOne({ companyId: req.admin.companyId, _id: req.params.id });
+    if (!assetType) {
+      return res.status(404).json({ success: false, message: 'Asset Type not found' });
+    }
+
+    // Delete it
+    await AssetType.deleteOne({ _id: req.params.id });
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.asset,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_asset,
+      modelAffected: [MODEL_AFFECTED.model_assetType],
+      eventType: ASSET_TYPE_DELETED,
+      actionDone: ACTIONS.delete,
+      oldData: assetType.toObject(),
+      newData: null
+    });
+
+    return res.json({ success: true, message: 'Asset Type deleted' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -52,19 +102,53 @@ exports.updateAssetType = async (req, res) => {
       res.status(500).json({ success: false, message: 'All field Required' });
     }
 
-    const assetType = await AssetType.findOneAndUpdate(
-      { companyId: req.admin.companyId, _id: req.params.id },
-      { name, description },
-      { new: true }
-    );
+    // Fetch the existing asset type first
+    const assetType = await AssetType.findOne({ companyId: req.admin.companyId, _id: req.params.id });
+    if (!assetType) {
+      return res.status(404).json({ success: false, message: 'Asset Type not found' });
+    }
+
+    // Save oldData for activity tracking (only changed fields)
+    const oldData = {};
+    const newData = {};
+    oldData._id = req.params.id
+    if (name && name !== assetType.name) {
+      oldData.name = assetType.name;
+      newData.name = name;
+      assetType.name = name;
+    }
+    if (description && description !== assetType.description) {
+      oldData.description = assetType.description;
+      newData.description = description;
+      assetType.description = description;
+    }
+
+    // Save updated asset type
+    await assetType.save();
+
 
     if (!assetType)
       return res.status(404).json({ success: false, message: 'Asset Type Not Found' });
-    res.status(200).json({ success: true, assetType });
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.asset,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_asset,
+      modelAffected: [MODEL_AFFECTED.model_assetType],
+      eventType: ASSET_TYPE_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData: oldData,
+      newData: newData
+    });
+
+    return res.status(200).json({ success: true, assetType });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 exports.addAsset = async (req, res) => {
   try {
@@ -102,6 +186,30 @@ exports.addAsset = async (req, res) => {
       });
     }
 
+    // Validate dates
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize time for date comparison
+
+    if (purchaseDate) {
+      const parsedPurchase = new Date(purchaseDate);
+      if (parsedPurchase > today) {
+        return res.status(400).json({
+          success: false,
+          message: 'Purchase date cannot be in the future.',
+        });
+      }
+    }
+
+    if (expiryDate) {
+      const parsedExpiry = new Date(expiryDate);
+      if (parsedExpiry <= today) {
+        return res.status(400).json({
+          success: false,
+          message: 'Expiry date must be in the future.',
+        });
+      }
+    }
+
     // Clean up empty string values for ObjectId fields
     const cleanAssignedTo =
       assignedTo === '' || assignedTo === null || assignedTo === undefined ? null : assignedTo;
@@ -129,6 +237,21 @@ exports.addAsset = async (req, res) => {
     });
 
     await asset.save();
+
+    // Activity Tracker for asset creation
+    activityTracker({
+      userId: req.admin._id,
+      companyId: companyId,
+      plantId: plantId,
+      module: MODULE.asset,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_asset,
+      modelAffected: [MODEL_AFFECTED.model_asset],
+      eventType: ASSET_ADDED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: asset.toObject(),
+    });
 
     return res.status(200).json({
       success: true,
@@ -281,8 +404,31 @@ exports.getAssets = async (req, res) => {
 
 exports.deleteAsset = async (req, res) => {
   try {
-    await Asset.findOneAndDelete({ companyId: req.admin.companyId, _id: req.params.id });
-    res.json({ success: true, message: 'Asset deleted' });
+    // Fetch the asset first for activity tracking
+    const asset = await Asset.findOne({ companyId: req.admin.companyId, _id: req.params.id });
+    if (!asset) {
+      return res.status(404).json({ success: false, message: 'Asset not found' });
+    }
+
+    // Delete the asset
+    await Asset.deleteOne({ _id: req.params.id });
+
+    // Activity Tracker for asset deletion
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.asset,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_asset,
+      modelAffected: [MODEL_AFFECTED.model_asset],
+      eventType: ASSET_DELETED,
+      actionDone: ACTIONS.delete,
+      oldData: asset.toObject(),
+      newData: null,
+    });
+
+    return res.json({ success: true, message: 'Asset deleted' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -291,7 +437,7 @@ exports.deleteAsset = async (req, res) => {
 exports.updateAsset = async (req, res) => {
   try {
     const assetId = req.params.id;
-    const updateData = req.body;
+    const updateData = { ...req.body };
 
     // Clean up empty string values for ObjectId fields to prevent casting errors
     const objectIdFields = ['assetType', 'assignedTo', 'responsible'];
@@ -302,11 +448,9 @@ exports.updateAsset = async (req, res) => {
         updateData[field] === undefined
       ) {
         if (field === 'assetType') {
-          // assetType is required, so don't include it in update if it's empty
-          delete updateData[field];
+          delete updateData[field]; // required, don't update if empty
         } else {
-          // For optional fields, set to null instead of empty string
-          updateData[field] = null;
+          updateData[field] = null; // optional fields set to null
         }
       }
     });
@@ -327,42 +471,66 @@ exports.updateAsset = async (req, res) => {
     const wasAssignedTo = existingAsset.assignedTo;
     const isAssignedTo = updateData.assignedTo;
 
-    // Case 1: If it was unassigned and now it's assigned
+    // Handle auto status updates based on assignment
     if (!wasAssignedTo && isAssignedTo) {
       updateData.status = 'Assigned';
-    }
-
-    // Case 2: If it was assigned and now it's unassigned, and status was Assigned
-    if (
-      wasAssignedTo &&
-      (!isAssignedTo || isAssignedTo === '') &&
-      existingAsset.status === 'Assigned'
-    ) {
+    } else if (wasAssignedTo && (!isAssignedTo || isAssignedTo === '') && existingAsset.status === 'Assigned') {
       updateData.status = 'Available';
     }
 
-    // Case 3: If status is explicitly set to 'Available', clear assignedTo
     if (updateData.status === 'Available') {
       updateData.assignedTo = null;
     }
 
-    // Perform the update
-    const updatedAsset = await Asset.findOneAndUpdate(
-      { companyId: req.admin.companyId, _id: assetId },
-      updateData,
-      { new: true, runValidators: true }
-    );
+    // Prepare oldData and newData only for changed fields
+    const oldData = {};
+    const newData = {};
+    oldData._id = req.params.id;
+    Object.keys(updateData).forEach((key) => {
+      if (updateData[key] !== existingAsset[key]) {
+        oldData[key] = existingAsset[key];
+        newData[key] = updateData[key];
+        existingAsset[key] = updateData[key]; // update existingAsset object
+      }
+    });
 
-    res.status(200).json({
+    // Save updated asset
+    await existingAsset.save();
+
+    // Activity Tracker
+    if (Object.keys(newData).length > 0) {
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.asset,
+        subModuleAffected: null,
+        fileAffected: FILE.file_admin_asset,
+        modelAffected: [MODEL_AFFECTED.model_asset],
+        eventType: ASSET_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData: oldData,
+        newData: newData,
+      });
+    }
+
+    return res.status(200).json({
       success: true,
       message: 'Asset updated successfully',
-      result: updatedAsset,
+      result: existingAsset,
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+function excelDateToJSDate(serial) {
+  const utc_days = Math.floor(serial - 25569);
+  const utc_value = utc_days * 86400;
+  const date_info = new Date(utc_value * 1000);
+  return new Date(date_info.toISOString().split('T')[0]);
+}
 
 exports.createBulkAssets = async (req, res) => {
   const filePath = req.file.path;
@@ -372,63 +540,153 @@ exports.createBulkAssets = async (req, res) => {
 
   try {
     const companyId = req.admin.companyId;
+    const plantId = req.params.plantId;
+
+    if (!plantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please Select Plant',
+      });
+    }
 
     // Read Excel
     const workbook = xlsx.readFile(filePath);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const assetsData = xlsx.utils.sheet_to_json(sheet);
 
-    // Get unique assetTypeNames and employeeCodes
+    // Get unique assetTypeNames, employeeCodes, and serialNumbers
     const assetTypeNames = [...new Set(assetsData.map((a) => a['AssetType']).filter(Boolean))];
-
     const employeeCodes = [
       ...new Set(assetsData.flatMap((a) => [a['AssignedTo'], a['Responsible']]).filter(Boolean)),
     ];
+    const serialNumbers = [...new Set(assetsData.map((a) => a['SerialNumber']).filter(Boolean))];
 
-    // Fetch AssetTypes and Users
-    const assetTypes = await AssetType.find({ companyId, name: { $in: assetTypeNames } });
+    // Fetch AssetTypes, Users, and Existing Assets with same serialNumbers
+    const assetTypes = await AssetType.find({ companyId, plantId, name: { $in: assetTypeNames } });
     const users = await User.find({
       companyId,
+      plantId,
       employeeCode: { $in: employeeCodes },
       removed: false,
     });
+    const existingAssets = await Asset.find({
+      companyId,
+      plantId,
+      serialNumber: { $in: serialNumbers },
+    });
 
-    // Create maps for quick lookup
+    // Create maps
     const assetTypeMap = Object.fromEntries(assetTypes.map((a) => [a.name, a._id]));
     const userMap = Object.fromEntries(users.map((u) => [u.employeeCode, u._id]));
+    const existingSerialSet = new Set(existingAssets.map((a) => a.serialNumber));
+
     const created = [],
       failed = [];
+    const isValidDate = (d) => !isNaN(new Date(d).getTime());
+    const isFutureDate = (d) => new Date(d) > new Date();
+    
 
     for (const row of assetsData) {
       try {
         const assetTypeId = assetTypeMap[row['AssetType']];
         const assignedToId = userMap[row['AssignedTo']] || null;
         const responsibleId = userMap[row['Responsible']] || null;
+        const serial = row['SerialNumber'];
+        const PurchaseDate = row['PurchaseDate'];
+        const ExpiryDate = row['ExpiryDate']
 
-        if (!row.Name || !assetTypeId || !row['SerialNumber']) {
-          failed.push({ row, reason: 'Missing required fields (Name, Serial Number, Asset Type)' });
+        if (!row.Name || !serial) {
+          failed.push({ row, reason: 'Missing required fields (Name, Serial Number)' });
           continue;
+        }
+
+        if (existingSerialSet.has(serial)) {
+          failed.push({ row, reason: 'Duplicate Entry: Serial Number already exists in this plant' });
+          continue;
+        }
+
+        if (!assetTypeId) {
+          failed.push({ row, reason: 'Invalid Asset Type' });
+          continue;
+        }
+
+        if (row['AssignedTo'] && !assignedToId) {
+          failed.push({ row, reason: 'AssignedTo employee not found in this plant' });
+          continue;
+        }
+
+        if (row['Responsible'] && !responsibleId) {
+          failed.push({ row, reason: 'Responsible: Employee not found in this plant' });
+          continue;
+        }
+
+        let purchaseDateObj = null;
+        if (PurchaseDate) {
+          const parsedPurchaseDate = typeof PurchaseDate === 'number' ? excelDateToJSDate(PurchaseDate) : new Date(PurchaseDate);
+          if (!isValidDate(parsedPurchaseDate)) {
+            failed.push({ row, reason: 'Invalid Purchase Date format' });
+            continue;
+          }
+          if (isFutureDate(parsedPurchaseDate)) {
+            failed.push({ row, reason: 'Purchase Date cannot be in the future' });
+            continue;
+          }
+          purchaseDateObj = parsedPurchaseDate;
+        }
+
+        let expiryDateObj = null;
+        
+      if (ExpiryDate) {
+        const parsedExpiryDate = typeof ExpiryDate === 'number' ? excelDateToJSDate(ExpiryDate) : new Date(ExpiryDate);
+        if (!isValidDate(parsedExpiryDate)) {
+          failed.push({ row, reason: 'Invalid Expiry Date format' });
+          continue;
+        }
+        if (!isFutureDate(parsedExpiryDate)) {
+          failed.push({ row, reason: 'Expiry Date must be a future date' });
+          continue;
+        }
+        expiryDateObj = parsedExpiryDate;
         }
 
         const newAsset = new Asset({
           name: row.Name,
-          serialNumber: row['SerialNumber'],
+          serialNumber: serial,
           description: row.Description || '',
           status: row.Status || 'Available',
           assignedTo: assignedToId,
           responsible: responsibleId,
-          purchaseDate: row['PurchaseDate'] ? new Date(row['PurchaseDate']) : null,
-          expiryDate: row['ExpiryDate'] ? new Date(row['ExpiryDate']) : null,
+          purchaseDate: purchaseDateObj,
+          expiryDate: expiryDateObj,
           location: row.Location || '',
           manufacturer: row.Manufacturer || '',
           assetType: assetTypeId,
           companyId,
-          plantId: req.params.plantId,
+          plantId,
           enabled: true,
         });
 
         await newAsset.save();
         created.push({ name: newAsset.name, serialNumber: newAsset.serialNumber });
+
+        // Prevent further duplicates in this loop
+        existingSerialSet.add(serial);
+
+        // Activity Tracker
+        activityTracker({
+          userId: req.admin._id,
+          companyId: companyId,
+          plantId: req.admin.plantId || null,
+          module: MODULE.asset,
+          subModuleAffected: null,
+          fileAffected: FILE.file_admin_asset,
+          modelAffected: [MODEL_AFFECTED.model_asset],
+          eventType: ASSET_BULK_CREATED,
+          actionDone: ACTIONS.create,
+          oldData: null,
+          newData: newAsset.toObject(),
+        });
+
       } catch (err) {
         failed.push({ row, reason: err.message });
       }
@@ -449,10 +707,10 @@ exports.createBulkAssets = async (req, res) => {
       message: 'Internal server error',
     });
   } finally {
-    // Always delete the temp file
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   }
 };
+
 
 // Import AssetTransfer model at the top with other imports
 const AssetTransfer = require('../../models/AssetModels/AssetTransfer');
@@ -505,12 +763,14 @@ exports.approveAssetTransfer = async (req, res) => {
     const adminId = req.admin._id;
     const companyId = req.admin.companyId;
 
-    // Find the transfer request
-    const transfer = await AssetTransfer.findOne({
-      _id: transferId,
-      companyId,
-      status: 'Pending',
-    }).populate('assetId');
+const transfer = await AssetTransfer.findOne({
+  _id: transferId,
+  companyId,
+  status: 'Pending',
+})
+.populate('assetId')
+.populate('fromEmployee', 'name email')
+.populate('toEmployee', 'name email');
 
     if (!transfer) {
       await session.abortTransaction();
@@ -537,31 +797,122 @@ exports.approveAssetTransfer = async (req, res) => {
       });
     }
 
+    // Save old data for activity tracker
+    const oldAssetData = { _id: transfer.assetId._id, assignedTo: asset.assignedTo, status: asset.status };
+    const oldTransferData = {
+      _id: transferId,
+      status: transfer.status,
+      approvedBy: transfer.approvedBy,
+      approvedAt: transfer.approvedAt,
+      completedAt: transfer.completedAt,
+      adminNotes: transfer.adminNotes
+    };
+
     // Update the asset assignment
-    await Asset.findByIdAndUpdate(
-      transfer.assetId._id,
-      {
-        assignedTo: transfer.toEmployee,
-        status: 'Assigned',
-      },
-      { session }
-    );
+    asset.assignedTo = transfer.toEmployee;
+    asset.status = 'Assigned';
+    await asset.save({ session });
+
+    activityTracker({
+      userId: adminId,
+      companyId: companyId,
+      plantId: asset.plantId || null,
+      module: MODULE.asset,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_asset,
+      modelAffected: [MODEL_AFFECTED.model_asset],
+      eventType: ASSET_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData: oldAssetData,
+      newData: { assignedTo: asset.assignedTo, status: asset.status },
+    });
+
+    const newData = {
+      status: 'Completed',
+      approvedBy: adminId,
+      approvedAt: new Date(),
+      completedAt: new Date(),
+      adminNotes: adminNotes.trim()
+    }
 
     // Update the transfer request
-    await AssetTransfer.findByIdAndUpdate(
-      transferId,
-      {
-        status: 'Completed',
-        approvedBy: adminId,
-        approvedAt: new Date(),
-        completedAt: new Date(),
-        adminNotes: adminNotes.trim(),
-      },
-      { session }
-    );
+    transfer.status = 'Completed';
+    transfer.approvedBy = adminId;
+    transfer.approvedAt = new Date();
+    transfer.completedAt = new Date();
+    transfer.adminNotes = adminNotes.trim();
+    await transfer.save({ session });
+
+    activityTracker({
+      userId: adminId,
+      companyId: companyId,
+      plantId: asset.plantId || null,
+      module: MODULE.asset,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_asset,
+      modelAffected: [MODEL_AFFECTED.model_assetTransfer],
+      eventType: ASSET_TRANSFER_APPROVED,
+      actionDone: ACTIONS.update,
+      oldData: oldTransferData,
+      newData: newData,
+    });
 
     await session.commitTransaction();
     session.endSession();
+
+    const approveDate = new Date().toLocaleString();
+
+    // ----- EMAILS -----
+    const baseNotes = `
+      Asset Name: ${asset.name}<br/>
+      Asset ID: ${asset._id}<br/>
+      Serial Number: ${asset.serialNumber || 'N/A'}
+    `;
+
+    // From Employee (requester)
+    const fromEmployeeMsg = `
+      ${baseNotes}<br/>
+      Your request for this asset has been approved by Admin.<br/>
+      Transferred to Employee ID: <b>${transfer.toEmployee._id}</b>.<br/>
+      Notes: ${adminNotes.trim() || 'None'}</b>.<br/>
+      Date: ${approveDate}
+    `;
+
+    // To Employee (receiver)
+    const toEmployeeMsg = `
+      ${baseNotes}<br/>
+      Admin has transferred this asset to you.<br/>
+      Requested by Employee ID: <b>${transfer.fromEmployee._id}</b>.<br/>
+      Notes: ${adminNotes.trim() || 'None'}</b>.<br/>
+      Date: ${approveDate}
+    `;
+
+    // Admin
+    const adminMsg = `
+      ${baseNotes}<br/>
+      You have approved this asset transfer.<br/>
+      From Employee ID: <b>${transfer.fromEmployee._id}</b> to Employee ID: <b>${transfer.toEmployee._id}</b>.<br/>
+      Notes: ${adminNotes.trim() || 'None'}'}</b>.<br/>
+      Date: ${approveDate}
+    `;
+
+    sendEmail(
+      transfer.fromEmployee.email,
+      masterTemplate.assetTransferApproved.subject,
+      generateMasterTemplate({ ...masterTemplate.assetTransferApproved, notes: fromEmployeeMsg })
+    );
+
+    sendEmail(
+      transfer.toEmployee.email,
+      masterTemplate.assetTransferApproved.subject,
+      generateMasterTemplate({ ...masterTemplate.assetTransferApproved, notes: toEmployeeMsg })
+    );
+
+    sendEmail(
+      req.admin.email,
+      masterTemplate.assetTransferApproved.subject,
+      generateMasterTemplate({ ...masterTemplate.assetTransferApproved, notes: adminMsg })
+    );
 
     res.status(200).json({
       success: true,
@@ -586,20 +937,14 @@ exports.rejectAssetTransfer = async (req, res) => {
     const adminId = req.admin._id;
     const companyId = req.admin.companyId;
 
-    const transfer = await AssetTransfer.findOneAndUpdate(
-      {
-        _id: transferId,
-        companyId,
-        status: 'Pending',
-      },
-      {
-        status: 'Rejected',
-        approvedBy: adminId,
-        rejectedAt: new Date(),
-        adminNotes: adminNotes.trim(),
-      },
-      { new: true }
-    );
+const transfer = await AssetTransfer.findOne({
+  _id: transferId,
+  companyId,
+  status: 'Pending',
+})
+.populate('assetId')
+.populate('fromEmployee', 'name email')
+.populate('toEmployee', 'name email');
 
     if (!transfer) {
       return res.status(404).json({
@@ -607,6 +952,100 @@ exports.rejectAssetTransfer = async (req, res) => {
         message: 'Transfer request not found or already processed',
       });
     }
+
+    // Verify the asset is still assigned to the from employee
+    const asset = await Asset.findOne({
+      _id: transfer.assetId._id,
+      assignedTo: transfer.fromEmployee,
+      status: 'Assigned',
+    });
+
+    const oldTransferData = {
+      _id: transferId,
+      status: transfer.status,
+      approvedBy: transfer.approvedBy,
+      rejectedAt: transfer.rejectedAt,
+      adminNotes: transfer.adminNotes
+    };
+
+    const newData = {
+      status: 'Rejected',
+      approvedBy: adminId,
+      rejectedAt: new Date(),
+      adminNotes: adminNotes.trim()
+    }
+
+    transfer.status = 'Rejected';
+    transfer.approvedBy = adminId;
+    transfer.rejectedAt = new Date();
+    transfer.adminNotes = adminNotes.trim();
+    await transfer.save();
+
+    activityTracker({
+      userId: adminId,
+      companyId: companyId,
+      plantId: transfer.plantId || null,
+      module: MODULE.asset,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_asset,
+      modelAffected: [MODEL_AFFECTED.model_assetTransfer],
+      eventType: ASSET_TRANSFER_REJECTED,
+      actionDone: ACTIONS.update,
+      oldData: oldTransferData,
+      newData: newData
+    });
+
+    // ----- EMAILS -----
+    const baseNotes = `
+      Asset Name: ${asset.name}<br/>
+      Asset ID: ${asset._id}<br/>
+      Serial Number: ${asset.serialNumber}
+    `;
+
+    const rejectDate = new Date().toLocaleString();
+// From Employee (requester)
+const fromEmployeeMsg = `
+  ${baseNotes}<br/>
+  Your request for this asset has been rejected by Admin for asset transfer to Employee ID: ${transfer.toEmployee._id}</b>.<br/>
+  Reason: ${adminNotes.trim() || 'Not provided'}</b>.<br/>
+  Date: ${rejectDate}
+`;
+
+// To Employee (receiver)
+const toEmployeeMsg = `
+  ${baseNotes}<br/>
+  This asset transfer to you has been rejected by Admin.<br/>
+  Requested by Employee ID: <b>${transfer.fromEmployee._id}</b>.<br/>
+  Reason: ${adminNotes.trim() || 'Not provided'}</b>.<br/>
+  Date: ${rejectDate}
+`;
+
+// Admin
+const adminMsg = `
+  ${baseNotes}<br/>
+  You have rejected the transfer request for this asset.<br/>
+  Request was made by Employee ID: <b>${transfer.fromEmployee._id}</b> to transfer to Employee ID: <b>${transfer.toEmployee._id}</b>.<br/>
+  Reason: ${adminNotes.trim() || 'Not provided'}</b>.<br/>
+  Date: ${rejectDate}
+`;
+
+    sendEmail(
+      transfer.fromEmployee.email,
+      masterTemplate.assetTransferRejected.subject,
+      generateMasterTemplate({ ...masterTemplate.assetTransferRejected, notes: fromEmployeeMsg })
+    );
+
+    sendEmail(
+      transfer.toEmployee.email,
+      masterTemplate.assetTransferRejected.subject,
+      generateMasterTemplate({ ...masterTemplate.assetTransferRejected, notes: toEmployeeMsg })
+    );
+
+    sendEmail(
+      req.admin.email,
+      masterTemplate.assetTransferRejected.subject,
+      generateMasterTemplate({ ...masterTemplate.assetTransferRejected, notes: adminMsg })
+    );
 
     res.status(200).json({
       success: true,

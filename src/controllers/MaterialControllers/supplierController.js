@@ -2,21 +2,76 @@ const Supplier = require('../../models/MaterialModels/SupplierModel');
 const { catchErrors } = require('@/handlers/errorHandlers');
 const { indianStates, countries, pinCodeValidation } = require('../../config/indianStates');
 
+// Validate mandatory documents based on business rules (top-level helper to avoid `this` binding issues)
+function validateMandatoryDocuments(supplierData) {
+  const errors = [];
+
+  // PAN and Bank details are mandatory for all vendors
+  if (!supplierData?.documents?.panCard?.fileUrl) {
+    errors.push('PAN Card document is mandatory for all vendors');
+  }
+
+  if (!supplierData?.documents?.bankDetails?.fileUrl) {
+    errors.push('Bank Details document is mandatory for all vendors');
+  }
+
+  // GSTIN document is mandatory when GST is selected as Yes/Composite
+  if (
+    (supplierData?.gstRegistered === 'Yes' || supplierData?.gstRegistered === 'Composite') &&
+    !supplierData?.documents?.gstinCertificate?.fileUrl
+  ) {
+    errors.push('GSTIN Certificate document is mandatory when GST Registered is Yes/Composite');
+  }
+
+  // MSME document is mandatory when MSME registration is enabled
+  if (supplierData?.msmeRegistered && !supplierData?.documents?.msmeCertificate?.fileUrl) {
+    errors.push('MSME Certificate document is mandatory when MSME registration is enabled');
+  }
+
+  return errors;
+}
+
 class SupplierController {
   // Create new supplier
   async createSupplier(req, res) {
     try {
       const supplierData = {
         ...req.body,
+        companyId: req.admin.companyId,
         createdBy: req.user.id,
         approvalStatus: 'draft', // Start as draft
+        makerChecker: {
+          maker: req.user.id,
+          allowMakerToSelectChecker: true,
+        },
       };
+
+      // If a checker comes in payload, enforce maker-checker separation
+      if (
+        supplierData.makerChecker?.checker &&
+        supplierData.makerChecker.checker.toString() === req.user.id.toString()
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: 'Maker cannot be assigned as checker',
+        });
+      }
 
       // Validate pin code
       if (supplierData.pinCode && !pinCodeValidation.isValidPinCode(supplierData.pinCode)) {
         return res.status(400).json({
           success: false,
           message: 'Invalid pin code format',
+        });
+      }
+
+      // Validate mandatory documents based on business rules
+      const documentValidationErrors = validateMandatoryDocuments(supplierData);
+      if (documentValidationErrors.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Document validation failed',
+          errors: documentValidationErrors,
         });
       }
 
@@ -69,7 +124,7 @@ class SupplierController {
       }
 
       // Status filter
-      if (status) {
+      if (status && status !== 'all') {
         query.status = status;
       }
 
@@ -129,10 +184,69 @@ class SupplierController {
   // Update supplier
   async updateSupplier(req, res) {
     try {
+      // Prevent updates to immutable/sensitive fields
+      const {
+        supplierCode, // immutable
+        pan, // immutable
+        tan, // immutable
+        gstin, // conditionally editable based on GST status
+        companyId, // controlled by server
+        createdBy, // controlled by server
+        makerChecker: incomingMakerChecker,
+        ...rest
+      } = req.body || {};
+
+      // Get the existing supplier to check GST status
+      const existingSupplier = await Supplier.findById(req.params.id);
+      if (!existingSupplier) {
+        return res.status(404).json({
+          success: false,
+          message: 'Supplier not found',
+        });
+      }
+
+      // Handle GSTIN updates based on business rules
+      let allowedGstin = null;
+      if (gstin !== undefined) {
+        // Check if GSTIN can be updated based on original GST status
+        const originalGstRegistered = existingSupplier.gstRegistered;
+        const originalGstin = existingSupplier.gstin;
+
+        // Rule: If GST was "No" at creation and no GSTIN was provided, allow updating GSTIN
+        if (originalGstRegistered === 'No' && !originalGstin) {
+          allowedGstin = gstin;
+        }
+        // Rule: If GSTIN was already provided at creation, don't allow changes
+        else if (originalGstin) {
+          if (gstin !== originalGstin) {
+            return res.status(400).json({
+              success: false,
+              message: 'GSTIN cannot be modified once it has been set during creation.',
+            });
+          }
+          allowedGstin = gstin; // Keep the same GSTIN
+        }
+        // Rule: If GSTIN was provided at creation with GST="No" (edge case), allow keeping it
+        else if (originalGstin && originalGstRegistered === 'No') {
+          allowedGstin = gstin;
+        }
+      }
+
       const updateData = {
-        ...req.body,
+        ...rest,
+        ...(allowedGstin !== null && { gstin: allowedGstin }),
         updatedBy: req.user.id,
       };
+
+      // Validate mandatory documents based on business rules for updates
+      const documentValidationErrors = validateMandatoryDocuments(updateData);
+      if (documentValidationErrors.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Document validation failed',
+          errors: documentValidationErrors,
+        });
+      }
 
       const supplier = await Supplier.findByIdAndUpdate(req.params.id, updateData, {
         new: true,
@@ -167,7 +281,12 @@ class SupplierController {
   // Delete supplier
   async deleteSupplier(req, res) {
     try {
-      const supplier = await Supplier.findByIdAndDelete(req.params.id);
+      // Soft-delete: mark as inactive instead of removing the document
+      const supplier = await Supplier.findByIdAndUpdate(
+        req.params.id,
+        { status: 'inactive' },
+        { new: true }
+      );
 
       if (!supplier) {
         return res.status(404).json({
@@ -178,7 +297,8 @@ class SupplierController {
 
       res.json({
         success: true,
-        message: 'Supplier deleted successfully',
+        message: 'Supplier inactivated successfully',
+        data: supplier,
       });
     } catch (error) {
       throw error;
@@ -268,6 +388,27 @@ class SupplierController {
           success: false,
           message: 'Only pending suppliers can be approved/rejected',
         });
+      }
+
+      // If a specific checker is assigned, only that checker can act
+      if (supplier.makerChecker?.checker) {
+        if (supplier.makerChecker.checker.toString() !== req.user.id.toString()) {
+          return res.status(403).json({
+            success: false,
+            message: 'Only the assigned checker can approve/reject',
+          });
+        }
+      } else {
+        // No checker assigned: ensure the approver is not the maker
+        if (
+          supplier.makerChecker?.maker &&
+          supplier.makerChecker.maker.toString() === req.user.id.toString()
+        ) {
+          return res.status(403).json({
+            success: false,
+            message: 'Maker cannot approve their own supplier',
+          });
+        }
       }
 
       supplier.approvalStatus = action;

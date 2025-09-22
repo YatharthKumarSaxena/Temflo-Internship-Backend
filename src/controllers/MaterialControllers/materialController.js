@@ -8,30 +8,65 @@ class MaterialController {
     try {
       const materialData = {
         ...req.body,
+        companyId: req.admin.companyId,
         createdBy: req.user.id,
       };
 
-      // reconGL will be auto-assigned in the model pre-save middleware
+      // Enforce manual materialCode presence and format (6 alphanumeric)
+      if (!materialData.materialCode || !/^[A-Za-z0-9]{6}$/.test(materialData.materialCode)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Material code is required and must be 6 letters/digits (A-Z, 0-9)'.replace(
+            '..',
+            '.'
+          ),
+        });
+      }
 
-      const material = new Material(materialData);
-      await material.save();
+      const maxAttempts = 3;
+      let attempt = 0;
+      let lastError = null;
 
-      const populatedMaterial = await Material.findById(material._id)
-        .populate('hsnCode', 'hsnCode description gstRate')
-        .populate('supplier', 'supplierCode supplierName')
-        .populate('reconGL', 'accountCode accountName')
-        .populate('createdBy', 'name email');
+      while (attempt < maxAttempts) {
+        try {
+          const material = new Material(materialData);
+          await material.save();
 
-      res.status(201).json({
-        success: true,
-        message: 'Material created successfully',
-        data: populatedMaterial,
-      });
+          const populatedMaterial = await Material.findById(material._id)
+            .populate('hsnCode', 'hsnCode description gstRate')
+            .populate('supplier', 'supplierCode supplierName')
+            .populate('reconGL', 'accountCode accountName')
+            .populate('createdBy', 'name email');
+
+          return res.status(201).json({
+            success: true,
+            message: 'Material created successfully',
+            data: populatedMaterial,
+          });
+        } catch (err) {
+          lastError = err;
+          if (err && err.code === 11000) {
+            attempt += 1;
+            continue;
+          }
+          throw err;
+        }
+      }
+
+      if (lastError) {
+        if (lastError.code === 11000) {
+          return res.status(400).json({
+            success: false,
+            message: 'Material code already exists. Please try again.',
+          });
+        }
+        throw lastError;
+      }
     } catch (error) {
       if (error.code === 11000) {
         return res.status(400).json({
           success: false,
-          message: 'Material code already exists',
+          message: 'Material code already exists. Please try again.',
         });
       }
       throw error;
@@ -43,7 +78,7 @@ class MaterialController {
     try {
       const { page = 1, limit = 10, search, category, status, hsnCode } = req.query;
 
-      const query = {};
+      const query = { companyId: req.admin.companyId };
 
       // Search filter
       if (search) {
@@ -184,7 +219,7 @@ class MaterialController {
   // Get materials for dropdown (active only)
   async getMaterialsDropdown(req, res) {
     try {
-      const materials = await Material.find({ status: 'active' })
+      const materials = await Material.find({ companyId: req.admin.companyId, status: 'active' })
         .populate('hsnCode', 'hsnCode description gstRate')
         .select('materialCode materialName category measurement basicCost')
         .sort({ materialName: 1 });
@@ -203,6 +238,7 @@ class MaterialController {
     try {
       const { category } = req.params;
       const materials = await Material.find({
+        companyId: req.admin.companyId,
         category,
         status: 'active',
       })
@@ -222,12 +258,19 @@ class MaterialController {
   // Get material statistics
   async getMaterialStats(req, res) {
     try {
-      const totalMaterials = await Material.countDocuments();
-      const activeMaterials = await Material.countDocuments({ status: 'active' });
-      const inactiveMaterials = await Material.countDocuments({ status: 'inactive' });
+      const totalMaterials = await Material.countDocuments({ companyId: req.admin.companyId });
+      const activeMaterials = await Material.countDocuments({
+        companyId: req.admin.companyId,
+        status: 'active',
+      });
+      const inactiveMaterials = await Material.countDocuments({
+        companyId: req.admin.companyId,
+        status: 'inactive',
+      });
 
       // Category-wise count
       const categoryStats = await Material.aggregate([
+        { $match: { companyId: req.admin.companyId } },
         {
           $group: {
             _id: '$category',

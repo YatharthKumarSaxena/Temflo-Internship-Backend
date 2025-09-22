@@ -1,4 +1,7 @@
 const mongoose = require('mongoose');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { WORKSPACE_CREATED } = require("@/config/activity.enums");
 
 const createWorkspace = async (req, res) => {
   try {
@@ -13,15 +16,31 @@ const createWorkspace = async (req, res) => {
     const workspace = new Workspace({
       name,
       description,
-      companyId: req.admin.companyId,
+      companyId: req.user.companyId,
       plantId,
-      createdBy: req.admin.id,
+      createdBy: req.user._id,
     });
     await workspace.save();
+
+    // 🔹 Activity Tracker logging
+    activityTracker({
+      userId: req.user._id,              
+      companyId: req.user.companyId,    
+      plantId: plantId || null,          
+      module: MODULE.taskManager,
+      subModuleAffected: SUBMODULE.workspace,   
+      fileAffected: FILE.file_create_workspace, 
+      modelAffected: [MODEL_AFFECTED.model_workspace], 
+      eventType: WORKSPACE_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: workspace.toObject()
+    });
 
     return res.status(200).json({
       success: true,
       message: 'Workspace Created Successfully',
+      result: workspace
     });
   } catch (error) {
     console.error('Workspace Creation Error:', error);

@@ -185,6 +185,15 @@ const UserSchema = new Schema({
   legalStatus: {
     type: String,
   },
+  cin: {
+    type: String,
+    minlength: 21,
+    maxlength: 21,
+    match: /^[A-Za-z0-9]{21}$/,
+    required: function () {
+      return this.legalStatus === 'C';
+    },
+  },
   tan: {
     type: String,
   },
@@ -192,9 +201,30 @@ const UserSchema = new Schema({
     type: String,
     match: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
   },
+  msmeRegistered: {
+    type: Boolean,
+    default: false,
+  },
+  msmeNumber: {
+    type: String,
+    match: /^UDYAM[A-Z]{4}\d{7}$/,
+    required: function () {
+      return this.msmeRegistered === true;
+    },
+  },
   year: {
     type: String,
     enum: ['Financial', 'Calendar'],
+  },
+  // Optional financial year period like "2025-2026" or start year "2025"
+  financialYear: {
+    type: String,
+    match: /^\d{4}(-\d{4})?$/,
+    required: false,
+  },
+  currency: {
+    type: String,
+    default: 'INR',
   },
   created: {
     type: Date,
@@ -202,7 +232,7 @@ const UserSchema = new Schema({
   },
   code: {
     type: String,
-    match: /^\d{4}$/,
+    match: /^[A-Za-z\d]{4}$/,
     immutable: true,
     required: function () {
       return this.role === 'admin' || this.role === 'owner';

@@ -123,7 +123,7 @@ const getAdminActivities = async (req, res) => {
 
         // Apply top-level filters
         multiFilter("userId", userId, false, true);
-        multiFilter("companyId", companyId);
+        // multiFilter("companyId", companyId);
         multiFilter("plantId", plantId, false, true);
         multiFilter("module", module);
         multiFilter("fileAffected", fileAffected);
@@ -131,6 +131,11 @@ const getAdminActivities = async (req, res) => {
         multiFilter("modelAffected", modelAffected, true);
         multiFilter("eventType", eventType);
         multiFilter("actionDone", actionDone);
+
+        // ✅ Force filter by admin's companyId
+        if (req.admin?.companyId) {
+            query.companyId = req.admin.companyId;
+        }
 
         // Date filter
         if (startDate || endDate) {

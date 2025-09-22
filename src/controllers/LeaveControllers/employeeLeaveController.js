@@ -3,12 +3,18 @@ const LeaveRequest = require('../../models/LeaveModels/LeaveRequest');
 const LeaveBalance = require('../../models/LeaveModels/LeaveBalanace');
 const User = require('../../models/userModels/User');
 const mongoose = require('mongoose');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { LEAVE_BALANCE_UPDATED_BY_EMPLOYEE, LEAVE_REQUEST_CREATED_BY_EMPLOYEE, LEAVE_REQUEST_DELETED_BY_EMPLOYEE, LEAVE_REQUEST_STATUS_UPDATED_BY_EMPLOYEE } = require("@/config/activity.enums");
+const { masterTemplate } = require("@/config/emailTemplate");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { sendEmail } = require("@/utils/emailSender");
 
 // 1. View leave balances
 exports.getMyLeaveBalances = async (req, res) => {
   try {
     const balances = await LeaveBalance.find({
-      userId: req.admin.id,
+      userId: req.admin._id,
       companyId: req.admin.companyId,
     }).populate({
       path: 'leaveTypeId',
@@ -66,7 +72,7 @@ exports.applyForLeave = async (req, res) => {
 
     // Fetch leave balance
     const balance = await LeaveBalance.findOne({
-      userId: req.admin.id,
+      userId: req.admin._id,
       leaveTypeId: leaveType,
       companyId: req.admin.companyId,
     });
@@ -106,13 +112,13 @@ exports.applyForLeave = async (req, res) => {
     }
 
     const user = await User.findOne({
-      _id: req.admin.id,
+      _id: req.admin._id,
       companyId: req.admin.companyId,
     });
 
     // Create leave request
     const request = new LeaveRequest({
-      userId: req.admin.id,
+      userId: req.admin._id,
       companyId: req.admin.companyId,
       leaveTypeId: leaveType,
       plantId: user.plantId,
@@ -126,12 +132,90 @@ exports.applyForLeave = async (req, res) => {
 
     await request.save();
 
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.leave,
+      subModuleAffected: null,
+      fileAffected: FILE.file_employee_leave,
+      modelAffected: [MODEL_AFFECTED.model_leaveRequest],
+      eventType: LEAVE_REQUEST_CREATED_BY_EMPLOYEE,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: { _id: request._id, daysRequested: request.daysRequested, leaveTypeId: request.leaveTypeId }
+    });
+
     // Update leave balance
+    const oldDataBalance = {};
+    if (balance.balance != null) oldDataBalance.balance = balance.balance;
+    if (balance.availed != null) oldDataBalance.availed = balance.availed;
+    if (!('_id' in oldDataBalance)) oldDataBalance._id = balance._id;
+
     balance.balance -= daysRequested;
     balance.availed = (balance.availed || 0) + daysRequested;
     await balance.save();
 
-    res.status(200).json({
+    const newDataBalance = {};
+    if (oldDataBalance.balance !== balance.balance) newDataBalance.balance = balance.balance;
+    if (oldDataBalance.availed !== balance.availed) newDataBalance.availed = balance.availed;
+    if (!('_id' in newDataBalance)) newDataBalance._id = balance._id;
+
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.leave,
+      subModuleAffected: null,
+      fileAffected: FILE.file_employee_leave,
+      modelAffected: [MODEL_AFFECTED.model_balance],
+      eventType: LEAVE_BALANCE_UPDATED_BY_EMPLOYEE,
+      actionDone: ACTIONS.update,
+      oldData: oldDataBalance,
+      newData: newDataBalance
+    });
+
+// Find Admin/Supervisor who belongs to same company & plant
+const approver = await User.findOne({
+  _id: request.approverId,        // kyunki apply ke time approverId save ho gaya tha
+  companyId: req.admin.companyId,
+  plantId: req.admin.plantId
+});
+
+    // ---- EMAIL INTEGRATION ----
+    const leaveDetails = `
+      Leave Type: ${policy.name}<br/>
+      Duration: ${durationType}<br/>
+      From: ${fromDate}<br/>
+      To: ${adjustedToDate}<br/>
+      Days: ${daysRequested}<br/>
+      Reason: ${reason}
+    `;
+    const applyDate = new Date().toLocaleString();
+
+    const emailHtml = generateMasterTemplate({
+      company_name: req.admin.companyName,
+      user_name: user.name,
+      event_name: masterTemplate.leaveRequestCreatedByEmployee.event_name,
+      action: masterTemplate.leaveRequestCreatedByEmployee.action,
+      message_intro: "You have successfully submitted a leave request. Your Request has been sent to Leave Approver",
+      notes: `${leaveDetails}<br/>Applied On: ${applyDate}`
+    });
+    sendEmail(user.email, masterTemplate.leaveRequestCreatedByEmployee.subject, emailHtml);
+
+// Mail to Approver/Admin
+if (approver) {
+  const emailHtmlAdmin = generateMasterTemplate({
+    company_name: req.admin.companyName,
+    user_name: approver.name,
+    event_name: masterTemplate.leaveRequestCreatedByEmployee.event_name,
+    action: masterTemplate.leaveRequestCreatedByEmployee.action,
+    message_intro: `Employee whose Id: ${req.admin._id} has applied for leave request.`,
+    notes: `${leaveDetails}<br/>Applied On: ${applyDate}`
+  });
+  sendEmail(approver.email, masterTemplate.leaveRequestCreatedByEmployee.subject, emailHtmlAdmin);
+}
+    return res.status(200).json({
       success: true,
       message: 'Leave request submitted and balance updated',
       request,
@@ -148,7 +232,7 @@ exports.applyForLeave = async (req, res) => {
 // 4. View own leave requests
 exports.getMyLeaveRequests = async (req, res) => {
   try {
-    const requests = await LeaveRequest.find({ userId: req.admin.id })
+    const requests = await LeaveRequest.find({ userId: req.admin._id })
       .populate('leaveTypeId', 'name')
       .sort({ appliedAt: -1 });
     res.status(200).json({ success: true, requests });
@@ -162,7 +246,7 @@ exports.cancelLeaveRequest = async (req, res) => {
   try {
     const request = await LeaveRequest.findOne({
       _id: req.params.requestId,
-      userId: req.admin.id,
+      userId: req.admin._id,
       status: 'Pending',
     });
 
@@ -174,24 +258,108 @@ exports.cancelLeaveRequest = async (req, res) => {
 
     // Find and update LeaveBalance
     const balance = await LeaveBalance.findOne({
-      userId: req.admin.id,
+      userId: req.admin._id,
       leaveTypeId: request.leaveTypeId,
       companyId: req.admin.companyId,
     });
 
     if (balance) {
+      const oldDataBalance = {};
+      if (balance.balance != null) oldDataBalance.balance = balance.balance;
+      if (balance.availed != null) oldDataBalance.availed = balance.availed;
+      if (!('_id' in oldDataBalance)) oldDataBalance._id = balance._id;
+
       balance.balance += request.daysRequested;
-      balance.availed = Math.max(0, balance.availed - request.daysRequested); // Prevent negative
+      balance.availed = Math.max(0, (balance.availed || 0) - request.daysRequested);
       await balance.save();
+
+      const newDataBalance = {};
+      if (oldDataBalance.balance !== balance.balance) newDataBalance.balance = balance.balance;
+      if (oldDataBalance.availed !== balance.availed) newDataBalance.availed = balance.availed;
+      if (!('_id' in newDataBalance)) newDataBalance._id = balance._id;
+
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.leave,
+        subModuleAffected: null,
+        fileAffected: FILE.file_employee_leave,
+        modelAffected: [MODEL_AFFECTED.model_balance],
+        eventType: LEAVE_BALANCE_UPDATED_BY_EMPLOYEE,
+        actionDone: ACTIONS.update,
+        oldData: oldDataBalance,
+        newData: newDataBalance
+      });
     }
 
+    const oldRequestData = { _id: request._id }; // Only ID for tracing
     await request.deleteOne();
 
-    res.json({ success: true, message: 'Leave request cancelled and balance restored' });
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.leave,
+      subModuleAffected: null,
+      fileAffected: FILE.file_employee_leave,
+      modelAffected: [MODEL_AFFECTED.model_leaveRequest],
+      eventType: LEAVE_REQUEST_DELETED_BY_EMPLOYEE,
+      actionDone: ACTIONS.delete,
+      oldData: oldRequestData,
+      newData: null
+    });
+
+// Find Admin/Supervisor who belongs to same company & plant
+const approver = await User.findOne({
+  _id: request.approverId,        // kyunki apply ke time approverId save ho gaya tha
+  companyId: req.admin.companyId,
+  plantId: req.admin.plantId
+});
+
+    // ---- EMAIL INTEGRATION ----
+    const employee = await User.findById(req.admin._id);
+    const policy = await LeavePolicy.findById(request.leaveTypeId);
+
+    const leaveDetails = `
+      Leave Type: ${policy.name}<br/>
+      Duration: ${request.durationType}<br/>
+      From: ${request.fromDate}<br/>
+      To: ${request.toDate}<br/>
+      Days: ${request.daysRequested}<br/>
+      Reason: ${request.reason}
+    `;
+    const cancelDate = new Date().toLocaleString();
+
+    const emailHtml = generateMasterTemplate({
+      company_name: req.admin.companyName,
+      user_name: employee.name,
+      event_name: masterTemplate.leaveRequestDeletedByEmployee.event_name,
+      action: masterTemplate.leaveRequestDeletedByEmployee.action,
+      message_intro: "Your leave request has been deleted.",
+      notes: `${leaveDetails}<br/>Cancelled On: ${cancelDate}`
+    });
+    sendEmail(employee.email, masterTemplate.leaveRequestDeletedByEmployee.subject, emailHtml);
+
+// Mail to Approver/Admin
+if (approver) {
+  const emailHtmlAdmin = generateMasterTemplate({
+    company_name: req.admin.companyName,
+    user_name: approver.name,
+    event_name: masterTemplate.leaveRequestDeletedByEmployee.event_name,
+    action: masterTemplate.leaveRequestDeletedByEmployee.action,
+    message_intro: `Employee whose Id: ${req.admin._id} has cancelled his/her leave request.`,
+    notes: `${leaveDetails}<br/>Cancelled On: ${cancelDate}`
+  });
+  sendEmail(approver.email, masterTemplate.leaveRequestDeletedByEmployee.subject, emailHtmlAdmin);
+}
+
+    return res.json({ success: true, message: 'Leave request cancelled and balance restored' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 exports.getLeaveRequests = async (req, res) => {
   try {
@@ -229,7 +397,7 @@ exports.getLeaveRequests = async (req, res) => {
     // Main filtered query
     const query = {
       companyId: req.admin.companyId,
-      approverId: req.admin.id,
+      approverId: req.admin._id,
     };
 
     if (filter && equal) {
@@ -268,9 +436,9 @@ exports.getLeaveRequests = async (req, res) => {
     // Global Summary (Unfiltered except by company & plant)
     const summaryQuery = {
       companyId: req.admin.companyId,
-      approverId: mongoose.Types.ObjectId.isValid(req.admin.id)
-        ? new mongoose.Types.ObjectId(req.admin.id)
-        : req.admin.id,
+      approverId: mongoose.Types.ObjectId.isValid(req.admin._id)
+        ? new mongoose.Types.ObjectId(req.admin._id)
+        : req.admin._id,
     };
 
     const totalCountPromise = LeaveRequest.countDocuments(summaryQuery);
@@ -339,45 +507,48 @@ exports.updateLeaveRequestStatus = async (req, res) => {
 
     const request = await LeaveRequest.findById(req.params.id);
 
-    if (request.approverId != req.admin.id) {
-      return res
-        .status(404)
-        .json({ success: false, message: `You do not have right to approve leave.` });
-    }
+if (request.approverId.toString() !== req.admin._id.toString()) {
+  return res
+    .status(404)
+    .json({ success: false, message: `You do not have right to approve leave.` });
+}
+
 
     if (request.status == status) {
       return res.status(404).json({ success: false, message: `Leave Status is already ${status}` });
     }
 
     if (request.status == 'Rejected') {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: 'Leave request already rejected, try to mark new leaves.',
-        });
+      return res.status(404).json({
+        success: false,
+        message: 'Leave request already rejected, try to mark new leaves.',
+      });
     }
 
-    if (request.status == 'Pending' && status == 'Approved') {
-      request.status = status;
-      await request.save();
-
-      return res
-        .status(200)
-        .json({ success: true, message: 'Leave Aprroved Sucessfully', request });
-    }
-
-    if (request.status == 'Approved' && status == 'Pending') {
-      request.status = status;
-      await request.save();
-
-      return res
-        .status(200)
-        .json({ success: true, message: 'Leave Changed To Pending Sucessfully', request });
-    }
-
+    const oldStatus = request.status;
     request.status = status;
     await request.save();
+
+    // Only keep changed fields for tracing
+    const oldDataRequest = { status: oldStatus };
+    if (!('_id' in oldDataRequest)) oldDataRequest._id = request._id;
+
+    const newDataRequest = { status: request.status };
+    if (!('_id' in newDataRequest)) newDataRequest._id = request._id;
+
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.leave,
+      subModuleAffected: null,
+      fileAffected: FILE.file_employee_leave,
+      modelAffected: [MODEL_AFFECTED.model_leaveRequest],
+      eventType: LEAVE_REQUEST_STATUS_UPDATED_BY_EMPLOYEE,
+      actionDone: ACTIONS.update,
+      oldData: oldDataRequest,
+      newData: newDataRequest
+    });
 
     const balance = await LeaveBalance.findOne({
       userId: request.userId,
@@ -385,13 +556,76 @@ exports.updateLeaveRequestStatus = async (req, res) => {
       companyId: req.admin.companyId,
     });
 
+    const oldDataBalance = {};
+    if (balance.balance != null) oldDataBalance.balance = balance.balance;
+    if (balance.availed != null) oldDataBalance.availed = balance.availed;
+    if (!('_id' in oldDataBalance)) oldDataBalance._id = balance._id;
+
     balance.balance += request.daysRequested;
-    balance.availed = balance.availed - request.daysRequested;
+    balance.availed = (balance.availed || 0) - request.daysRequested;
     await balance.save();
 
-    res.status(200).json({
+    const newDataBalance = {};
+    if (oldDataBalance.balance !== balance.balance) newDataBalance.balance = balance.balance;
+    if (oldDataBalance.availed !== balance.availed) newDataBalance.availed = balance.availed;
+    if (!('_id' in newDataBalance)) newDataBalance._id = balance._id;
+
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.leave,
+      subModuleAffected: null,
+      fileAffected: FILE.file_employee_leave,
+      modelAffected: [MODEL_AFFECTED.model_balance],
+      eventType: LEAVE_BALANCE_UPDATED_BY_EMPLOYEE,
+      actionDone: ACTIONS.update,
+      oldData: oldDataBalance,
+      newData: newDataBalance
+    });
+
+    // ---- EMAIL INTEGRATION ----
+    const employee = await User.findById(request.userId);
+    const policy = await LeavePolicy.findById(request.leaveTypeId);
+    const adminUser = req.admin;
+
+    const leaveDetails = `
+      Leave Type: ${policy.name}<br/>
+      Duration: ${request.durationType}<br/>
+      From: ${request.fromDate}<br/>
+      To: ${request.toDate}<br/>
+      Days: ${request.daysRequested}<br/>
+      Reason: ${request.reason}
+    `;
+    const requestDate = new Date().toLocaleString();
+
+    // Email to Employee
+    const emailHtmlToEmployee = generateMasterTemplate({
+      company_name: adminUser.companyName,
+      user_name: employee.name,
+      event_name: masterTemplate.leaveRequestStatusUpdatedByEmployee.event_name,
+      action: masterTemplate.leaveRequestStatusUpdatedByEmployee.action,
+      status,
+      message_intro: `Your leave request has been ${status.toLowerCase()} by Admin.`,
+      notes: `${leaveDetails}<br/>Processed On: ${requestDate}`,
+    });
+    sendEmail(employee.email, masterTemplate.leaveRequestStatusUpdatedByEmployee.subject, emailHtmlToEmployee);
+
+    // Email to Admin
+    const emailHtmlToAdmin = generateMasterTemplate({
+      company_name: adminUser.companyName,
+      user_name: adminUser.name,
+      event_name: masterTemplate.leaveRequestStatusUpdatedByEmployee.event_name,
+      action: masterTemplate.leaveRequestStatusUpdatedByEmployee.action,
+      status,
+      message_intro: `You have ${status.toLowerCase()} the leave request for Employee Id: ${employee._id}.`,
+      notes: `${leaveDetails}<br/>Processed On: ${requestDate}`,
+    });
+    sendEmail(adminUser.email, masterTemplate.leaveRequestStatusUpdatedByEmployee.subject, emailHtmlToAdmin);
+
+    return res.status(200).json({
       success: true,
-      message: 'Leave request Rejected Sucessfully',
+      message: status === 'Rejected' ? 'Leave request Rejected Successfully' : 'Leave request Approved Successfully',
       request,
     });
   } catch (err) {

@@ -6,7 +6,6 @@ const read = async (req, res) => {
     const project = await Project.find({
       workspaceId: req.params.workspaceId,
       companyId: req.admin.companyId,
-      removed: false,
     })
       .populate('createdBy')
       .populate('workspaceId');

@@ -1,15 +1,52 @@
 const mongoose = require('mongoose');
 const GeneralLedger = require('./GeneralLedgerModel');
 
+// Material code must be exactly 6 alphanumeric characters (letters and/or digits)
+const MATERIAL_CODE_REGEX = /^[A-Za-z0-9]{6}$/;
+
+function generateMaterialCode() {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  while (true) {
+    let candidate = '';
+    for (let index = 0; index < 6; index += 1) {
+      const randomIndex = Math.floor(Math.random() * characters.length);
+      candidate += characters.charAt(randomIndex);
+    }
+    // Any 6-character alphanumeric is acceptable (letters-only, digits-only, or mix)
+    return candidate;
+  }
+}
+
+// Generate a unique material code by checking the database; retries to avoid collisions
+async function generateUniqueMaterialCode(Model) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const candidate = generateMaterialCode();
+    // Check DB for existing code
+    // Using lean to keep it lightweight
+    // Unique index is global, so we check across all docs
+    const exists = await Model.findOne({ materialCode: candidate }).lean();
+    if (!exists) {
+      return candidate;
+    }
+  }
+  throw new Error('Failed to generate a unique material code after multiple attempts');
+}
+
+// Expose as a model static for use outside the schema file
+
 const materialSchema = new mongoose.Schema(
   {
     materialCode: {
       type: String,
       required: true,
       unique: true,
-      default: function () {
-        // Auto-generate 6-digit numeric code
-        return Math.floor(100000 + Math.random() * 900000).toString();
+      uppercase: true,
+      trim: true,
+      validate: {
+        validator: function (value) {
+          return MATERIAL_CODE_REGEX.test(value);
+        },
+        message: 'Material code must be exactly 6 letters and/or digits',
       },
     },
     materialName: {
@@ -112,12 +149,17 @@ const materialSchema = new mongoose.Schema(
     reconGL: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'GeneralLedger',
-      required: false, // Will be auto-assigned in controller
+      required: false, // Optional field
     },
     status: {
       type: String,
       enum: ['active', 'inactive'],
       default: 'active',
+    },
+    companyId: {
+      type: String,
+      required: true,
+      immutable: true,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -134,36 +176,11 @@ const materialSchema = new mongoose.Schema(
   }
 );
 
-// Pre-save middleware to validate HSN code based on category and auto-assign reconGL
+// Remove auto-generation to enforce manual entry of materialCode
+// Keep only schema-level validation and uniqueness constraints
+
+// Pre-save middleware to validate HSN code based on category
 materialSchema.pre('save', async function (next) {
-  // Auto-assign reconGL if not provided
-  if (!this.reconGL) {
-    let glAccount;
-
-    if (this.category === 'Service') {
-      glAccount = await GeneralLedger.findOne({
-        accountName: { $regex: 'Service Revenue', $options: 'i' },
-        isActive: true,
-      });
-    } else if (this.category === 'Material') {
-      glAccount = await GeneralLedger.findOne({
-        accountName: { $regex: 'Inventory', $options: 'i' },
-        isActive: true,
-      });
-    }
-
-    // Fallback to any active GL account
-    if (!glAccount) {
-      glAccount = await GeneralLedger.findOne({ isActive: true });
-    }
-
-    if (glAccount) {
-      this.reconGL = glAccount._id;
-    } else {
-      return next(new Error('No General Ledger accounts found. Please create GL accounts first.'));
-    }
-  }
-
   // Validate HSN code based on category
   if (this.isModified('hsnCode') || this.isModified('category')) {
     const HSNCode = mongoose.model('HSNCode');
@@ -173,9 +190,9 @@ materialSchema.pre('save', async function (next) {
       if (this.category === 'Service' && !hsnCode.hsnCode.startsWith('99')) {
         return next(new Error('For services, HSN code must start with 99'));
       }
-      if (this.category === 'Material' && hsnCode.hsnCode.startsWith('99')) {
-        return next(new Error('For materials, HSN code must not start with 99'));
-      }
+      // if (this.category === 'Material' && hsnCode.hsnCode.startsWith('99')) {
+      //   return next(new Error('For materials, HSN code must not start with 99'));
+      // }
     }
   }
   next();

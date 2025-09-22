@@ -52,6 +52,10 @@ const coreNotificationRouter = require('./routes/coreRoutes/coreNotification');
 const payrollApiRouter = require('./routes/PayrollRoutes/payrollAPI'); // ✅ payroll import
 const materialManagementRouter = require('./routes/materialRoutes/index'); // Material Management routes
 const assignmentRouter = require('./routes/appRoutes/assignmentRoutes'); // Assignment routes
+const customerRouter = require('./routes/SalesRoutes/customerRoutes'); // Sales Management - Customer routes
+const salesOrderRouter = require('./routes/SalesRoutes/salesOrderRoutes'); // Sales Management - Sales Order routes
+const salesVerificationConfigRouter = require('./routes/SalesRoutes/salesVerificationConfigRoutes'); // Sales Management - Verification config routes
+const faMasterRoutes = require('./routes/financeRoutes/faMasterRoutes');
 
 const runCrons = require('./cron');
 
@@ -116,9 +120,17 @@ app.use('/api/expenses', adminAuth.isValidAuthToken, ExpenseRouter);
 app.use('/api/notifications', adminAuth.isValidAuthToken, coreNotificationRouter);
 app.use('/api/task-manager', adminAuth.isValidAuthToken, taskManagerRouter);
 app.use('/api/material-management', adminAuth.isValidAuthToken, materialManagementRouter); // Material Management routes
+app.use('/api/sales-management/customers', adminAuth.isValidAuthToken, customerRouter); // Sales Management - Customer routes
+app.use('/api/sales-management/sales-orders', adminAuth.isValidAuthToken, salesOrderRouter); // Sales Management - Sales Order routes
+app.use(
+  '/api/sales-management/verification-config',
+  adminAuth.isValidAuthToken,
+  salesVerificationConfigRouter
+); // Sales Management - Verification config
 
 app.use('/api/payroll', adminAuth.isValidAuthToken, payrollApiRouter); // ✅ payroll route
 app.use('/api/assignment', adminAuth.isValidAuthToken, assignmentRouter); // Assignment routes
+app.use('/api/finance', adminAuth.isValidAuthToken, faMasterRoutes);
 
 // app.use('/download', coreDownloadRouter);
 // app.use('/public', corePublicRouter);

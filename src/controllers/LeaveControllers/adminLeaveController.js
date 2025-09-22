@@ -4,6 +4,12 @@ const LeaveRequest = require('../../models/LeaveModels/LeaveRequest');
 const Permission = require('../../models/userModels/Permission');
 const User = require('../../models/userModels/User');
 const mongoose = require('mongoose');
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { LEAVE_POLICY_CREATED, LEAVE_REQUEST_CREATED, LEAVE_POLICY_UPDATED, LEAVE_POLICY_STATUS_UPDATED, LEAVE_POLICY_DELETED, LEAVE_BALANCE_UPDATED, LEAVE_BALANCE_CREATED, LEAVE_REQUEST_STATUS_UPDATED, LEAVE_BALANCE_RESET } = require("@/config/activity.enums");
+const { masterTemplate } = require("@/config/emailTemplate");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { sendEmail } = require("@/utils/emailSender");
 
 const getPeriodString = (policy, date = new Date()) => {
   const year = date.getFullYear();
@@ -102,6 +108,20 @@ exports.createLeavePolicy = async (req, res) => {
 
     await policy.save();
 
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.leave,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_leave,
+      modelAffected: [MODEL_AFFECTED.model_leave],
+      eventType: LEAVE_POLICY_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: policy.toObject()
+    });
+
     return res.status(200).json({
       success: true,
       message: `${normalizedType === 'wfh' ? 'WFH' : 'Leave'} policy created successfully`,
@@ -124,7 +144,7 @@ exports.updateLeavePolicy = async (req, res) => {
       isAdvanceAllowed,
       applyToAll,
       plantId,
-      type = 'leave', // default to leave if not provided
+      type = 'leave',
     } = req.body;
 
     if (!name || !plantId) {
@@ -136,22 +156,17 @@ exports.updateLeavePolicy = async (req, res) => {
     const isWFHWithoutPolicy = isWFH && (count == null || credit == null || expiry == null);
 
     if (!isWFHWithoutPolicy) {
-      // Validate fields only if policy is required
       if (
         count == null ||
         !credit?.frequency ||
         (credit.frequency !== 'custom' &&
-          (typeof credit.dayOfMonth !== 'number' ||
-            credit.dayOfMonth < 1 ||
-            credit.dayOfMonth > 31)) ||
+          (typeof credit.dayOfMonth !== 'number' || credit.dayOfMonth < 1 || credit.dayOfMonth > 31)) ||
         (credit.frequency === 'custom' &&
           (!Array.isArray(credit.customDates) || credit.customDates.length === 0)) ||
         !expiry?.frequency ||
         (expiry.frequency !== 'never' &&
           expiry.frequency !== 'custom' &&
-          (typeof expiry.dayOfMonth !== 'number' ||
-            expiry.dayOfMonth < 1 ||
-            expiry.dayOfMonth > 31)) ||
+          (typeof expiry.dayOfMonth !== 'number' || expiry.dayOfMonth < 1 || expiry.dayOfMonth > 31)) ||
         (expiry.frequency === 'custom' && !expiry.customDate)
       ) {
         return res
@@ -160,27 +175,52 @@ exports.updateLeavePolicy = async (req, res) => {
       }
     }
 
-    const updatedData = {
-      name,
-      type: normalizedType,
-      plantId,
-      count: isWFHWithoutPolicy ? null : count,
-      credit: isWFHWithoutPolicy ? null : credit,
-      expiry: isWFHWithoutPolicy ? null : expiry,
-      creditOnCreation: isWFHWithoutPolicy ? false : creditOnCreation || false,
-      isAdvanceAllowed: isWFHWithoutPolicy ? false : isAdvanceAllowed || false,
-      applyToAll: isWFHWithoutPolicy ? false : applyToAll ?? true,
-    };
-
-    const policy = await LeavePolicy.findOneAndUpdate(
-      { companyId: req.admin.companyId, _id: req.params.id },
-      updatedData,
-      { new: true }
-    );
-
+    // Find the policy document
+    const policy = await LeavePolicy.findOne({ companyId: req.admin.companyId, _id: req.params.id });
     if (!policy) {
       return res.status(404).json({ success: false, message: 'Policy not found' });
     }
+
+    // Collect only changed fields for oldData
+    const oldData = { _id: policy._id };
+    if (policy.name !== name) oldData.name = policy.name;
+    if (policy.type !== normalizedType) oldData.type = policy.type;
+    if (policy.plantId.toString() !== plantId.toString()) oldData.plantId = policy.plantId;
+    if (policy.count !== (isWFHWithoutPolicy ? null : count)) oldData.count = policy.count;
+    if (JSON.stringify(policy.credit) !== JSON.stringify(isWFHWithoutPolicy ? null : credit)) oldData.credit = policy.credit;
+    if (JSON.stringify(policy.expiry) !== JSON.stringify(isWFHWithoutPolicy ? null : expiry)) oldData.expiry = policy.expiry;
+    if (policy.creditOnCreation !== (isWFHWithoutPolicy ? false : (creditOnCreation ?? false))) oldData.creditOnCreation = policy.creditOnCreation;
+    if (policy.isAdvanceAllowed !== (isWFHWithoutPolicy ? false : (isAdvanceAllowed ?? false))) oldData.isAdvanceAllowed = policy.isAdvanceAllowed;
+    if (policy.applyToAll !== (isWFHWithoutPolicy ? false : (applyToAll ?? true))) oldData.applyToAll = policy.applyToAll;
+
+    // Update the document fields
+    policy.name = name;
+    policy.type = normalizedType;
+    policy.plantId = plantId;
+    policy.count = isWFHWithoutPolicy ? null : count;
+    policy.credit = isWFHWithoutPolicy ? null : credit;
+    policy.expiry = isWFHWithoutPolicy ? null : expiry;
+    policy.creditOnCreation = isWFHWithoutPolicy ? false : (creditOnCreation ?? false);
+    policy.isAdvanceAllowed = isWFHWithoutPolicy ? false : (isAdvanceAllowed ?? false);
+    policy.applyToAll = isWFHWithoutPolicy ? false : (applyToAll ?? true);
+
+    // Save updated document
+    await policy.save();
+
+    // Activity tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.leave,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_leave,
+      modelAffected: [MODEL_AFFECTED.model_leave],
+      eventType: LEAVE_POLICY_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData: oldData,
+      newData: policy.toObject(),
+    });
 
     return res.status(200).json({ success: true, policy });
   } catch (err) {
@@ -188,6 +228,7 @@ exports.updateLeavePolicy = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 // 3. Delete Leave Policy
 exports.deleteLeavePolicy = async (req, res) => {
@@ -209,7 +250,24 @@ exports.deleteLeavePolicy = async (req, res) => {
       { new: true }
     );
 
-    res.json({
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.leave,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_leave,
+      modelAffected: [MODEL_AFFECTED.model_leave],
+      eventType: LEAVE_POLICY_DELETED,
+      actionDone: ACTIONS.delete,
+      oldData: policy.toObject(),
+      newData: {
+        note: "All fields same as Old Data, Soft deletion is Done",
+        removed: true        
+      }
+    });
+
+    return res.json({
       success: true,
       message: `Policy marked as ${updated.isActive ? 'active' : 'inactive'}`,
       policy: updated,
@@ -233,7 +291,7 @@ exports.getCompanyLeavePolicies = async (req, res) => {
       plantId,
     });
 
-    res.json({ success: true, policies });
+    return res.json({ success: true, policies });
   } catch (err) {
     console.error('Error fetching policies:', err);
     res.status(500).json({ success: false, message: 'Failed to fetch policies' });
@@ -291,12 +349,40 @@ exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
       }
 
       if (existingBalance) {
+        // Save only changed fields + id for tracing
+        const oldData = { 
+          _id: existingBalance._id, 
+          balance: existingBalance.balance,
+          lastCredited: existingBalance.lastCredited,
+          lastCreditedPeriod: existingBalance.lastCreditedPeriod
+        };
+
         existingBalance.balance += policy.count;
         existingBalance.lastCredited = now;
         existingBalance.lastCreditedPeriod = period;
         await existingBalance.save({ session });
+
+        const newData = {
+          balance: existingBalance.balance,
+          lastCredited: existingBalance.lastCredited,
+          lastCreditedPeriod: existingBalance.lastCreditedPeriod
+        };
+
+        activityTracker({
+          userId: req.admin._id,
+          companyId: req.admin.companyId,
+          plantId: req.admin.plantId || null,
+          module: MODULE.leave,
+          subModuleAffected: null,
+          fileAffected: FILE.file_admin_leave,
+          modelAffected: [MODEL_AFFECTED.model_balance],
+          eventType: LEAVE_BALANCE_UPDATED,
+          actionDone: ACTIONS.update,
+          oldData,
+          newData
+        });
       } else {
-        await LeaveBalance.create(
+        const newBalance = await LeaveBalance.create(
           [
             {
               userId: user._id,
@@ -310,6 +396,29 @@ exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
           ],
           { session }
         );
+
+        const newData = {
+          _id: newBalance[0]._id,
+          userId: newBalance[0].userId,
+          leaveTypeId: newBalance[0].leaveTypeId,
+          balance: newBalance[0].balance,
+          lastCredited: newBalance[0].lastCredited,
+          lastCreditedPeriod: newBalance[0].lastCreditedPeriod
+        };
+
+        activityTracker({
+          userId: req.admin._id,
+          companyId: req.admin.companyId,
+          plantId: req.admin.plantId || null,
+          module: MODULE.leave,
+          subModuleAffected: null,
+          fileAffected: FILE.file_admin_leave,
+          modelAffected: [MODEL_AFFECTED.model_balance],
+          eventType: LEAVE_BALANCE_CREATED,
+          actionDone: ACTIONS.create,
+          oldData: null,
+          newData
+        });
       }
     }
 
@@ -330,6 +439,7 @@ exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
     });
   }
 };
+
 
 exports.getPolicyEmployees = async (req, res) => {
   try {
@@ -441,25 +551,57 @@ exports.activatePolicy = async (req, res) => {
     const { policyId } = req.params;
     const { isActive } = req.body;
 
-    const updatedPolicy = await LeaveBalance.findOneAndUpdate(
-      { _id: policyId, companyId: req.admin.companyId },
-      { isActive },
-      { new: true }
-    );
+    // 1. Pehle policy find karo
+    const policy = await LeaveBalance.findOne({
+      _id: policyId,
+      companyId: req.admin.companyId,
+    });
 
-    if (!updatedPolicy) {
+    if (!policy) {
       return res.status(404).json({ message: 'Policy not found or access denied' });
     }
 
+    // 2. Old data only changed fields + _id
+    const oldData = { _id: policy._id };
+    const newData = { _id: policy._id };
+
+    if (policy.isActive !== isActive) {
+      oldData.isActive = policy.isActive;
+      newData.isActive = isActive;
+    }
+
+    // 3. Update field
+    policy.isActive = isActive;
+
+    // 4. Save changes
+    await policy.save();
+
+    // 5. Track activity
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.leave,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_leave,
+      modelAffected: [MODEL_AFFECTED.model_balance],
+      eventType: LEAVE_POLICY_STATUS_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData,
+      newData
+    });
+
     return res.status(200).json({
       message: `Policy successfully ${isActive ? 'activated' : 'deactivated'}`,
-      data: updatedPolicy,
+      data: policy,
     });
   } catch (error) {
     console.error('Toggle policy error:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+
 
 // 5. View all leave balances
 exports.getCompanyLeaveBalances = async (req, res) => {
@@ -475,17 +617,8 @@ exports.getCompanyLeaveBalances = async (req, res) => {
 
 exports.markLeave = async (req, res) => {
   try {
-    const {
-      userId,
-      plantId,
-      leaveType,
-      durationType,
-      fromDate,
-      toDate,
-      reason,
-    } = req.body;
+    const { userId, plantId, leaveType, durationType, fromDate, toDate, reason } = req.body;
 
-    // 1. Validate leave type policy
     const policy = await LeavePolicy.findOne({
       companyId: req.admin.companyId,
       _id: leaveType,
@@ -498,7 +631,6 @@ exports.markLeave = async (req, res) => {
       });
     }
 
-    // 2. Check leave balance
     const balance = await LeaveBalance.findOne({
       userId,
       leaveTypeId: leaveType,
@@ -519,7 +651,6 @@ exports.markLeave = async (req, res) => {
       });
     }
 
-    // 3. Determine number of leave days
     let daysRequested;
     let adjustedToDate = toDate;
 
@@ -530,8 +661,7 @@ exports.markLeave = async (req, res) => {
       daysRequested = 1;
       adjustedToDate = fromDate;
     } else {
-      daysRequested =
-        (new Date(toDate) - new Date(fromDate)) / (1000 * 3600 * 24) + 1;
+      daysRequested = (new Date(toDate) - new Date(fromDate)) / (1000 * 3600 * 24) + 1;
     }
 
     if (balance.balance < daysRequested) {
@@ -541,15 +671,6 @@ exports.markLeave = async (req, res) => {
       });
     }
 
-    // 4. Determine approver
-    let approverId = req.admin.id; // fallback
-
-    const employee = await User.findById(userId).select('supervisor'); // adjust schema if needed
-    if (employee?.supervisor) {
-      approverId = employee.supervisor;
-    }
-
-    // 5. Create leave request
     const request = new LeaveRequest({
       userId,
       companyId: req.admin.companyId,
@@ -560,16 +681,98 @@ exports.markLeave = async (req, res) => {
       durationType,
       daysRequested,
       reason,
-      approverId,
+      approverId: req.admin._id,
       status: 'Approved',
     });
 
     await request.save();
 
-    // 6. Update leave balance
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.leave,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_leave,
+      modelAffected: [MODEL_AFFECTED.model_leaveRequest],
+      eventType: LEAVE_REQUEST_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: request.toObject()
+    });
+
+    // Update leave balance with changed fields only
+    const oldData = { _id: balance._id };
+    const newData = { _id: balance._id };
+    let hasChange = false;
+
+    if (balance.balance !== balance.balance - daysRequested) {
+      oldData.balance = balance.balance;
+      newData.balance = balance.balance - daysRequested;
+      hasChange = true;
+    }
+    if ((balance.availed || 0) !== ((balance.availed || 0) + daysRequested)) {
+      oldData.availed = balance.availed || 0;
+      newData.availed = (balance.availed || 0) + daysRequested;
+      hasChange = true;
+    }
+
     balance.balance -= daysRequested;
     balance.availed = (balance.availed || 0) + daysRequested;
     await balance.save();
+
+    if (hasChange) {
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.leave,
+        subModuleAffected: null,
+        fileAffected: FILE.file_admin_leave,
+        modelAffected: [MODEL_AFFECTED.model_balance],
+        eventType: LEAVE_BALANCE_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData,
+        newData
+      });
+    }
+
+    // ---- EMAIL INTEGRATION ----
+    const employee = await User.findById(userId);
+    const adminUser = req.admin; // Assuming req.admin is the admin performing the action
+    const leaveDetails = `
+      Leave Type: ${policy.name}<br/>
+      Duration: ${durationType}<br/>
+      From: ${fromDate}<br/>
+      To: ${adjustedToDate}<br/>
+      Days: ${daysRequested}<br/>
+      Reason: ${reason}
+    `;
+    const requestDate = new Date().toLocaleString();
+
+    // Email to Employee
+    const emailHtmlToEmployee = generateMasterTemplate({
+      company_name: adminUser.companyName,
+      user_name: employee.name,
+      event_name: masterTemplate.leaveRequestCreated.event_name,
+      action: masterTemplate.leaveRequestCreated.action,
+      status: 'Approved',
+      message_intro: `Your leave has been successfully applied and approved by Admin.`,
+      notes: `${leaveDetails}<br/>Requested On: ${requestDate}`
+    });
+    sendEmail(employee.email, masterTemplate.leaveRequestCreated.subject, emailHtmlToEmployee);
+
+    // Email to Admin
+    const emailHtmlToAdmin = generateMasterTemplate({
+      company_name: adminUser.companyName,
+      user_name: adminUser.name,
+      event_name: masterTemplate.leaveRequestCreated.event_name,
+      action: masterTemplate.leaveRequestCreated.action,
+      status: 'Approved',
+      message_intro: `A leave has been applied by You and approved for Employee Id: ${employee._id}.`,
+      notes: `${leaveDetails}<br/>Requested On: ${requestDate}`
+    });
+    sendEmail(adminUser.email, masterTemplate.leaveRequestCreated.subject, emailHtmlToAdmin);
 
     return res.status(200).json({
       success: true,
@@ -735,59 +938,125 @@ exports.updateLeaveRequestStatus = async (req, res) => {
 
     const request = await LeaveRequest.findById(req.params.id);
 
-    if (request.status == status) {
+    if (request.status === status) {
       return res.status(404).json({ success: false, message: `Leave Status is already ${status}` });
     }
 
-    if (request.status == 'Rejected') {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: 'Leave request already rejected, try to mark new leaves.',
-        });
+    if (request.status === 'Rejected') {
+      return res.status(404).json({
+        success: false,
+        message: 'Leave request already rejected, try to mark new leaves.',
+      });
     }
 
-    if (request.status == 'Pending' && status == 'Approved') {
-      request.status = status;
-      await request.save();
-
-      return res
-        .status(200)
-        .json({ success: true, message: 'Leave Aprroved Sucessfully', request });
-    }
-
-    if (request.status == 'Approved' && status == 'Pending') {
-      request.status = status;
-      await request.save();
-
-      return res
-        .status(200)
-        .json({ success: true, message: 'Leave Changed To Pending Sucessfully', request });
-    }
-
+    // Track leave request status change
+    const oldStatus = request.status;
     request.status = status;
     await request.save();
 
-    const balance = await LeaveBalance.findOne({
-      userId: request.userId,
-      leaveTypeId: request.leaveTypeId,
+    activityTracker({
+      userId: req.admin._id,
       companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.leave,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_leave,
+      modelAffected: [MODEL_AFFECTED.model_leaveRequest],
+      eventType: LEAVE_REQUEST_STATUS_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData: { status: oldStatus, _id: request._id }, // _id included for trace
+      newData: oldStatus !== status ? { status: request.status } : {}, // only changed field
     });
 
-    balance.balance += request.daysRequested;
-    balance.availed = balance.availed - request.daysRequested;
-    await balance.save();
+    // If status is rejection, return early without balance update
+    if (status === 'Rejected') {
+      const balance = await LeaveBalance.findOne({
+        userId: request.userId,
+        leaveTypeId: request.leaveTypeId,
+        companyId: req.admin.companyId,
+      });
 
-    res.status(200).json({
+      if (balance) {
+        const oldBalanceData = {};
+        if (balance.balance != null) oldBalanceData.balance = balance.balance;
+        if (balance.availed != null) oldBalanceData.availed = balance.availed;
+        if (!('_id' in oldBalanceData)) oldBalanceData._id = balance._id; // include for trace if missing
+
+        balance.balance += request.daysRequested;
+        balance.availed -= request.daysRequested;
+        await balance.save();
+
+        const newBalanceData = {};
+        if (oldBalanceData.balance !== balance.balance) newBalanceData.balance = balance.balance;
+        if (oldBalanceData.availed !== balance.availed) newBalanceData.availed = balance.availed;
+        if (!('_id' in newBalanceData)) newBalanceData._id = balance._id;
+
+        activityTracker({
+          userId: req.admin._id,
+          companyId: req.admin.companyId,
+          plantId: req.admin.plantId || null,
+          module: MODULE.leave,
+          subModuleAffected: null,
+          fileAffected: FILE.file_admin_leave,
+          modelAffected: [MODEL_AFFECTED.model_balance],
+          eventType: LEAVE_BALANCE_UPDATED,
+          actionDone: ACTIONS.update,
+          oldData: oldBalanceData,
+          newData: newBalanceData,
+        });
+      }
+    }
+
+    // ---- EMAIL INTEGRATION ----
+    const employee = await User.findById(request.userId);
+    const policy = await LeavePolicy.findById(request.leaveTypeId);
+    const adminUser = req.admin;
+
+    const leaveDetails = `
+      Leave Type: ${policy.name}<br/>
+      Duration: ${request.durationType}<br/>
+      From: ${request.fromDate}<br/>
+      To: ${request.toDate}<br/>
+      Days: ${request.daysRequested}<br/>
+      Reason: ${request.reason}
+    `;
+    const requestDate = new Date().toLocaleString();
+
+    // Email to Employee
+    const emailHtmlToEmployee = generateMasterTemplate({
+      company_name: adminUser.companyName,
+      user_name: employee.name,
+      event_name: masterTemplate.leaveRequestCreated.event_name,
+      action: masterTemplate.leaveRequestCreated.action,
+      status,
+      message_intro: `Your leave request has been ${status.toLowerCase()} by Admin.`,
+      notes: `${leaveDetails}<br/>Processed On: ${requestDate}`,
+    });
+    sendEmail(employee.email, masterTemplate.leaveRequestCreated.subject, emailHtmlToEmployee);
+
+    // Email to Admin
+    const emailHtmlToAdmin = generateMasterTemplate({
+      company_name: adminUser.companyName,
+      user_name: adminUser.name,
+      event_name: masterTemplate.leaveRequestCreated.event_name,
+      action: masterTemplate.leaveRequestCreated.action,
+      status,
+      message_intro: `You have ${status.toLowerCase()} the leave request for Employee Id: ${employee._id}.`,
+      notes: `${leaveDetails}<br/>Processed On: ${requestDate}`,
+    });
+    sendEmail(adminUser.email, masterTemplate.leaveRequestCreated.subject, emailHtmlToAdmin);
+
+
+    return res.status(200).json({
       success: true,
-      message: 'Leave request Rejected Sucessfully',
+      message: `Leave request ${status} successfully`,
       request,
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 exports.createLeaveBalance = async (req, res) => {
   try {
@@ -812,7 +1081,7 @@ exports.createLeaveBalance = async (req, res) => {
       });
 
       if (!existing) {
-        await LeaveBalance.create({
+        const balance = await LeaveBalance.create({
           userId: employee._id,
           leaveTypeId: policy._id,
           companyId: req.admin.companyId,
@@ -820,11 +1089,24 @@ exports.createLeaveBalance = async (req, res) => {
           balance: policy.count,
           lastCredited: new Date(),
         });
+        activityTracker({
+          userId: req.admin._id,
+          companyId: req.admin.companyId,
+          plantId: req.admin.plantId || null,
+          module: MODULE.leave,
+          subModuleAffected: null,
+          fileAffected: FILE.file_admin_leave,
+          modelAffected: [MODEL_AFFECTED.model_balance],
+          eventType: LEAVE_BALANCE_CREATED,
+          actionDone: ACTIONS.create,
+          oldData: null,
+          newData: balance.toObject()
+        });
         createdCount++;
       }
     }
 
-    res.json({ success: true, message: `${createdCount} leave balances created.` });
+    return res.json({ success: true, message: `${createdCount} leave balances created.` });
   } catch (err) {
     console.error('Error creating balances:', err);
     res.status(500).json({ success: false, message: 'Server error' });
@@ -856,19 +1138,48 @@ exports.resetLeaveBalance = async (req, res) => {
       });
 
       if (leaveBalance) {
+        // Only keep changed fields for tracing
+        const oldData = {};
+        if (leaveBalance.balance != null) oldData.balance = leaveBalance.balance;
+        if (leaveBalance.lastCredited != null) oldData.lastCredited = leaveBalance.lastCredited;
+        if (!('_id' in oldData)) oldData._id = leaveBalance._id; // include for trace
+
         leaveBalance.balance = 0;
         leaveBalance.lastCredited = new Date();
         await leaveBalance.save();
+
+        // Only include changed fields in newData
+        const newData = {};
+        if (oldData.balance !== leaveBalance.balance) newData.balance = leaveBalance.balance;
+        if (oldData.lastCredited !== leaveBalance.lastCredited) newData.lastCredited = leaveBalance.lastCredited;
+        if (!('_id' in newData)) newData._id = leaveBalance._id;
+
+        activityTracker({
+          userId: req.admin._id,
+          companyId: req.admin.companyId,
+          plantId: req.admin.plantId || null,
+          module: MODULE.leave,
+          subModuleAffected: null,
+          fileAffected: FILE.file_admin_leave,
+          modelAffected: [MODEL_AFFECTED.model_balance],
+          eventType: LEAVE_BALANCE_RESET,
+          actionDone: ACTIONS.update,
+          oldData: oldData,
+          newData: newData
+        });
+
         updatedCount++;
       }
     }
 
-    res.json({ success: true, message: `${updatedCount} leave balances reset to 0.` });
+    return res.json({ success: true, message: `${updatedCount} leave balances reset to 0.` });
   } catch (err) {
     console.error('Error resetting leave balances:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+
 
 exports.getEmployeeOnLeave = async (req, res) => {
   try {

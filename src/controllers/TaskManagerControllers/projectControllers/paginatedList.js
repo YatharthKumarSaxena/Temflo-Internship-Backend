@@ -33,7 +33,6 @@ const paginatedList = async (req, res) => {
     // Base query
     const baseQuery = {
       workspaceId: req.params.workspaceId,
-      removed: false,
       companyId: req.admin.companyId,
       ...(filter && equal ? { [filter]: equal } : {}),
       ...(tags.length > 0 ? { tags: { $in: tags } } : {}),

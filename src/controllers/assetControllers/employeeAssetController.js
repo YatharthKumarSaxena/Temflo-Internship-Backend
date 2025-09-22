@@ -2,6 +2,12 @@ const Asset = require('../../models/AssetModels/Asset');
 const AssetTransfer = require('../../models/AssetModels/AssetTransfer');
 const User = require('../../models/userModels/User');
 const mongoose = require('mongoose');
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { ASSET_TRANSFER_REQUESTED } = require('@/config/activity.enums');
+const { masterTemplate } = require("@/config/emailTemplate");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { sendEmail } = require("@/utils/emailSender");
 
 // Get assets assigned to the current employee
 exports.getMyAssets = async (req, res) => {
@@ -62,21 +68,21 @@ exports.requestAssetTransfer = async (req, res) => {
       });
     }
 
-    // Verify the asset is assigned to the requesting employee
-    const asset = await Asset.findOne({
-      _id: assetId,
-      companyId,
-      plantId,
-      assignedTo: fromEmployeeId,
-      status: 'Assigned',
-    });
+// Verify the asset is assigned to the requesting employee
+const asset = await Asset.findOne({
+  _id: assetId,
+  companyId,
+  plantId,
+  assignedTo: fromEmployeeId,
+  status: 'Assigned',
+}).lean();
 
-    if (!asset) {
-      return res.status(404).json({
-        success: false,
-        message: 'Asset not found or not assigned to you',
-      });
-    }
+if (!asset) {
+  return res.status(404).json({
+    success: false,
+    message: 'Asset not found or not assigned to you',
+  });
+}
 
     // Verify target employee exists and belongs to same company and plant
     const toEmployee = await User.findOne({
@@ -119,6 +125,91 @@ exports.requestAssetTransfer = async (req, res) => {
     });
 
     await transferRequest.save();
+
+
+// Fetch users
+const fromEmployee = await User.findById(fromEmployeeId);
+const adminUser = await User.findOne({
+  companyId,
+  plantId,
+  role: 'admin',
+  removed: false,
+});
+
+
+    const assetDetails = `
+      Asset Name: ${asset.name}<br/>
+      Asset ID: ${asset._id}<br/>
+      Serial Number: ${asset.serialNumber || 'N/A'}
+    `;
+
+    const requestDate = new Date().toLocaleString();
+
+    // ----- EMAILS -----
+    // Requester
+    const emailHtmlToRequester = generateMasterTemplate({
+      company_name: req.admin.companyName,
+      user_name: fromEmployee.name,
+      event_name: masterTemplate.assetTransferRequested.event_name,
+      action: masterTemplate.assetTransferRequested.action,
+      status: 'Pending',
+      message_intro: `Your request has been submitted successfully and is pending admin approval.`,
+      notes: `${assetDetails}<br/>
+              Requested To: ${toEmployee._id}<br/>
+              Reason: ${transferRequest.reason}<br/>
+              Date: ${requestDate}`
+    });
+
+    // Target Employee
+    const emailHtmlToTarget = generateMasterTemplate({
+      company_name: req.admin.companyName,
+      user_name: toEmployee.name,
+      event_name: masterTemplate.assetTransferRequested.event_name,
+      action: masterTemplate.assetTransferRequested.action,
+      status: 'Pending',
+      message_intro: `A new asset transfer request has been made for you. The request is pending admin approval.`,
+      notes: `${assetDetails}<br/>
+              Requested By: ${fromEmployee._id}<br/>
+              Reason: ${transferRequest.reason}<br/>
+              Date: ${requestDate}`
+    });
+
+    // Admin
+    const emailHtmlToAdmin = generateMasterTemplate({
+      company_name: req.admin.companyName,
+      user_name: adminUser?.name || 'Admin',
+      event_name: masterTemplate.assetTransferRequested.event_name,
+      action: masterTemplate.assetTransferRequested.action,
+      status: 'Pending',
+      message_intro: `A new asset transfer request has been submitted and is pending your approval.`,
+      notes: `${assetDetails}<br/>
+              Requested By: ${fromEmployee._id}<br/>
+              Requested To: ${toEmployee._id}<br/>
+              Reason: ${transferRequest.reason}<br/>
+              Date: ${requestDate}`
+    });
+
+    const adminEmail = adminUser?.email || process.env.DEFAULT_ADMIN_EMAIL;
+
+    // Send emails
+    sendEmail(fromEmployee.email, masterTemplate.assetTransferRequested.subject, emailHtmlToRequester);
+    sendEmail(toEmployee.email, masterTemplate.assetTransferRequested.subject, emailHtmlToTarget);
+    sendEmail(adminEmail, masterTemplate.assetTransferRequested.subject, emailHtmlToAdmin);
+
+    // Activity tracker for creation
+    activityTracker({
+      userId: fromEmployeeId,
+      companyId: companyId,
+      plantId: plantId,
+      module: MODULE.asset,
+      subModuleAffected: null,
+      fileAffected: FILE.file_employee_asset,
+      modelAffected: [MODEL_AFFECTED.model_asset_transfer],
+      eventType: ASSET_TRANSFER_REQUESTED,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: transferRequest.toObject(),
+    });
 
     res.status(201).json({
       success: true,

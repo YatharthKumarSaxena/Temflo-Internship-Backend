@@ -98,7 +98,6 @@ const supplierSchema = new mongoose.Schema(
       required: function () {
         return this.gstRegistered === 'Yes' || this.gstRegistered === 'Composite';
       },
-      immutable: true, // Make non-editable after creation
       validate: {
         validator: function (v) {
           if (!v) return this.gstRegistered === 'No'; // Allow empty for non-GST registered
@@ -139,6 +138,13 @@ const supplierSchema = new mongoose.Schema(
         return this.msmeRegistered === true;
       },
       trim: true,
+      validate: {
+        validator: function (v) {
+          if (!v) return !this.msmeRegistered; // allow empty if not registered
+          return /^UDYAM[A-Z]{4}\d{7}$/.test(String(v).toUpperCase());
+        },
+        message: "Enter a valid UDYAM Registration Number (format: 'UDYAM' + 4 letters + 7 digits)",
+      },
     },
     reconCode: {
       type: String,
@@ -186,10 +192,6 @@ const supplierSchema = new mongoose.Schema(
         },
       },
     ],
-    tdsCode: {
-      type: String,
-      trim: true,
-    },
     documents: {
       panCard: {
         fileName: String,
@@ -249,6 +251,144 @@ const supplierSchema = new mongoose.Schema(
         },
       },
     ],
+
+    // Verification fields
+    verificationStatus: {
+      type: String,
+      enum: ['pending', 'verified', 'failed', 'partially_verified', 'not_required'],
+      default: 'pending',
+    },
+
+    verificationDetails: {
+      pan: {
+        status: {
+          type: String,
+          enum: ['pending', 'verified', 'failed', 'not_required'],
+          default: 'pending',
+        },
+        verifiedAt: Date,
+        verifiedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        verificationData: mongoose.Schema.Types.Mixed,
+        errorMessage: String,
+        isManualOverride: {
+          type: Boolean,
+          default: false,
+        },
+      },
+      tan: {
+        status: {
+          type: String,
+          enum: ['pending', 'verified', 'failed', 'not_required'],
+          default: 'pending',
+        },
+        verifiedAt: Date,
+        verifiedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        verificationData: mongoose.Schema.Types.Mixed,
+        errorMessage: String,
+        isManualOverride: {
+          type: Boolean,
+          default: false,
+        },
+      },
+      gstin: {
+        status: {
+          type: String,
+          enum: ['pending', 'verified', 'failed', 'not_required'],
+          default: 'pending',
+        },
+        verifiedAt: Date,
+        verifiedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        verificationData: mongoose.Schema.Types.Mixed,
+        errorMessage: String,
+        isManualOverride: {
+          type: Boolean,
+          default: false,
+        },
+      },
+      msme: {
+        status: {
+          type: String,
+          enum: ['pending', 'verified', 'failed', 'not_required'],
+          default: 'pending',
+        },
+        verifiedAt: Date,
+        verifiedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        verificationData: mongoose.Schema.Types.Mixed,
+        errorMessage: String,
+        isManualOverride: {
+          type: Boolean,
+          default: false,
+        },
+      },
+      bankAccounts: [
+        {
+          accountNumber: String,
+          ifscCode: String,
+          status: {
+            type: String,
+            enum: ['pending', 'verified', 'failed', 'not_required'],
+            default: 'pending',
+          },
+          verifiedAt: Date,
+          verifiedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+          },
+          verificationData: mongoose.Schema.Types.Mixed,
+          errorMessage: String,
+          isManualOverride: {
+            type: Boolean,
+            default: false,
+          },
+        },
+      ],
+    },
+
+    // Maker-Checker fields
+    makerChecker: {
+      maker: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+      },
+      checker: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      checkerAssignedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      checkerAssignedAt: Date,
+      checkerComments: String,
+      checkerAction: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: 'pending',
+      },
+      checkerActionAt: Date,
+      allowMakerToSelectChecker: {
+        type: Boolean,
+        default: true,
+      },
+    },
+    companyId: {
+      type: String,
+      required: true,
+      immutable: true,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -267,6 +407,60 @@ const supplierSchema = new mongoose.Schema(
 // Validation middleware for business rules
 supplierSchema.pre('save', async function (next) {
   try {
+    // GST Editing Validation Rules
+    if (this.isModified('gstRegistered') || this.isModified('gstin')) {
+      // Get the original document to check initial state
+      const originalDoc = this.isNew ? null : await this.constructor.findById(this._id);
+
+      if (originalDoc) {
+        const originalGstRegistered = originalDoc.gstRegistered;
+        const originalGstin = originalDoc.gstin;
+        const newGstRegistered = this.gstRegistered;
+        const newGstin = this.gstin;
+
+        // Rule: If GST was "No" at creation, allow updating GSTIN when changing to "Yes"/"Composite"
+        if (originalGstRegistered === 'No' && !originalGstin) {
+          // Allow updating GSTIN when changing GST status to Yes/Composite
+          if (newGstRegistered === 'Yes' || newGstRegistered === 'Composite') {
+            // GSTIN can be updated - validation will be handled by the field validator
+          } else if (newGstRegistered === 'No') {
+            // If changing back to No, clear GSTIN
+            this.gstin = '';
+          }
+        }
+        // Rule: If GSTIN was already provided at creation, only allow changing GST status to "Yes"/"Composite"
+        else if (originalGstin && originalGstRegistered !== 'No') {
+          if (newGstRegistered === 'No') {
+            return next(
+              new Error(
+                'Cannot change GST status to "No" when GSTIN was already provided at creation. Only "Yes" or "Composite" are allowed.'
+              )
+            );
+          }
+          // GSTIN cannot be changed if it was already provided at creation
+          if (newGstin !== originalGstin) {
+            return next(
+              new Error('GSTIN cannot be modified once it has been set during creation.')
+            );
+          }
+        }
+        // Rule: If GSTIN was provided at creation with GST="No", this shouldn't happen but handle it
+        else if (originalGstin && originalGstRegistered === 'No') {
+          // This is an edge case - GSTIN shouldn't exist when GST is No
+          // Allow updating GST status to Yes/Composite and keep the GSTIN
+          if (newGstRegistered === 'Yes' || newGstRegistered === 'Composite') {
+            // Keep the existing GSTIN
+          } else if (newGstRegistered === 'No') {
+            return next(
+              new Error(
+                'Cannot change GST status to "No" when GSTIN was already provided at creation. Only "Yes" or "Composite" are allowed.'
+              )
+            );
+          }
+        }
+      }
+    }
+
     // Rule 1: Only one vendor code allowed per combination of PAN and GSTIN
     if (this.pan && this.gstin) {
       const existingSupplier = await this.constructor.findOne({

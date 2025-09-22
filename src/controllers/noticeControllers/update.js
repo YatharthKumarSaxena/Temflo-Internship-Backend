@@ -1,4 +1,7 @@
 const Notice = require('../../models/coreModels/Notice')
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { NOTICE_UPDATED, NOTICE_CREATED } = require("@/config/activity.enums");
 
 class UpdateController{
 
@@ -23,8 +26,24 @@ class UpdateController{
 
     if (notice) {
       // Policy document found — push into array
+      const oldData = JSON.parse(JSON.stringify(notice.notices));
       notice.notices.push(newNoticeEntry);
       await notice.save();
+
+      // 5️⃣ Activity Tracker logging
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.notice,
+        subModuleAffected: null,
+        fileAffected: FILE.file_notice_update,
+        modelAffected: [MODEL_AFFECTED.model_notice],
+        eventType: NOTICE_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData: oldData,
+        newData: newNoticeEntry
+      });
 
       return res.status(200).json({
         success: true,
@@ -39,6 +58,21 @@ class UpdateController{
       });
 
       await notice.save();
+
+      // 5️⃣ Activity Tracker logging
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.notice,
+        subModuleAffected: null,
+        fileAffected: FILE.file_notice_update,
+        modelAffected: [MODEL_AFFECTED.model_notice],
+        eventType: NOTICE_CREATED,
+        actionDone: ACTIONS.create,
+        oldData: null,
+        newData: newNoticeEntry
+      });
 
       return res.status(201).json({
         success: true,

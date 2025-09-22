@@ -17,7 +17,7 @@ const BusinessSegmentSchema = new mongoose.Schema({
   segmentCode: {
     type: String,
     required: true,
-    match: /^[0-9]{1,6}$/, // 1 to 6 digits
+    match: /^[A-Za-z0-9]{1,5}$/,
     immutable: true,
   },
   description: {

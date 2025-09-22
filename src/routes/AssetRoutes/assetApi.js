@@ -15,9 +15,9 @@ router
 router
   .route('/asset-type/:id')
   .patch(AdminOwner, catchErrors(AssetApi.adminAssetController.updateAssetType));
-router
-  .route('/asset-type/:id')
-  .delete(AdminOwner, catchErrors(AssetApi.adminAssetController.deleteAssetType));
+// router
+//   .route('/asset-type/:id')
+//   .delete(AdminOwner, catchErrors(AssetApi.adminAssetController.deleteAssetType));
 
 // Asset CRUD routes (Admin only)
 router.route('/add-asset').post(AdminOwner, catchErrors(AssetApi.adminAssetController.addAsset));
