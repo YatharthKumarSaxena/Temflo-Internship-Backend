@@ -39,7 +39,7 @@ class UpdateController {
             "employeeInfo.department": department,
             "employeeInfo.dateOfJoining": dateOfJoining,
             "employeeInfo.designation": designation,
-            // "employeeInfo.supervisor": supervisor
+            "supervisor": supervisor
           }
         },
         { new: false } // return old doc

@@ -4,11 +4,14 @@ const { catchErrors } = require('@/handlers/errorHandlers');
 const AssetApi = require('@/controllers/assetControllers/index');
 const uploadExcel = require('../../services/uploadExcel');
 const AdminOwner = require('../../middlewares/access/AdminOwner');
+const checkPermission = require('@/middlewares/access/checkMiddleware')
+const requireReadAccess = require('@/middlewares/access/requireReadAccess')
+const requireWriteAccess = require('@/middlewares/access/requireWriteAccess')
 
 // Asset Type routes (Admin only)
 router
   .route('/asset-type')
-  .post(AdminOwner, catchErrors(AssetApi.adminAssetController.createAssetType));
+  .post(checkPermission(''),requireWriteAccess, catchErrors(AssetApi.adminAssetController.createAssetType));
 router
   .route('/asset-type')
   .get(AdminOwner, catchErrors(AssetApi.adminAssetController.getAssetType));
