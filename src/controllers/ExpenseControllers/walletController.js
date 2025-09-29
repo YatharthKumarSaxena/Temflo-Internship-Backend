@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { WALLET_CREDITED, WALLET_ADDED, WALLET_STATUS_UPDATED, WALLET_REQUEST_CREATED, WALLET_REQUEST_APPROVED, WALLET_REQUEST_REJECTED } = require("@/config/activity.enums");
-const { masterTemplate } = require("@/config/emailTemplate");
+const { expenseTemplate } = require("@/config/emailTemplates/expenseTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 
@@ -107,21 +107,21 @@ const transaction = new WalletTransaction({
       const emailHtml = generateMasterTemplate({
         company_name: req.admin.companyName,
         user_name: employee.name || employee.employeeCode,
-        event_name: masterTemplate.walletRequestApproved.event_name,
-        action: masterTemplate.walletRequestApproved.action,
-        status: masterTemplate.walletRequestApproved.status,
-        message_intro: masterTemplate.walletRequestApproved.message_intro,
+        event_name: expenseTemplate.walletRequestApproved.event_name,
+        action: expenseTemplate.walletRequestApproved.action,
+        status: expenseTemplate.walletRequestApproved.status,
+        message_intro: expenseTemplate.walletRequestApproved.message_intro,
         details: {
           Amount: amount,
           Date: new Date().toLocaleString(),
           RequestID: transaction._id
         },
-        actionbutton_text: masterTemplate.walletRequestApproved.actionbutton_text,
-        actionlink: masterTemplate.walletRequestApproved.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
-        fallback_note: masterTemplate.walletRequestApproved.fallback_note,
-        action_link: masterTemplate.walletRequestApproved.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+        actionbutton_text: expenseTemplate.walletRequestApproved.actionbutton_text,
+        actionlink: expenseTemplate.walletRequestApproved.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+        fallback_note: expenseTemplate.walletRequestApproved.fallback_note,
+        action_link: expenseTemplate.walletRequestApproved.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
       });
-      sendEmail(employee.email, masterTemplate.walletRequestApproved.subject, emailHtml);
+      sendEmail(employee.email, expenseTemplate.walletRequestApproved.subject, emailHtml);
     }
 
 // Email to Admin (notification)
@@ -129,9 +129,9 @@ if (req.admin.email) {
   const emailHtmlAdmin = generateMasterTemplate({
     company_name: req.admin.companyName,
     user_name: req.admin.name || req.admin.employeeCode,
-    event_name: masterTemplate.walletBalanceAdded.event_name,
-    action: masterTemplate.walletBalanceAdded.action,
-    status: masterTemplate.walletBalanceAdded.status,
+    event_name: expenseTemplate.walletBalanceAdded.event_name,
+    action: expenseTemplate.walletBalanceAdded.action,
+    status: expenseTemplate.walletBalanceAdded.status,
     message_intro: `You have successfully added funds to ${employee.name || employee.employeeCode}'s wallet.`,
     details: {
       Amount: amount,
@@ -140,20 +140,20 @@ if (req.admin.email) {
       EmployeeID: employee._id,
       EmployeeEmail: employee.email
     },
-    actionbutton_text: masterTemplate.walletBalanceAdded.actionbutton_text 
+    actionbutton_text: expenseTemplate.walletBalanceAdded.actionbutton_text 
                       || 'View Wallet Balance',
-    actionlink: masterTemplate.walletBalanceAdded.actionlink
-                      ? masterTemplate.walletBalanceAdded.actionlink.replace('<BALANCE_LINK>', '#')
+    actionlink: expenseTemplate.walletBalanceAdded.actionlink
+                      ? expenseTemplate.walletBalanceAdded.actionlink.replace('<BALANCE_LINK>', '#')
                       : '#', // fallback link
-    fallback_note: masterTemplate.walletBalanceAdded.fallback_note 
+    fallback_note: expenseTemplate.walletBalanceAdded.fallback_note 
                    || 'Login to ERPICA dashboard to view details.',
-    action_link: masterTemplate.walletBalanceAdded.action_link
-                      ? masterTemplate.walletBalanceAdded.action_link.replace('<BALANCE_LINK>', '#')
+    action_link: expenseTemplate.walletBalanceAdded.action_link
+                      ? expenseTemplate.walletBalanceAdded.action_link.replace('<BALANCE_LINK>', '#')
                       : '#',
   });
   sendEmail(
     req.admin.email, 
-    masterTemplate.walletBalanceAdded.subject 
+    expenseTemplate.walletBalanceAdded.subject 
       || `Wallet Balance Added for Employee whose Id: ${employee._id || employee.employeeCode}`, 
     emailHtmlAdmin
   );
@@ -308,7 +308,7 @@ if (employee && employee.email) {
   const emailHtmlEmployee = generateMasterTemplate({
     company_name: req.admin.companyName,
     user_name: employee.name || employee.employeeCode,
-    event_name: masterTemplate.walletRequestCreated.event_name,
+    event_name: expenseTemplate.walletRequestCreated.event_name,
     action: "Your wallet balance request has been submitted",
     status: "Pending",
     message_intro: `Your wallet balance request of ₹${amount} has been submitted successfully and is pending supervisor approval.`,
@@ -319,9 +319,9 @@ if (employee && employee.email) {
       Status: "Pending",
     },
     actionbutton_text: "View Request",
-    actionlink: masterTemplate.walletRequestCreated.actionlink.replace('<REQUEST_LINK>', '#'),
-    fallback_note: masterTemplate.walletRequestCreated.fallback_note,
-    action_link: masterTemplate.walletRequestCreated.action_link.replace('<REQUEST_LINK>', '#'),
+    actionlink: expenseTemplate.walletRequestCreated.actionlink.replace('<REQUEST_LINK>', '#'),
+    fallback_note: expenseTemplate.walletRequestCreated.fallback_note,
+    action_link: expenseTemplate.walletRequestCreated.action_link.replace('<REQUEST_LINK>', '#'),
   });
 
   await sendEmail(
@@ -342,9 +342,9 @@ if (supervisor && supervisor.email) {
   const emailHtml = generateMasterTemplate({
     company_name: req.admin.companyName,
     user_name: supervisor.name || supervisor.employeeCode,
-    event_name: masterTemplate.walletRequestCreated.event_name,
-    action: masterTemplate.walletRequestCreated.action,
-    status: masterTemplate.walletRequestCreated.status,
+    event_name: expenseTemplate.walletRequestCreated.event_name,
+    action: expenseTemplate.walletRequestCreated.action,
+    status: expenseTemplate.walletRequestCreated.status,
     message_intro: `Employee ${employee.name || employee.employeeCode} has submitted a wallet balance request.`,
     details: {
       Amount: amount,
@@ -354,10 +354,10 @@ if (supervisor && supervisor.email) {
       EmployeeEmail: employee.email,
       RequestMessage: requestMessage,
     },
-    actionbutton_text: masterTemplate.walletRequestCreated.actionbutton_text || 'View Wallet Request',
-    actionlink: masterTemplate.walletRequestCreated.actionlink.replace('<REQUEST_LINK>', '#'),
-    fallback_note: masterTemplate.walletRequestCreated.fallback_note,
-    action_link: masterTemplate.walletRequestCreated.action_link.replace('<REQUEST_LINK>', '#'),
+    actionbutton_text: expenseTemplate.walletRequestCreated.actionbutton_text || 'View Wallet Request',
+    actionlink: expenseTemplate.walletRequestCreated.actionlink.replace('<REQUEST_LINK>', '#'),
+    fallback_note: expenseTemplate.walletRequestCreated.fallback_note,
+    action_link: expenseTemplate.walletRequestCreated.action_link.replace('<REQUEST_LINK>', '#'),
   });
 
   sendEmail(
@@ -549,7 +549,7 @@ exports.processBalanceRequest = async (req, res, next) => {
       });
 
       // Select Email Template
-      emailTemplate = masterTemplate.walletRequestApproved;
+      emailTemplate = expenseTemplate.walletRequestApproved;
 
     } else if (action === 'reject') {
       // Update employee wallet status
@@ -592,7 +592,7 @@ exports.processBalanceRequest = async (req, res, next) => {
       });
 
       // Select Email Template
-      emailTemplate = masterTemplate.walletRequestRejected;
+      emailTemplate = expenseTemplate.walletRequestRejected;
     }
 
     // ------------------- EMAIL INTEGRATION -------------------

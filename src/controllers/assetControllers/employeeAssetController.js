@@ -5,9 +5,10 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { ASSET_TRANSFER_REQUESTED } = require('@/config/activity.enums');
-const { masterTemplate } = require("@/config/emailTemplate");
+const { assetTemplate } = require("@/config/emailTemplates/assetTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
 
 // Get assets assigned to the current employee
 exports.getMyAssets = async (req, res) => {
@@ -68,21 +69,21 @@ exports.requestAssetTransfer = async (req, res) => {
       });
     }
 
-// Verify the asset is assigned to the requesting employee
-const asset = await Asset.findOne({
-  _id: assetId,
-  companyId,
-  plantId,
-  assignedTo: fromEmployeeId,
-  status: 'Assigned',
-}).lean();
+    // Verify the asset is assigned to the requesting employee
+    const asset = await Asset.findOne({
+      _id: assetId,
+      companyId,
+      plantId,
+      assignedTo: fromEmployeeId,
+      status: 'Assigned',
+    }).lean();
 
-if (!asset) {
-  return res.status(404).json({
-    success: false,
-    message: 'Asset not found or not assigned to you',
-  });
-}
+    if (!asset) {
+      return res.status(404).json({
+        success: false,
+        message: 'Asset not found or not assigned to you',
+      });
+    }
 
     // Verify target employee exists and belongs to same company and plant
     const toEmployee = await User.findOne({
@@ -126,20 +127,21 @@ if (!asset) {
 
     await transferRequest.save();
 
+    const assetLink = `https://yourdomain.com/assets/${asset._id}`;
 
-// Fetch users
-const fromEmployee = await User.findById(fromEmployeeId);
-const adminUser = await User.findOne({
-  companyId,
-  plantId,
-  role: 'admin',
-  removed: false,
-});
+    // Fetch users
+    const fromEmployee = await User.findById(fromEmployeeId);
+    const adminUser = await User.findOne({
+      companyId,
+      plantId,
+      role: 'admin',
+      removed: false,
+    });
 
 
     const assetDetails = `
-      Asset Name: ${asset.name}<br/>
-      Asset ID: ${asset._id}<br/>
+      Asset Name: ${asset.name}
+      Asset ID: ${asset._id}
       Serial Number: ${asset.serialNumber || 'N/A'}
     `;
 
@@ -149,52 +151,64 @@ const adminUser = await User.findOne({
     // Requester
     const emailHtmlToRequester = generateMasterTemplate({
       company_name: req.admin.companyName,
-      user_name: fromEmployee.name,
-      event_name: masterTemplate.assetTransferRequested.event_name,
-      action: masterTemplate.assetTransferRequested.action,
+      user_name: getFullName(fromEmployee.employeeInfo),
+      event_name: assetTemplate.assetTransferRequested.event_name,
+      action: assetTemplate.assetTransferRequested.action,
       status: 'Pending',
       message_intro: `Your request has been submitted successfully and is pending admin approval.`,
-      notes: `${assetDetails}<br/>
-              Requested To: ${toEmployee._id}<br/>
-              Reason: ${transferRequest.reason}<br/>
-              Date: ${requestDate}`
+      notes: `${assetDetails}
+              Requested To: ${toEmployee._id}
+              Reason: ${transferRequest.reason}
+              Date: ${requestDate}`,
+      actionlink: assetLink,
+      fallback_note: assetTemplate.assetTransferRequested.fallback_note,
+      actionbutton_text: assetTemplate.assetTransferRequested.actionbutton_text,
+      action_link: assetLink 
     });
 
     // Target Employee
     const emailHtmlToTarget = generateMasterTemplate({
       company_name: req.admin.companyName,
-      user_name: toEmployee.name,
-      event_name: masterTemplate.assetTransferRequested.event_name,
-      action: masterTemplate.assetTransferRequested.action,
+      user_name: getFullName(toEmployee.employeeInfo),
+      event_name: assetTemplate.assetTransferRequested.event_name,
+      action: assetTemplate.assetTransferRequested.action,
       status: 'Pending',
       message_intro: `A new asset transfer request has been made for you. The request is pending admin approval.`,
-      notes: `${assetDetails}<br/>
-              Requested By: ${fromEmployee._id}<br/>
-              Reason: ${transferRequest.reason}<br/>
-              Date: ${requestDate}`
+      notes: `${assetDetails}
+              Requested By: ${fromEmployee._id}
+              Reason: ${transferRequest.reason}
+              Date: ${requestDate}`,
+      actionlink: assetLink,
+      fallback_note: assetTemplate.assetTransferRequested.fallback_note,
+      actionbutton_text: assetTemplate.assetTransferRequested.actionbutton_text,
+      action_link: assetLink 
     });
 
     // Admin
     const emailHtmlToAdmin = generateMasterTemplate({
       company_name: req.admin.companyName,
-      user_name: adminUser?.name || 'Admin',
-      event_name: masterTemplate.assetTransferRequested.event_name,
-      action: masterTemplate.assetTransferRequested.action,
+      user_name: getFullName(adminUser.employeeInfo),
+      event_name: assetTemplate.assetTransferRequested.event_name,
+      action: assetTemplate.assetTransferRequested.action,
       status: 'Pending',
       message_intro: `A new asset transfer request has been submitted and is pending your approval.`,
-      notes: `${assetDetails}<br/>
-              Requested By: ${fromEmployee._id}<br/>
-              Requested To: ${toEmployee._id}<br/>
-              Reason: ${transferRequest.reason}<br/>
-              Date: ${requestDate}`
+      notes: `${assetDetails}
+              Requested By: ${fromEmployee._id}
+              Requested To: ${toEmployee._id}
+              Reason: ${transferRequest.reason}
+              Date: ${requestDate}`,
+      actionlink: assetLink,
+      fallback_note: assetTemplate.assetTransferRequested.fallback_note,
+      actionbutton_text: assetTemplate.assetTransferRequested.actionbutton_text,
+      action_link: assetLink 
     });
 
     const adminEmail = adminUser?.email || process.env.DEFAULT_ADMIN_EMAIL;
 
     // Send emails
-    sendEmail(fromEmployee.email, masterTemplate.assetTransferRequested.subject, emailHtmlToRequester);
-    sendEmail(toEmployee.email, masterTemplate.assetTransferRequested.subject, emailHtmlToTarget);
-    sendEmail(adminEmail, masterTemplate.assetTransferRequested.subject, emailHtmlToAdmin);
+    sendEmail(fromEmployee.email, assetTemplate.assetTransferRequested.subject, emailHtmlToRequester);
+    sendEmail(toEmployee.email, assetTemplate.assetTransferRequested.subject, emailHtmlToTarget);
+    sendEmail(adminEmail, assetTemplate.assetTransferRequested.subject, emailHtmlToAdmin);
 
     // Activity tracker for creation
     activityTracker({
@@ -204,7 +218,7 @@ const adminUser = await User.findOne({
       module: MODULE.asset,
       subModuleAffected: null,
       fileAffected: FILE.file_employee_asset,
-      modelAffected: [MODEL_AFFECTED.model_asset_transfer],
+      modelAffected: [MODEL_AFFECTED.model_assetTransfer],
       eventType: ASSET_TRANSFER_REQUESTED,
       actionDone: ACTIONS.create,
       oldData: null,

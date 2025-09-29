@@ -5,10 +5,9 @@ const fs = require('fs');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { USERS_CREATED_BULK } = require("@/config/activity.enums");
-const { masterTemplate } = require("@/config/emailTemplate");
+const { employeeTemplate } = require("@/config/emailTemplates/employeeTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
-const { EMAIL_TOKEN_EXPIRY } = require("@/config/token.config");
 const { generateNanoId } = require('@/utils/idGenerator');
 
 const createBulk = async (req, res) => {
@@ -129,7 +128,7 @@ const createBulk = async (req, res) => {
               const verificationLink = `${baseUrl}/verify/${savedUser._id}/${emailToken.token}`;
         
               const emailConfig = {
-                ...masterTemplate.employeeCreation,
+                ...employeeTemplate.employeeCreation,
                 user_name: emp.Name || "User",
                 actionlink: verificationLink, // dynamic verification link
                 action_link: verificationLink,

@@ -5,7 +5,7 @@ const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { OK } = require('@/config/httpStatus.config');
-const { masterTemplate } = require("@/config/emailTemplate");
+const { employeeTemplate } = require("@/config/emailTemplates/employeeTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 
@@ -89,7 +89,7 @@ if (req.admin.email) { // ensure admin email exists
   const profileLink = `${baseUrl}/profile`; // link to admin's profile
 
   const emailConfig = {
-    ...masterTemplate.companyDetailsUpdated,
+    ...employeeTemplate.companyDetailsUpdated,
     user_name: req.admin.name || "Admin",
     action_cta: "Please visit your profile to verify the updated details.",
     actionbutton_text: "Go to Profile",

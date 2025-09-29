@@ -7,7 +7,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { LEAVE_POLICY_CREATED, LEAVE_REQUEST_CREATED, LEAVE_POLICY_UPDATED, LEAVE_POLICY_STATUS_UPDATED, LEAVE_POLICY_DELETED, LEAVE_BALANCE_UPDATED, LEAVE_BALANCE_CREATED, LEAVE_REQUEST_STATUS_UPDATED, LEAVE_BALANCE_RESET } = require("@/config/activity.enums");
-const { masterTemplate } = require("@/config/emailTemplate");
+const { leaveTemplate } = require("@/config/emailTemplates/leaveTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 
@@ -754,25 +754,25 @@ exports.markLeave = async (req, res) => {
     const emailHtmlToEmployee = generateMasterTemplate({
       company_name: adminUser.companyName,
       user_name: employee.name,
-      event_name: masterTemplate.leaveRequestCreated.event_name,
-      action: masterTemplate.leaveRequestCreated.action,
+      event_name: leaveTemplate.leaveRequestCreated.event_name,
+      action: leaveTemplate.leaveRequestCreated.action,
       status: 'Approved',
       message_intro: `Your leave has been successfully applied and approved by Admin.`,
       notes: `${leaveDetails}<br/>Requested On: ${requestDate}`
     });
-    sendEmail(employee.email, masterTemplate.leaveRequestCreated.subject, emailHtmlToEmployee);
+    sendEmail(employee.email, leaveTemplate.leaveRequestCreated.subject, emailHtmlToEmployee);
 
     // Email to Admin
     const emailHtmlToAdmin = generateMasterTemplate({
       company_name: adminUser.companyName,
       user_name: adminUser.name,
-      event_name: masterTemplate.leaveRequestCreated.event_name,
-      action: masterTemplate.leaveRequestCreated.action,
+      event_name: leaveTemplate.leaveRequestCreated.event_name,
+      action: leaveTemplate.leaveRequestCreated.action,
       status: 'Approved',
       message_intro: `A leave has been applied by You and approved for Employee Id: ${employee._id}.`,
       notes: `${leaveDetails}<br/>Requested On: ${requestDate}`
     });
-    sendEmail(adminUser.email, masterTemplate.leaveRequestCreated.subject, emailHtmlToAdmin);
+    sendEmail(adminUser.email, leaveTemplate.leaveRequestCreated.subject, emailHtmlToAdmin);
 
     return res.status(200).json({
       success: true,
@@ -1026,25 +1026,25 @@ exports.updateLeaveRequestStatus = async (req, res) => {
     const emailHtmlToEmployee = generateMasterTemplate({
       company_name: adminUser.companyName,
       user_name: employee.name,
-      event_name: masterTemplate.leaveRequestCreated.event_name,
-      action: masterTemplate.leaveRequestCreated.action,
+      event_name: leaveTemplate.leaveRequestCreated.event_name,
+      action: leaveTemplate.leaveRequestCreated.action,
       status,
       message_intro: `Your leave request has been ${status.toLowerCase()} by Admin.`,
       notes: `${leaveDetails}<br/>Processed On: ${requestDate}`,
     });
-    sendEmail(employee.email, masterTemplate.leaveRequestCreated.subject, emailHtmlToEmployee);
+    sendEmail(employee.email, leaveTemplate.leaveRequestCreated.subject, emailHtmlToEmployee);
 
     // Email to Admin
     const emailHtmlToAdmin = generateMasterTemplate({
       company_name: adminUser.companyName,
       user_name: adminUser.name,
-      event_name: masterTemplate.leaveRequestCreated.event_name,
-      action: masterTemplate.leaveRequestCreated.action,
+      event_name: leaveTemplate.leaveRequestCreated.event_name,
+      action: leaveTemplate.leaveRequestCreated.action,
       status,
       message_intro: `You have ${status.toLowerCase()} the leave request for Employee Id: ${employee._id}.`,
       notes: `${leaveDetails}<br/>Processed On: ${requestDate}`,
     });
-    sendEmail(adminUser.email, masterTemplate.leaveRequestCreated.subject, emailHtmlToAdmin);
+    sendEmail(adminUser.email, leaveTemplate.leaveRequestCreated.subject, emailHtmlToAdmin);
 
 
     return res.status(200).json({

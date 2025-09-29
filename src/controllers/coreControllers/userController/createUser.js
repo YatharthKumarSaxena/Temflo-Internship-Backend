@@ -3,7 +3,7 @@ const { generate: uniqueId } = require('shortid');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { USER_CREATED } = require("@/config/activity.enums");
-const { masterTemplate } = require("@/config/emailTemplate");
+const { employeeTemplate } = require("@/config/emailTemplates/employeeTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 const { generateNanoId } = require('@/utils/idGenerator');
@@ -75,7 +75,7 @@ const createUser = async (req, res) => {
       const verificationLink = `${baseUrl}/verify/${userResult._id}/${emailToken.token}`;
 
       const emailConfig = {
-        ...masterTemplate.employeeCreation,
+        ...employeeTemplate.employeeCreation,
         user_name: name || "User",
         actionlink: verificationLink, // dynamic verification link
         action_link: verificationLink,
@@ -96,9 +96,7 @@ const createUser = async (req, res) => {
       eventType: USER_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: {
-        user: userResult
-      }
+      newData:  userResult
     });
     
     return res.status(200).json({

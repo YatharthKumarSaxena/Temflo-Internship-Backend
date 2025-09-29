@@ -1,10 +1,14 @@
 const mongoose = require('mongoose');
 const { USER_DELETED } = require("@/config/activity.enums");
-const { errorMessage, throwInternalServerError, throwMissingFieldsError, throwInvalidResourceError, throwDBResourceNotFoundError } = require("@/config/error-handler.config");
+const { errorMessage, throwInternalServerError } = require("@/config/error-handler.config");
 const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { OK } = require('@/config/httpStatus.config');
+const { employeeTemplate } = require("@/config/emailTemplates/employeeTemplate");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const remove = async (req, res) => {
   try {
@@ -34,7 +38,28 @@ const remove = async (req, res) => {
     user.removed = newRemovedStatus;
     await user.save();
 
-
+    if(removed){
+      const emailConfig = {
+        ...employeeTemplate.accountStatusChange,
+        user_name: getFullName(user.employeeInfo) || "User",
+        status: "Deactivated",
+        message_intro: "Your Account is deactivated by Admin",
+        notes: "You will not be able to log in until your account is reactivated. For assistance, please contact support."
+      };
+      const html = generateMasterTemplate(emailConfig);
+      sendEmail(user.email, emailConfig.subject, html); // fire-and-forget
+    }else{
+      const emailConfig = {
+        ...employeeTemplate.accountStatusChange,
+        user_name: getFullName(user.employeeInfo) || "User",
+        status: "Activated",
+        message_intro: "Your Account is now reactivated by Admin",
+        notes: "You can now log in and access all features of the platform."
+      };
+      const html = generateMasterTemplate(emailConfig);
+      sendEmail(user.email, emailConfig.subject, html); // fire-and-forget
+    }
+    
     // Activity Tracker logging
     activityTracker({
       userId: req.admin._id, // admin ka Mongo ID as userId
@@ -48,10 +73,10 @@ const remove = async (req, res) => {
       actionDone: ACTIONS.delete,
       oldData: {
         userId: id,
-        removed: false
+        removed: !removed
       },
       newData: {
-        removed: true
+        removed: removed
       }
     });
 
