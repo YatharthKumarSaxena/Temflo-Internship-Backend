@@ -70,6 +70,19 @@ const employeeTemplate = {
         message_intro: "",
         notes: ""
     },
+
+    employeeAssigned: {
+        ...defaultConfig,
+        subject: "Inform about Employee Assignment",
+        event_name: "Employee Assigned",
+        action: "Inform",
+        message_intro: "You have been assigned as Supervisor by the Admin for the following Employee",
+        notes: "",
+        actionbutton_text: "View Employee",
+        actionlink: "http://localhost:3000/reset-password/<token>", // controller se inject hoga
+        fallback_note: "If the button doesn’t work, copy and paste the link below into your browser:",
+        action_link: "http://localhost:3000/reset-password/<token>" // controller se inject hoga
+    },
 }
 
 module.exports = {

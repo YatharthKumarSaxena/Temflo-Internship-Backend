@@ -1,25 +1,33 @@
 const cron = require("node-cron");
 const dayjs = require("dayjs");
+const utc = require("dayjs/plugin/utc");
+dayjs.extend(utc);
+
 const Asset = require("@/models/AssetModels/Asset");
 const { sendEmail } = require("@/utils/emailSender");
 const { assetTemplate } = require("@/config/emailTemplates/assetTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const mongoose = require("mongoose");
+const { getFullName } = require("@/utils/commonFunctions");
 
-// Daily cron job at 9 AM
+// Daily cron job at 9 AM IST
 function assetCronJobs() {
-    cron.schedule("41 20 * * *", async () => {
-        console.log(`[CRON] Running Asset Mail Job at ${new Date().toISOString()}`);
+    cron.schedule("30 3 * * *", async () => {
+        console.log(`[CRON] Running Asset Expiry Mail Job at ${new Date().toISOString()}`);
 
-        const startOfToday = dayjs().startOf('day').toDate();
-        const endOfToday = dayjs().endOf('day').toDate();
-        const startOf7DaysLater = sevenDaysLater.startOf('day').toDate();
-        const endOf7DaysLater = sevenDaysLater.endOf('day').toDate();
+        // Today range in UTC
+        const startOfTodayUTC = dayjs().startOf('day').utc().toDate();
+        const endOfTodayUTC = dayjs().endOf('day').utc().toDate();
+
+        // 7 days later range in UTC
+        const sevenDaysLater = dayjs().add(7, 'day');
+        const startOf7DaysLaterUTC = sevenDaysLater.startOf('day').utc().toDate();
+        const endOf7DaysLaterUTC = sevenDaysLater.endOf('day').utc().toDate();
 
         try {
             // 1️⃣ Assets expiring in 7 days
             const assets7Days = await Asset.find({
-                expiryDate: sevenDaysLater.toDate(),
+                expiryDate: { $gte: startOf7DaysLaterUTC, $lte: endOf7DaysLaterUTC },
                 assignedTo: { $ne: null }
             });
 
@@ -28,9 +36,8 @@ function assetCronJobs() {
             }
 
             // 2️⃣ Assets expiring today
-
             const assetsToday = await Asset.find({
-                expiryDate: { $gte: startOfToday, $lte: endOfToday },
+                expiryDate: { $gte: startOfTodayUTC, $lte: endOfTodayUTC },
                 assignedTo: { $ne: null }
             });
 
@@ -38,18 +45,8 @@ function assetCronJobs() {
                 sendAssetMail(asset, "today");
             }
 
-            // 3️⃣ Assets with status change (Disposed / Under Maintenance / Returned)
-            const statusAssets = await Asset.find({
-                status: { $in: ["Disposed", "Under Maintenance", "Returned"] },
-                assignedTo: { $ne: null }
-            });
-
-            for (const asset of statusAssets) {
-                sendAssetMail(asset, "status");
-            }
-
         } catch (err) {
-            console.error("❌ Error in Asset Cron Job:", err);
+            console.error("❌ Error in Asset Expiry Cron Job:", err);
         }
     });
 }
@@ -64,27 +61,29 @@ async function sendAssetMail(asset, type = "today") {
         return;
     }
 
-    let messageIntro = type === "status"
-        ? assetTemplate.assetStatusChange.message_intro.replace("<ASSET_NAME>", asset.name).replace("<ASSET_STATUS>", asset.status)
-        : assetTemplate.assetExpiryTemplate.message_intro.replace("<ASSET_NAME>", asset.name).replace("<EXPIRY_DATE>", dayjs(asset.expiryDate).format("DD MMM YYYY"));
+    const isToday = dayjs(asset.expiryDate).isSame(dayjs(), 'day');
+    const messageIntro = assetTemplate.assetExpiryTemplate.message_intro
+        .replace("<ASSET_NAME>", asset.name)
+        .replace("<EXPIRY_DATE>", dayjs(asset.expiryDate).format("DD MMM YYYY"))
+        .replace("<EXPIRY_TYPE>", isToday ? "today" : "in 7 days");
 
-    let emailBody = generateMasterTemplate({
-        ...(type === "status" ? assetTemplate.assetStatusChange : assetTemplate.assetExpiryTemplate),
+    const assetLink = `https://yourapp.com/assets/${asset._id}`;
+    const emailBody = generateMasterTemplate({
+        ...assetTemplate.assetExpiryTemplate,
+        user_name: getFullName(user.employeeInfo),
         message_intro: messageIntro,
-        action_link: `https://yourapp.com/assets/${asset._id}`,
+        action_link: assetLink,
+        actionLink: assetLink,
+        actionbutton_text: assetTemplate.assetExpiryTemplate.actionbutton_text,
+        fallback_note: assetTemplate.assetExpiryTemplate.fallback_note
     });
 
     // Fire and forget with error logging
-    sendEmail({
-        to: user.email,
-        subject: type === "status" ? assetTemplate.assetStatusChange.subject : assetTemplate.assetExpiryTemplate.subject,
-        html: emailBody
-    }).then(() => {
-        console.log(`[MAIL] Sent asset mail to ${user.email} for asset ${asset.name} [${type}]`);
+    sendEmail(user.email, assetTemplate.assetExpiryTemplate.subject, emailBody).then(() => {
+        console.log(`[MAIL] Sent asset expiry mail to ${user.email} for asset ${asset.name} [${type}]`);
     }).catch(err => {
         console.error(`[MAIL ERROR] Failed to send mail to ${user.email} for asset ${asset.name}:`, err);
     });
 }
-
 
 module.exports = assetCronJobs;

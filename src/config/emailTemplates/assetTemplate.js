@@ -80,7 +80,7 @@ const assetTemplate = {
         subject: "Asset Expiry Notification",
         event_name: "Asset Expiry",
         action: "Notify",
-        message_intro: "<ASSET_NAME> assigned to you is expiring on <EXPIRY_DATE>.", // Controller se dynamic replace hoga
+        message_intro: "<ASSET_NAME> assigned to you is expiring <EXPIRY_TYPE> on <EXPIRY_DATE>.", // Controller se dynamic replace hoga
         actionbutton_text: "View Asset",
         actionlink: "<ASSET_LINK>", // Controller/job se dynamically set hoga
         fallback_note: "If the button doesn't work, copy the link below:",

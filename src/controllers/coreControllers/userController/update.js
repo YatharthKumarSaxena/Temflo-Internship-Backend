@@ -5,6 +5,10 @@ const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { OK } = require('@/config/httpStatus.config');
+const { employeeTemplate } = require("@/config/emailTemplates/employeeTemplate");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
 
 class UpdateController {
 
@@ -36,7 +40,7 @@ class UpdateController {
             "employeeInfo.department": department,
             "employeeInfo.dateOfJoining": dateOfJoining,
             "employeeInfo.designation": designation,
-            // "employeeInfo.supervisor": supervisor
+            "employeeInfo.supervisor": supervisor
           }
         },
         { new: false } // return old doc
@@ -54,6 +58,7 @@ class UpdateController {
         firstName, middleName, lastName, bloodGroup, gender, dob,
         emailPersonal, department, dateOfJoining, designation,
         mobile: contactNumber,
+        supervisor
       };
 
       logWithTime(`✅ 🎯 Employee Information by Admin Updated Successfully 🚀`);
@@ -70,6 +75,35 @@ class UpdateController {
         actionDone: ACTIONS.update,
         oldData, newData
       });
+
+      // Merge old info + incoming update
+      const effectiveEmployeeInfo = {
+        ...oldUser.employeeInfo.toObject(), // old data
+        ...req.body,                        // overwrite with updated fields
+      };
+
+      // Now use this for email
+      const empDetails = `Employee Id: ${_id}
+Employee Name: ${getFullName(effectiveEmployeeInfo)}`;
+
+      const empLink = `http://localhost:3000/employee/details/${_id}`;
+
+      if (supervisor) {
+        const supervisorPerson = await UserModel.findOne({ _id: supervisor, companyId: req.admin.companyId });
+        if (supervisorPerson) {
+          const emailConfig = {
+            ...employeeTemplate.employeeAssigned,
+            user_name: getFullName(supervisorPerson.employeeInfo),
+            notes: `${empDetails}`,
+            actionbutton_text: employeeTemplate.employeeAssigned.actionbutton_text,
+            actionlink: empLink,
+            fallback_note: employeeTemplate.employeeAssigned.fallback_note,
+            action_link: empLink
+          };
+          const html = generateMasterTemplate(emailConfig);
+          sendEmail(supervisorPerson.email, emailConfig.subject, html);
+        }
+      }
 
       return res.status(OK).json({
         success: true,

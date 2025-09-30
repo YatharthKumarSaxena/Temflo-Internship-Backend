@@ -521,7 +521,7 @@ exports.updateAsset = async (req, res) => {
   try {
     const assetId = req.params.id;
     const updateData = { ...req.body };
-
+    const User = mongoose.model('User');
     // Clean up ObjectId fields
     ['assetType', 'assignedTo', 'responsible'].forEach((field) => {
       if (!updateData[field]) {
@@ -584,77 +584,70 @@ exports.updateAsset = async (req, res) => {
     if (!wasAssignedTo && isAssignedTo) updateData.status = 'Assigned';
     else if (wasAssignedTo && !isAssignedTo && existingAsset.status === 'Assigned') updateData.status = 'Available';
 
-    // Handle assignment/unassignment emails
-    if (updateData.status === 'Assigned' || updateData.status === 'Available') {
-      let msg, subject;
-      if (updateData.status === 'Assigned') {
-        subject = "Inform Responsible about Asset Assignment";
-        msg = `Your Asset has been transferred by the Admin From Employee Id: ${wasAssignedTo} to Employee Id: ${isAssignedTo}`;
-      } else {
-        subject = "Inform Responsible about Asset Unassignment";
-        msg = `Your Asset has been unassigned by the Admin From Employee Id: ${wasAssignedTo}. Now your Asset is no longer assigned to anyone.`;
-        updateData.assignedTo = null;
-      }
 
-      // Send to responsible
+    let assigned,subject,msg;
+    if (req.body.assignedTo && existingAsset.assignedTo && req.body.assignedTo != existingAsset.assignedTo) {
+      assigned = true;
+      subject = "Inform Responsible about Asset Reassignment";
+      msg = `Your Asset has been transferred by the Admin From Employee Id: ${wasAssignedTo} to Employee Id: ${isAssignedTo}`;
+      const oldAssignedUser = await User.findById(wasAssignedTo);
+      if (oldAssignedUser) {
+        const html = generateMasterTemplate({
+          ...assetTemplate.assetUnassigned,
+          user_name: getFullName(oldAssignedUser.employeeInfo),
+          event_name: assetTemplate.assetUnassigned.event_name,
+          action: assetTemplate.assetUnassigned.action,
+          actionlink: assetLink,
+          notes: assetDetails,
+          fallback_note: assetTemplate.assetUnassigned.fallback_note,
+          actionbutton_text: assetTemplate.assetUnassigned.actionbutton_text,
+          action_link: assetLink
+        });
+        sendEmail(oldAssignedUser.email, assetTemplate.assetUnassigned.subject, html);
+      }
+    } 
+    else if (req.body.assignedTo && !existingAsset.assignedTo){
+      assigned = true;
+      subject = "Inform Responsible about Asset Assignment";
+      msg = `Your Asset has been transferred by the Admin to Employee Id: ${isAssignedTo}`;    
+    }
+
+    else assigned = false;
+
+    if(assigned){
+      // Send Mail to Responsible and Assigned User
+      const newAssignedUser = await User.findById(isAssignedTo);
+      if (newAssignedUser) {
+        const html = generateMasterTemplate({
+          ...assetTemplate.assetAssigned,
+          user_name: getFullName(newAssignedUser.employeeInfo),
+          event_name: assetTemplate.assetAssigned.event_name,
+          action: assetTemplate.assetAssigned.action,
+          message_intro: 'You have been assigned this asset by the Admin.',
+          actionlink: assetLink,
+          notes: assetDetails,
+          fallback_note: assetTemplate.assetAssigned.fallback_note,
+          actionbutton_text: assetTemplate.assetAssigned.actionbutton_text,
+          action_link: assetLink
+        });
+        sendEmail(newAssignedUser.email, assetTemplate.assetAssigned.subject, html);
+      }
       const respId = req.body.responsible || existingAsset.responsible;
-      if (respId) {
-        const respUser = await User.findById(respId);
-        if (respUser) {
-          const html = generateMasterTemplate({
-            ...(updateData.status === 'Assigned' ? assetTemplate.assetAssigned : assetTemplate.assetUnassigned),
-            user_name: getFullName(respUser.employeeInfo),
-            event_name: respUser ? assetTemplate.assetAssigned.event_name : assetTemplate.assetUnassigned.event_name,
-            action: respUser ? assetTemplate.assetAssigned.action : assetTemplate.assetUnassigned.action,
-            message_intro: msg,
-            actionlink: assetLink,
-            notes: assetDetails,
-            fallback_note: assetTemplate.assetAssigned.fallback_note,
-            actionbutton_text: assetTemplate.assetAssigned.actionbutton_text,
-            action_link: assetLink
-          });
-          sendEmail(respUser.email, subject, html);
-        }
-      }
-
-      // Send to previously assigned user if unassigned or reassigned
-      if (wasAssignedTo && wasAssignedTo !== isAssignedTo) {
-        const oldAssignedUser = await User.findById(wasAssignedTo);
-        if (oldAssignedUser) {
-          const html = generateMasterTemplate({
-            ...assetTemplate.assetUnassigned,
-            user_name: getFullName(oldAssignedUser.employeeInfo),
-            event_name: assetTemplate.assetUnassigned.event_name,
-            action: assetTemplate.assetUnassigned.action,
-            message_intro: 'Asset assignment has been updated.',
-            actionlink: assetLink,
-            notes: assetDetails,
-            fallback_note: assetTemplate.assetUnassigned.fallback_note,
-            actionbutton_text: assetTemplate.assetUnassigned.actionbutton_text,
-            action_link: assetLink
-          });
-          sendEmail(oldAssignedUser.email, assetTemplate.assetUnassigned.subject, html);
-        }
-      }
-
-      // Send to newly assigned user if assigned
-      if (isAssignedTo) {
-        const newAssignedUser = await User.findById(isAssignedTo);
-        if (newAssignedUser) {
-          const html = generateMasterTemplate({
-            ...assetTemplate.assetAssigned,
-            user_name: getFullName(newAssignedUser.employeeInfo),
-            event_name: assetTemplate.assetAssigned.event_name,
-            action: assetTemplate.assetAssigned.action,
-            message_intro: 'You have been assigned this asset.',
-            actionlink: assetLink,
-            notes: assetDetails,
-            fallback_note: assetTemplate.assetAssigned.fallback_note,
-            actionbutton_text: assetTemplate.assetAssigned.actionbutton_text,
-            action_link: assetLink
-          });
-          sendEmail(newAssignedUser.email, assetTemplate.assetAssigned.subject, html);
-        }
+      const responsibleUser = await User.findById(respId);
+      if (responsibleUser){
+        const html = generateMasterTemplate({
+          ...assetTemplate.assetAssigned,
+          user_name: getFullName(responsibleUser.employeeInfo),
+          event_name: assetTemplate.assetAssigned.event_name,
+          action: assetTemplate.assetAssigned.action,
+          message_intro: msg,
+          actionlink: assetLink,
+          notes: assetDetails,
+          fallback_note: assetTemplate.assetAssigned.fallback_note,
+          actionbutton_text: assetTemplate.assetAssigned.actionbutton_text,
+          action_link: assetLink
+        });
+        sendEmail(responsibleUser.email, subject, html);   
       }
     }
 
@@ -745,9 +738,9 @@ function excelDateToJSDate(serial) {
 
 exports.createBulkAssets = async (req, res) => {
   const filePath = req.file.path;
-  const Asset = mongoose.model('Asset');
-  const User = mongoose.model('User');
-  const AssetType = mongoose.model('AssetType');
+  const Asset = mongoose.model("Asset");
+  const User = mongoose.model("User");
+  const AssetType = mongoose.model("AssetType");
 
   try {
     const companyId = req.admin.companyId;
@@ -756,7 +749,7 @@ exports.createBulkAssets = async (req, res) => {
     if (!plantId) {
       return res.status(400).json({
         success: false,
-        message: 'Please Select Plant',
+        message: "Please Select Plant",
       });
     }
 
@@ -766,11 +759,11 @@ exports.createBulkAssets = async (req, res) => {
     const assetsData = xlsx.utils.sheet_to_json(sheet);
 
     // Get unique assetTypeNames, employeeCodes, and serialNumbers
-    const assetTypeNames = [...new Set(assetsData.map((a) => a['AssetType']).filter(Boolean))];
+    const assetTypeNames = [...new Set(assetsData.map((a) => a["AssetType"]).filter(Boolean))];
     const employeeCodes = [
-      ...new Set(assetsData.flatMap((a) => [a['AssignedTo'], a['Responsible']]).filter(Boolean)),
+      ...new Set(assetsData.flatMap((a) => [a["AssignedTo"], a["Responsible"]]).filter(Boolean)),
     ];
-    const serialNumbers = [...new Set(assetsData.map((a) => a['SerialNumber']).filter(Boolean))];
+    const serialNumbers = [...new Set(assetsData.map((a) => a["SerialNumber"]).filter(Boolean))];
 
     // Fetch AssetTypes, Users, and Existing Assets with same serialNumbers
     const assetTypes = await AssetType.find({ companyId, plantId, name: { $in: assetTypeNames } });
@@ -796,65 +789,68 @@ exports.createBulkAssets = async (req, res) => {
     const isValidDate = (d) => !isNaN(new Date(d).getTime());
     const isFutureDate = (d) => new Date(d) > new Date();
 
-
     for (const row of assetsData) {
       try {
-        const assetTypeId = assetTypeMap[row['AssetType']];
-        const assignedToId = userMap[row['AssignedTo']] || null;
-        const responsibleId = userMap[row['Responsible']] || null;
-        const serial = row['SerialNumber'];
-        const PurchaseDate = row['PurchaseDate'];
-        const ExpiryDate = row['ExpiryDate']
+        const assetTypeId = assetTypeMap[row["AssetType"]];
+        const assignedToId = userMap[row["AssignedTo"]] || null;
+        const responsibleId = userMap[row["Responsible"]] || null;
+        const serial = row["SerialNumber"];
+        const PurchaseDate = row["PurchaseDate"];
+        const ExpiryDate = row["ExpiryDate"];
 
         if (!row.Name || !serial) {
-          failed.push({ row, reason: 'Missing required fields (Name, Serial Number)' });
+          failed.push({ row, reason: "Missing required fields (Name, Serial Number)" });
           continue;
         }
 
         if (existingSerialSet.has(serial)) {
-          failed.push({ row, reason: 'Duplicate Entry: Serial Number already exists in this plant' });
+          failed.push({
+            row,
+            reason: "Duplicate Entry: Serial Number already exists in this plant",
+          });
           continue;
         }
 
         if (!assetTypeId) {
-          failed.push({ row, reason: 'Invalid Asset Type' });
+          failed.push({ row, reason: "Invalid Asset Type" });
           continue;
         }
 
-        if (row['AssignedTo'] && !assignedToId) {
-          failed.push({ row, reason: 'AssignedTo employee not found in this plant' });
+        if (row["AssignedTo"] && !assignedToId) {
+          failed.push({ row, reason: "AssignedTo employee not found in this plant" });
           continue;
         }
 
-        if (row['Responsible'] && !responsibleId) {
-          failed.push({ row, reason: 'Responsible: Employee not found in this plant' });
+        if (row["Responsible"] && !responsibleId) {
+          failed.push({ row, reason: "Responsible: Employee not found in this plant" });
           continue;
         }
 
         let purchaseDateObj = null;
         if (PurchaseDate) {
-          const parsedPurchaseDate = typeof PurchaseDate === 'number' ? excelDateToJSDate(PurchaseDate) : new Date(PurchaseDate);
+          const parsedPurchaseDate =
+            typeof PurchaseDate === "number" ? excelDateToJSDate(PurchaseDate) : new Date(PurchaseDate);
           if (!isValidDate(parsedPurchaseDate)) {
-            failed.push({ row, reason: 'Invalid Purchase Date format' });
+            failed.push({ row, reason: "Invalid Purchase Date format" });
             continue;
           }
           if (isFutureDate(parsedPurchaseDate)) {
-            failed.push({ row, reason: 'Purchase Date cannot be in the future' });
+            failed.push({ row, reason: "Purchase Date cannot be in the future" });
             continue;
           }
           purchaseDateObj = parsedPurchaseDate;
         }
 
         let expiryDateObj = null;
-
         if (ExpiryDate) {
-          const parsedExpiryDate = typeof ExpiryDate === 'number' ? excelDateToJSDate(ExpiryDate) : new Date(ExpiryDate);
+          const parsedExpiryDate =
+            typeof ExpiryDate === "number" ? excelDateToJSDate(ExpiryDate) : new Date(ExpiryDate);
           if (!isValidDate(parsedExpiryDate)) {
-            failed.push({ row, reason: 'Invalid Expiry Date format' });
+            failed.push({ row, reason: "Invalid Expiry Date format" });
             continue;
           }
           if (!isFutureDate(parsedExpiryDate)) {
-            failed.push({ row, reason: 'Expiry Date must be a future date' });
+            failed.push({ row, reason: "Expiry Date must be a future date" });
             continue;
           }
           expiryDateObj = parsedExpiryDate;
@@ -863,14 +859,14 @@ exports.createBulkAssets = async (req, res) => {
         const newAsset = new Asset({
           name: row.Name,
           serialNumber: serial,
-          description: row.Description || '',
-          status: row.Status || 'Available',
+          description: row.Description || "",
+          status: row.Status || "Available",
           assignedTo: assignedToId,
           responsible: responsibleId,
           purchaseDate: purchaseDateObj,
           expiryDate: expiryDateObj,
-          location: row.Location || '',
-          manufacturer: row.Manufacturer || '',
+          location: row.Location || "",
+          manufacturer: row.Manufacturer || "",
           assetType: assetTypeId,
           companyId,
           plantId,
@@ -882,6 +878,47 @@ exports.createBulkAssets = async (req, res) => {
 
         // Prevent further duplicates in this loop
         existingSerialSet.add(serial);
+
+        // -------- EMAILS --------
+        const assetLink = `${process.env.FRONTEND_URL}/asset/${newAsset._id}`;
+        const assetDetails = `Asset: ${newAsset.name} (SN: ${newAsset.serialNumber})`;
+
+        // Responsible email
+        if (responsibleId) {
+          const newRespUser = await User.findById(responsibleId);
+          if (newRespUser) {
+            const html = generateMasterTemplate({
+              ...assetTemplate.assetAssigned,
+              user_name: getFullName(newRespUser.employeeInfo),
+              event_name: "Asset Responsibility Assigned",
+              action: "Responsibility Assigned",
+              message_intro: "You have been designated as responsible for the following asset.",
+              actionlink: assetLink,
+              notes: assetDetails,
+              fallback_note: assetTemplate.assetAssigned.fallback_note,
+              actionbutton_text: assetTemplate.assetAssigned.actionbutton_text,
+              action_link: assetLink,
+            });
+            sendEmail(newRespUser.email, "Asset Responsibility Assigned", html);
+          }
+        }
+
+        // AssignedTo email
+        if (assignedToId) {
+          const assignedUser = await User.findById(assignedToId);
+          if (assignedUser) {
+            const html = generateMasterTemplate({
+              ...assetTemplate.assetAssigned,
+              user_name: getFullName(assignedUser.employeeInfo),
+              actionlink: assetLink,
+              notes: assetDetails,
+              fallback_note: assetTemplate.assetAssigned.fallback_note,
+              actionbutton_text: assetTemplate.assetAssigned.actionbutton_text,
+              action_link: assetLink,
+            });
+            sendEmail(assignedUser.email, assetTemplate.assetAssigned.subject, html);
+          }
+        }
 
         // Activity Tracker
         activityTracker({
@@ -897,13 +934,15 @@ exports.createBulkAssets = async (req, res) => {
           oldData: null,
           newData: newAsset.toObject(),
         });
-
       } catch (err) {
         failed.push({ row, reason: err.message });
       }
     }
 
-    // ----- EMAILS -----
+    // ----- EMAIL TO ADMIN -----
+    const requestDate = new Date().toLocaleString();
+    const assetLink = `${process.env.FRONTEND_URL}/assets`;
+
     const emailHtmlToAdmin = generateMasterTemplate({
       ...assetTemplate.assetCreated,
       user_name: getFullName(req.admin.employeeInfo),
@@ -911,28 +950,27 @@ exports.createBulkAssets = async (req, res) => {
       action: assetTemplate.assetCreated.action,
       actionlink: assetLink,
       notes: `You have created ${created.length} assets in Bulk.
-              Creation Date: ${requestDate}
-            `,
+              Creation Date: ${requestDate}`,
       fallback_note: assetTemplate.assetCreated.fallback_note,
       actionbutton_text: assetTemplate.assetCreated.actionbutton_text,
-      action_link: assetLink
+      action_link: assetLink,
     });
 
     sendEmail(req.admin.email, assetTemplate.assetCreated.subject, emailHtmlToAdmin);
 
     return res.status(200).json({
       success: true,
-      message: 'Bulk asset upload complete',
+      message: "Bulk asset upload complete",
       logs: {
         created,
         failed,
       },
     });
   } catch (err) {
-    console.error('Bulk asset upload failed:', err);
+    console.error("Bulk asset upload failed:", err);
     return res.status(500).json({
       success: false,
-      message: 'Internal server error',
+      message: "Internal server error",
     });
   } finally {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
