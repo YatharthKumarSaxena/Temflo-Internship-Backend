@@ -280,37 +280,60 @@ exports.addAsset = async (req, res) => {
 
     sendEmail(req.admin.email, assetTemplate.assetCreated.subject, emailHtmlToAdmin);
 
-    if(finalStatus === "Assigned"){
-      const assignedUser = await User.findOne({_id: assignedTo});
-      const emailHtmlToAssigned = generateMasterTemplate({
-        ...assetTemplate.assetAssigned,
-        user_name: getFullName(assignedUser.employeeInfo),
-        event_name: assetTemplate.assetAssigned.event_name,
-        action: assetTemplate.assetAssigned.action,
-        actionlink: assetLink,
-        notes: `${assetDetails}`,
-        fallback_note: assetTemplate.assetAssigned.fallback_note,
-        actionbutton_text: assetTemplate.assetAssigned.actionbutton_text,
-        action_link: assetLink
-      });
-      sendEmail(assignedUser.email, assetTemplate.assetAssigned.subject, emailHtmlToAssigned);
+    if (cleanResponsible) {
+      const responsibleUser = await User.findOne({ _id: responsible });
+      if (responsibleUser) { // ✅ Null check added
+        const emailHtmlToResponsible = generateMasterTemplate({
+          ...assetTemplate.assetAssigned,
+          user_name: getFullName(responsibleUser.employeeInfo),
+          event_name: "Asset Responsibility Assigned",
+          action: "Responsibility Assigned",
+          message_intro: 'You have been designated as responsible for the following asset.',
+          actionlink: assetLink,
+          notes: `${assetDetails}`,
+          fallback_note: assetTemplate.assetAssigned.fallback_note,
+          actionbutton_text: assetTemplate.assetAssigned.actionbutton_text,
+          action_link: assetLink
+        });
+        sendEmail(responsibleUser.email, "Asset Responsibility Assigned", emailHtmlToResponsible);
+      }
     }
 
-    if(cleanResponsible){
-      const responsibleUser = await User.findOne({ _id: responsible });
-      const emailHtmlToResponsible = generateMasterTemplate({
-        ...assetTemplate.assetAssigned,
-        user_name: getFullName(responsibleUser.employeeInfo),
-        event_name: "Asset Responsibility Assigned",
-        action: "Responsibility Assigned",
-        message_intro: 'You have been designated as responsible for the following asset.',
-        actionlink: assetLink,
-        notes: `${assetDetails}`,
-        fallback_note: assetTemplate.assetAssigned.fallback_note,
-        actionbutton_text: assetTemplate.assetAssigned.actionbutton_text,
-        action_link: assetLink
-      });
-      sendEmail(responsibleUser.email, "Asset Responsibility Assigned", emailHtmlToResponsible);
+    if (finalStatus === "Assigned") {
+      const assignedUser = await User.findOne({ _id: assignedTo });
+      if (assignedUser) { // ✅ Null check added
+        const emailHtmlToAssigned = generateMasterTemplate({
+          ...assetTemplate.assetAssigned,
+          user_name: getFullName(assignedUser.employeeInfo),
+          event_name: assetTemplate.assetAssigned.event_name,
+          action: assetTemplate.assetAssigned.action,
+          actionlink: assetLink,
+          notes: `${assetDetails}`,
+          fallback_note: assetTemplate.assetAssigned.fallback_note,
+          actionbutton_text: assetTemplate.assetAssigned.actionbutton_text,
+          action_link: assetLink
+        });
+        sendEmail(assignedUser.email, assetTemplate.assetAssigned.subject, emailHtmlToAssigned);
+
+        if (cleanResponsible) {
+          const responsibleUser = await User.findOne({ _id: responsible });
+          if (responsibleUser) { // ✅ Null check added
+            const emailHtmlToResponsible = generateMasterTemplate({
+              ...assetTemplate.assetAssigned,
+              user_name: getFullName(responsibleUser.employeeInfo),
+              event_name: assetTemplate.assetAssigned.event_name,
+              action: assetTemplate.assetAssigned.action,
+              message_intro: `Your Asset has been assigned by Admin to Employee Id: ${assignedUser._id}`,
+              actionlink: assetLink,
+              notes: `${assetDetails}`,
+              fallback_note: assetTemplate.assetAssigned.fallback_note,
+              actionbutton_text: assetTemplate.assetAssigned.actionbutton_text,
+              action_link: assetLink
+            });
+            sendEmail(responsibleUser.email, "Inform Responsible about Asset Assignment", emailHtmlToResponsible);
+          }
+        }
+      }
     }
 
     return res.status(200).json({
@@ -499,189 +522,198 @@ exports.updateAsset = async (req, res) => {
     const assetId = req.params.id;
     const updateData = { ...req.body };
 
-    // Clean up empty string values for ObjectId fields to prevent casting errors
-    const objectIdFields = ['assetType', 'assignedTo', 'responsible'];
-    objectIdFields.forEach((field) => {
-      if (
-        updateData[field] === '' ||
-        updateData[field] === null ||
-        updateData[field] === undefined
-      ) {
-        if (field === 'assetType') {
-          delete updateData[field]; // required, don't update if empty
-        } else {
-          updateData[field] = null; // optional fields set to null
-        }
+    // Clean up ObjectId fields
+    ['assetType', 'assignedTo', 'responsible'].forEach((field) => {
+      if (!updateData[field]) {
+        field === 'assetType' ? delete updateData[field] : updateData[field] = null;
       }
     });
 
-    // Remove plantId from updateData since it shouldn't be updated
     delete updateData.plantId;
 
-    // Fetch the existing asset
-    const existingAsset = await Asset.findOne({
-      companyId: req.admin.companyId,
-      _id: assetId,
-    });
+    const existingAsset = await Asset.findOne({ companyId: req.admin.companyId, _id: assetId });
+    if (!existingAsset) return res.status(404).json({ success: false, message: 'Asset not found' });
 
-    if (!existingAsset) {
-      return res.status(404).json({ success: false, message: 'Asset not found' });
-    }
+    const assetLink = `https://yourdomain.com/assets/${existingAsset._id}`;
+    const assetDetails = `Asset Name: ${existingAsset.name}\nAsset ID: ${existingAsset._id}\nSerial Number: ${existingAsset.serialNumber || 'N/A'}`;
 
-    if(req.body.responsible){
-      if(existingAsset.responsible){
-        const responsibleUser = await User.findOne({ _id: existingAsset.responsible });
-        const emailHtmlToResponsible = generateMasterTemplate({
+    // Handle Responsible change
+    if (req.body.responsible && String(req.body.responsible) !== String(existingAsset.responsible)) {
+      // old responsible
+      if (existingAsset.responsible) {
+        const oldRespUser = await User.findById(existingAsset.responsible);
+        if (oldRespUser) {
+          const html = generateMasterTemplate({
+            ...assetTemplate.assetUnassigned,
+            user_name: getFullName(oldRespUser.employeeInfo),
+            event_name: "Asset Responsibility Unassigned",
+            action: "Responsibility Unassigned",
+            message_intro: 'You have been unassigned from responsible designation for the following asset.',
+            actionlink: assetLink,
+            notes: assetDetails,
+            fallback_note: assetTemplate.assetUnassigned.fallback_note,
+            actionbutton_text: assetTemplate.assetUnassigned.actionbutton_text,
+            action_link: assetLink
+          });
+          sendEmail(oldRespUser.email, "Asset Responsibility Unassigned", html);
+        }
+      }
+      // new responsible
+      const newRespUser = await User.findById(req.body.responsible);
+      if (newRespUser) {
+        const html = generateMasterTemplate({
           ...assetTemplate.assetAssigned,
-          user_name: getFullName(responsibleUser.employeeInfo),
-          event_name: "Asset Responsibility Unassigned",
-          action: "Responsibility Unassigned",
-          message_intro: 'You have been unassigned from responsible designation for the following asset.',
+          user_name: getFullName(newRespUser.employeeInfo),
+          event_name: "Asset Responsibility Assigned",
+          action: "Responsibility Assigned",
+          message_intro: 'You have been designated as responsible for the following asset.',
           actionlink: assetLink,
-          notes: `${assetDetails}`,
+          notes: assetDetails,
           fallback_note: assetTemplate.assetAssigned.fallback_note,
           actionbutton_text: assetTemplate.assetAssigned.actionbutton_text,
           action_link: assetLink
         });
-        sendEmail(responsibleUser.email, "Asset Responsibility Unassigned", emailHtmlToResponsible);
+        sendEmail(newRespUser.email, "Asset Responsibility Assigned", html);
       }
-      const responsibleUser = await User.findOne({ _id: req.body.responsible });
-      const emailHtmlToResponsible = generateMasterTemplate({
-        ...assetTemplate.assetAssigned,
-        user_name: getFullName(responsibleUser.employeeInfo),
-        event_name: "Asset Responsibility Assigned",
-        action: "Responsibility Assigned",
-        message_intro: 'You have been designated as responsible for the following asset.',
-        actionlink: assetLink,
-        notes: `${assetDetails}`,
-        fallback_note: assetTemplate.assetAssigned.fallback_note,
-        actionbutton_text: assetTemplate.assetAssigned.actionbutton_text,
-        action_link: assetLink
-      });
-      sendEmail(responsibleUser.email, "Asset Responsibility Assigned", emailHtmlToResponsible);
     }
 
     const wasAssignedTo = existingAsset.assignedTo;
     const isAssignedTo = updateData.assignedTo;
 
-    const assetLink = `https://yourdomain.com/assets/${existingAsset._id}`;
-    const assetDetails = `
-      Asset Name: ${existingAsset.name}
-      Asset ID: ${existingAsset._id}
-      Serial Number: ${existingAsset.serialNumber || 'N/A'}
-    `;
+    // Auto status updates
+    if (!wasAssignedTo && isAssignedTo) updateData.status = 'Assigned';
+    else if (wasAssignedTo && !isAssignedTo && existingAsset.status === 'Assigned') updateData.status = 'Available';
 
-    // Handle auto status updates based on assignment
-    if (!wasAssignedTo && isAssignedTo) {
-      updateData.status = 'Assigned';
-      // Send email to newly assigned user
-      const assignedUser = await User.findOne({ _id: isAssignedTo });
-      if (assignedUser) {
-        const emailHtmlToAssigned = generateMasterTemplate({
-          ...assetTemplate.assetAssigned,
-          user_name: getFullName(assignedUser.employeeInfo),
-          event_name: assetTemplate.assetAssigned.event_name,
-          action: assetTemplate.assetAssigned.action,
-          actionlink: assetLink,
-          notes: `${assetDetails}`,
-          fallback_note: assetTemplate.assetAssigned.fallback_note,
-          actionbutton_text: assetTemplate.assetAssigned.actionbutton_text,
-          action_link: assetLink
-        });
+    // Handle assignment/unassignment emails
+    if (updateData.status === 'Assigned' || updateData.status === 'Available') {
+      let msg, subject;
+      if (updateData.status === 'Assigned') {
+        subject = "Inform Responsible about Asset Assignment";
+        msg = `Your Asset has been transferred by the Admin From Employee Id: ${wasAssignedTo} to Employee Id: ${isAssignedTo}`;
+      } else {
+        subject = "Inform Responsible about Asset Unassignment";
+        msg = `Your Asset has been unassigned by the Admin From Employee Id: ${wasAssignedTo}. Now your Asset is no longer assigned to anyone.`;
+        updateData.assignedTo = null;
+      }
 
-        sendEmail(assignedUser.email, assetTemplate.assetAssigned.subject, emailHtmlToAssigned);
+      // Send to responsible
+      const respId = req.body.responsible || existingAsset.responsible;
+      if (respId) {
+        const respUser = await User.findById(respId);
+        if (respUser) {
+          const html = generateMasterTemplate({
+            ...(updateData.status === 'Assigned' ? assetTemplate.assetAssigned : assetTemplate.assetUnassigned),
+            user_name: getFullName(respUser.employeeInfo),
+            event_name: respUser ? assetTemplate.assetAssigned.event_name : assetTemplate.assetUnassigned.event_name,
+            action: respUser ? assetTemplate.assetAssigned.action : assetTemplate.assetUnassigned.action,
+            message_intro: msg,
+            actionlink: assetLink,
+            notes: assetDetails,
+            fallback_note: assetTemplate.assetAssigned.fallback_note,
+            actionbutton_text: assetTemplate.assetAssigned.actionbutton_text,
+            action_link: assetLink
+          });
+          sendEmail(respUser.email, subject, html);
+        }
       }
-      if (existingAsset.responsible) {
-        const responsible = req.body.responsible || existingAsset.responsible;
-        const responsibleUser = await User.findOne({ _id: responsible });
-        const emailHtmlToResponsible = generateMasterTemplate({
-          ...assetTemplate.assetAssigned,
-          user_name: getFullName(responsibleUser.employeeInfo),
-          event_name: assetTemplate.assetAssigned.event_name,
-          action: assetTemplate.assetAssigned.action,
-          message_intro: `Your Asset has been transferred by the Admin From Employee Id: ${wasAssignedTo} to Employee Id: ${isAssignedTo}.`,
-          actionlink: assetLink,
-          notes: `${assetDetails}`,
-          fallback_note: assetTemplate.assetAssigned.fallback_note,
-          actionbutton_text: assetTemplate.assetAssigned.actionbutton_text,
-          action_link: assetLink
-        });
-        sendEmail(responsibleUser.email, "Inform Responsible about Asset assignment", emailHtmlToResponsible);
-      }
-      const unassignedUser = await User.findOne({ _id: wasAssignedTo });
-      if(unassignedUser){
-        const emailHtmlToUnassigned = generateMasterTemplate({
-          ...assetTemplate.assetAssigned,
-          user_name: getFullName(unassignedUser.employeeInfo),
-          event_name: assetTemplate.assetUnassigned.event_name,
-          action: assetTemplate.assetUnassigned.action,
-          actionlink: assetLink,
-          notes: `${assetDetails}`,
-          fallback_note: assetTemplate.assetUnassigned.fallback_note,
-          actionbutton_text: assetTemplate.assetUnassigned.actionbutton_text,
-          action_link: assetLink
-        });
 
-        sendEmail(unassignedUser.email, assetTemplate.assetUnassigned.subject, emailHtmlToUnassigned);
+      // Send to previously assigned user if unassigned or reassigned
+      if (wasAssignedTo && wasAssignedTo !== isAssignedTo) {
+        const oldAssignedUser = await User.findById(wasAssignedTo);
+        if (oldAssignedUser) {
+          const html = generateMasterTemplate({
+            ...assetTemplate.assetUnassigned,
+            user_name: getFullName(oldAssignedUser.employeeInfo),
+            event_name: assetTemplate.assetUnassigned.event_name,
+            action: assetTemplate.assetUnassigned.action,
+            message_intro: 'Asset assignment has been updated.',
+            actionlink: assetLink,
+            notes: assetDetails,
+            fallback_note: assetTemplate.assetUnassigned.fallback_note,
+            actionbutton_text: assetTemplate.assetUnassigned.actionbutton_text,
+            action_link: assetLink
+          });
+          sendEmail(oldAssignedUser.email, assetTemplate.assetUnassigned.subject, html);
+        }
       }
-    } else if (wasAssignedTo && (!isAssignedTo || isAssignedTo === '') && existingAsset.status === 'Assigned') {
-      updateData.status = 'Available';
-      if (existingAsset.responsible) {
-        const responsible = req.body.responsible || existingAsset.responsible;
-        const responsibleUser = await User.findOne({ _id: responsible });
-        const emailHtmlToResponsible = generateMasterTemplate({
-          ...assetTemplate.assetUnassigned,
-          user_name: getFullName(responsibleUser.employeeInfo),
-          event_name: assetTemplate.assetUnassigned.event_name,
-          action: assetTemplate.assetUnassigned.action,
-          message_intro: `Your Asset has been unassigned by the Admin From Employee Id: ${wasAssignedTo}. Now your Asset is no longer assigned to anyone.`,
-          actionlink: assetLink,
-          notes: `${assetDetails}`,
-          fallback_note: assetTemplate.assetUnassigned.fallback_note,
-          actionbutton_text: assetTemplate.assetUnassigned.actionbutton_text,
-          action_link: assetLink
-        });
-        sendEmail(responsibleUser.email, "Inform Responsible about Asset Unassignment", emailHtmlToResponsible);
-      }
-      const unassignedUser = await User.findOne({ _id: wasAssignedTo });
-      if (unassignedUser) {
-        const emailHtmlToUnassigned = generateMasterTemplate({
-          ...assetTemplate.assetAssigned,
-          user_name: getFullName(unassignedUser.employeeInfo),
-          event_name: assetTemplate.assetUnassigned.event_name,
-          action: assetTemplate.assetUnassigned.action,
-          actionlink: assetLink,
-          notes: `${assetDetails}`,
-          fallback_note: assetTemplate.assetUnassigned.fallback_note,
-          actionbutton_text: assetTemplate.assetUnassigned.actionbutton_text,
-          action_link: assetLink
-        });
 
-        sendEmail(unassignedUser.email, assetTemplate.assetUnassigned.subject, emailHtmlToUnassigned);
+      // Send to newly assigned user if assigned
+      if (isAssignedTo) {
+        const newAssignedUser = await User.findById(isAssignedTo);
+        if (newAssignedUser) {
+          const html = generateMasterTemplate({
+            ...assetTemplate.assetAssigned,
+            user_name: getFullName(newAssignedUser.employeeInfo),
+            event_name: assetTemplate.assetAssigned.event_name,
+            action: assetTemplate.assetAssigned.action,
+            message_intro: 'You have been assigned this asset.',
+            actionlink: assetLink,
+            notes: assetDetails,
+            fallback_note: assetTemplate.assetAssigned.fallback_note,
+            actionbutton_text: assetTemplate.assetAssigned.actionbutton_text,
+            action_link: assetLink
+          });
+          sendEmail(newAssignedUser.email, assetTemplate.assetAssigned.subject, html);
+        }
       }
     }
 
-    if (updateData.status === 'Available') {
-      updateData.assignedTo = null;
+    // Handle Under Maintenance / Disposed
+    if (['Under Maintenance', 'Disposed'].includes(req.body.status)) {
+      // Admin always
+      const htmlToAdmin = generateMasterTemplate({
+        ...assetTemplate.assetStatusChange,
+        user_name: getFullName(req.admin.employeeInfo),
+        event_name: assetTemplate.assetStatusChange.event_name,
+        action: assetTemplate.assetStatusChange.action,
+        status: req.body.status,
+        message_intro: "You have updated the details of the following Asset successfully",
+        actionlink: assetLink,
+        notes: assetDetails,
+        fallback_note: assetTemplate.assetStatusChange.fallback_note,
+        actionbutton_text: assetTemplate.assetStatusChange.actionbutton_text,
+        action_link: assetLink
+      });
+      sendEmail(req.admin.email, assetTemplate.assetStatusChange.subject, htmlToAdmin);
+
+      if (req.body.status === 'Under Maintenance') {
+        const usersToNotify = [isAssignedTo || wasAssignedTo, req.body.responsible || existingAsset.responsible];
+        for (let userId of usersToNotify) {
+          if (userId) {
+            const user = await User.findById(userId);
+            if (user) {
+              const html = generateMasterTemplate({
+                ...assetTemplate.assetStatusChange,
+                user_name: getFullName(user.employeeInfo),
+                event_name: assetTemplate.assetStatusChange.event_name,
+                action: assetTemplate.assetStatusChange.action,
+                status: req.body.status,
+                actionlink: assetLink,
+                notes: assetDetails,
+                fallback_note: assetTemplate.assetStatusChange.fallback_note,
+                actionbutton_text: assetTemplate.assetStatusChange.actionbutton_text,
+                action_link: assetLink
+              });
+              sendEmail(user.email, assetTemplate.assetStatusChange.subject, html);
+            }
+          }
+        }
+      }
     }
 
-    // Prepare oldData and newData only for changed fields
-    const oldData = {};
-    const newData = {};
-    oldData._id = req.params.id;
-    Object.keys(updateData).forEach((key) => {
+    // Update oldData/newData
+    const oldData = { _id: assetId }, newData = {};
+    Object.keys(updateData).forEach(key => {
       if (updateData[key] !== existingAsset[key]) {
         oldData[key] = existingAsset[key];
         newData[key] = updateData[key];
-        existingAsset[key] = updateData[key]; // update existingAsset object
+        existingAsset[key] = updateData[key];
       }
     });
 
-    // Save updated asset
     await existingAsset.save();
 
-    // Activity Tracker
-    if (Object.keys(newData).length > 0) {
+    if (Object.keys(newData).length) {
       activityTracker({
         userId: req.admin._id,
         companyId: req.admin.companyId,
@@ -692,16 +724,12 @@ exports.updateAsset = async (req, res) => {
         modelAffected: [MODEL_AFFECTED.model_asset],
         eventType: ASSET_UPDATED,
         actionDone: ACTIONS.update,
-        oldData: oldData,
-        newData: newData,
+        oldData,
+        newData,
       });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: 'Asset updated successfully',
-      result: existingAsset,
-    });
+    return res.status(200).json({ success: true, message: 'Asset updated successfully', result: existingAsset });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Server error' });
@@ -874,6 +902,23 @@ exports.createBulkAssets = async (req, res) => {
         failed.push({ row, reason: err.message });
       }
     }
+
+    // ----- EMAILS -----
+    const emailHtmlToAdmin = generateMasterTemplate({
+      ...assetTemplate.assetCreated,
+      user_name: getFullName(req.admin.employeeInfo),
+      event_name: assetTemplate.assetCreated.event_name,
+      action: assetTemplate.assetCreated.action,
+      actionlink: assetLink,
+      notes: `You have created ${created.length} assets in Bulk.
+              Creation Date: ${requestDate}
+            `,
+      fallback_note: assetTemplate.assetCreated.fallback_note,
+      actionbutton_text: assetTemplate.assetCreated.actionbutton_text,
+      action_link: assetLink
+    });
+
+    sendEmail(req.admin.email, assetTemplate.assetCreated.subject, emailHtmlToAdmin);
 
     return res.status(200).json({
       success: true,
@@ -1088,59 +1133,64 @@ exports.approveAssetTransfer = async (req, res) => {
       Date: ${approveDate}
     `;
 
-    const resPerson = await User.findOne({_id: asset.responsible});
+    const resPerson = await User.findOne({ _id: asset.responsible });
+    if (resPerson) { // ✅ Null check added
+      sendEmail(
+        resPerson.email,
+        "Inform Responsible about Asset Reassignment",
+        generateMasterTemplate({
+          ...assetTemplate.assetTransferApproved,
+          message_intro: "Your asset has been transfer by the Admin.",
+          user_name: getFullName(resPerson.employeeInfo),
+          notes: resMsg,
+          actionlink: assetLink,
+          fallback_note: assetTemplate.assetTransferApproved.fallback_note,
+          actionbutton_text: assetTemplate.assetTransferApproved.actionbutton_text,
+          action_link: assetLink
+        })
+      );
+    }
 
-    sendEmail(
-      transfer.fromEmployee.email,
-      assetTemplate.assetTransferApproved.subject,
-      generateMasterTemplate({
-        user_name: getFullName(transfer.fromEmployee.employeeInfo),
-        ...assetTemplate.assetTransferApproved,
-        notes: fromEmployeeMsg, 
-        actionlink: assetLink,
-        fallback_note: assetTemplate.assetTransferApproved.fallback_note,
-        actionbutton_text: assetTemplate.assetTransferApproved.actionbutton_text,
-        action_link: assetLink 
-      })
-    );
+    if (transfer.fromEmployee) { // ✅ Null check added
+      sendEmail(
+        transfer.fromEmployee.email,
+        assetTemplate.assetTransferApproved.subject,
+        generateMasterTemplate({
+          user_name: getFullName(transfer.fromEmployee.employeeInfo),
+          ...assetTemplate.assetTransferApproved,
+          notes: fromEmployeeMsg,
+          actionlink: assetLink,
+          fallback_note: assetTemplate.assetTransferApproved.fallback_note,
+          actionbutton_text: assetTemplate.assetTransferApproved.actionbutton_text,
+          action_link: assetLink
+        })
+      );
+    }
 
-    sendEmail(
-      transfer.toEmployee.email,
-      assetTemplate.assetTransferApproved.subject,
-      generateMasterTemplate({
-        user_name: getFullName(transfer.toEmployee.employeeInfo),
-        ...assetTemplate.assetTransferApproved, 
-        notes: toEmployeeMsg, 
-        actionlink: assetLink,
-        fallback_note: assetTemplate.assetTransferApproved.fallback_note,
-        actionbutton_text: assetTemplate.assetTransferApproved.actionbutton_text,
-        action_link: assetLink 
-      })
-    );
+    if (transfer.toEmployee) { // ✅ Null check added
+      sendEmail(
+        transfer.toEmployee.email,
+        assetTemplate.assetTransferApproved.subject,
+        generateMasterTemplate({
+          user_name: getFullName(transfer.toEmployee.employeeInfo),
+          ...assetTemplate.assetTransferApproved,
+          notes: toEmployeeMsg,
+          actionlink: assetLink,
+          fallback_note: assetTemplate.assetTransferApproved.fallback_note,
+          actionbutton_text: assetTemplate.assetTransferApproved.actionbutton_text,
+          action_link: assetLink
+        })
+      );
+    }
 
     sendEmail(
       req.admin.email,
       assetTemplate.assetTransferApproved.subject,
       generateMasterTemplate({
-        ...assetTemplate.assetTransferApproved, 
+        ...assetTemplate.assetTransferApproved,
         message_intro: "You have approved this asset transfer.",
         user_name: getFullName(req.admin.employeeInfo),
-        notes: adminMsg, 
-        actionlink: assetLink,
-        fallback_note: assetTemplate.assetTransferApproved.fallback_note,
-        actionbutton_text: assetTemplate.assetTransferApproved.actionbutton_text,
-        action_link: assetLink 
-      })
-    );
-
-    sendEmail(
-      resPerson.email,
-      "Inform Responsible about Asset Reassignment",
-      generateMasterTemplate({
-        ...assetTemplate.assetTransferApproved,
-        message_intro: "Your asset has been transfer by the Admin.",
-        user_name: getFullName(resPerson.employeeInfo),
-        notes: resMsg,
+        notes: adminMsg,
         actionlink: assetLink,
         fallback_note: assetTemplate.assetTransferApproved.fallback_note,
         actionbutton_text: assetTemplate.assetTransferApproved.actionbutton_text,
@@ -1267,33 +1317,37 @@ exports.rejectAssetTransfer = async (req, res) => {
   Date: ${rejectDate}
 `;
 
-    sendEmail(
-      transfer.fromEmployee.email,
-      assetTemplate.assetTransferRejected.subject,
-      generateMasterTemplate({ 
-        ...assetTemplate.assetTransferRejected, 
-        user_name: getFullName(transfer.fromEmployee.employeeInfo),
-        notes: fromEmployeeMsg,
-        actionlink: assetLink,
-        fallback_note: assetTemplate.assetTransferRejected.fallback_note,
-        actionbutton_text: assetTemplate.assetTransferRejected.actionbutton_text,
-        action_link: assetLink 
-      })
-    );
+    if (transfer.fromEmployee) { // ✅ Null check added
+      sendEmail(
+        transfer.fromEmployee.email,
+        assetTemplate.assetTransferRejected.subject,
+        generateMasterTemplate({
+          ...assetTemplate.assetTransferRejected,
+          user_name: getFullName(transfer.fromEmployee.employeeInfo),
+          notes: fromEmployeeMsg,
+          actionlink: assetLink,
+          fallback_note: assetTemplate.assetTransferRejected.fallback_note,
+          actionbutton_text: assetTemplate.assetTransferRejected.actionbutton_text,
+          action_link: assetLink
+        })
+      );
+    }
 
-    sendEmail(
-      transfer.toEmployee.email,
-      assetTemplate.assetTransferRejected.subject,
-      generateMasterTemplate({ 
-        ...assetTemplate.assetTransferRejected, 
-        user_name: getFullName(transfer.toEmployee.employeeInfo),
-        notes: toEmployeeMsg,
-        actionlink: assetLink,
-        fallback_note: assetTemplate.assetTransferRejected.fallback_note,
-        actionbutton_text: assetTemplate.assetTransferRejected.actionbutton_text,
-        action_link: assetLink 
-      })
-    );
+    if (transfer.toEmployee) { // ✅ Null check added
+      sendEmail(
+        transfer.toEmployee.email,
+        assetTemplate.assetTransferRejected.subject,
+        generateMasterTemplate({
+          ...assetTemplate.assetTransferRejected,
+          user_name: getFullName(transfer.toEmployee.employeeInfo),
+          notes: toEmployeeMsg,
+          actionlink: assetLink,
+          fallback_note: assetTemplate.assetTransferRejected.fallback_note,
+          actionbutton_text: assetTemplate.assetTransferRejected.actionbutton_text,
+          action_link: assetLink
+        })
+      );
+    }
 
     sendEmail(
       req.admin.email,

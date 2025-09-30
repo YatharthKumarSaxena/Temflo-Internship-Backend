@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { USER_DELETED } = require("@/config/activity.enums");
+const { ACCOUNT_ACTIVATED, ACCOUNT_DEACTIVATED } = require("@/config/activity.enums");
 const { errorMessage, throwInternalServerError } = require("@/config/error-handler.config");
 const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
@@ -35,6 +35,8 @@ const remove = async (req, res) => {
 
     const newRemovedStatus = removed;
 
+    const oldData = user;
+
     user.removed = newRemovedStatus;
     await user.save();
 
@@ -59,7 +61,16 @@ const remove = async (req, res) => {
       const html = generateMasterTemplate(emailConfig);
       sendEmail(user.email, emailConfig.subject, html); // fire-and-forget
     }
-    
+
+    let event,action;
+    if(removed){
+      event = ACCOUNT_DEACTIVATED;
+      action = ACTIONS.delete;
+    }
+    else{
+      event = ACCOUNT_ACTIVATED;
+      action = ACTIONS.create;
+    }
     // Activity Tracker logging
     activityTracker({
       userId: req.admin._id, // admin ka Mongo ID as userId
@@ -69,12 +80,9 @@ const remove = async (req, res) => {
       subModuleAffected: SUBMODULE.user,
       fileAffected: FILE.file_user_remove,
       modelAffected: [MODEL_AFFECTED.model_user],
-      eventType: USER_DELETED,
-      actionDone: ACTIONS.delete,
-      oldData: {
-        userId: id,
-        removed: !removed
-      },
+      eventType: event,
+      actionDone: action,
+      oldData: oldData,
       newData: {
         removed: removed
       }

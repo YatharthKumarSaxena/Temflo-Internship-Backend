@@ -138,7 +138,6 @@ exports.requestAssetTransfer = async (req, res) => {
       removed: false,
     });
 
-
     const assetDetails = `
       Asset Name: ${asset.name}
       Asset ID: ${asset._id}
@@ -203,12 +202,18 @@ exports.requestAssetTransfer = async (req, res) => {
       action_link: assetLink 
     });
 
-    const adminEmail = adminUser?.email || process.env.DEFAULT_ADMIN_EMAIL;
+    // Send emails safely with null checks
+    if (fromEmployee) { // ✅ Null check added
+      sendEmail(fromEmployee.email, assetTemplate.assetTransferRequested.subject, emailHtmlToRequester);
+    }
 
-    // Send emails
-    sendEmail(fromEmployee.email, assetTemplate.assetTransferRequested.subject, emailHtmlToRequester);
-    sendEmail(toEmployee.email, assetTemplate.assetTransferRequested.subject, emailHtmlToTarget);
-    sendEmail(adminEmail, assetTemplate.assetTransferRequested.subject, emailHtmlToAdmin);
+    if (toEmployee) { // ✅ Null check added
+      sendEmail(toEmployee.email, assetTemplate.assetTransferRequested.subject, emailHtmlToTarget);
+    }
+
+    if (adminUser?.email) { // ✅ Null check added
+      sendEmail(adminUser.email, assetTemplate.assetTransferRequested.subject, emailHtmlToAdmin);
+    }
 
     // Activity tracker for creation
     activityTracker({
