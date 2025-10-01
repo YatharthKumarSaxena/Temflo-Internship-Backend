@@ -8,6 +8,7 @@ const { OK } = require('@/config/httpStatus.config');
 const { employeeTemplate } = require("@/config/emailTemplates/employeeTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const updateCompanyDetails = async (req, res) => {
   try {
@@ -53,35 +54,11 @@ const updateCompanyDetails = async (req, res) => {
 
     logWithTime(`✅ 🎯 Company Details Updated Successfully 🚀`);
 
-    // Old data from oldAdmin
-    const oldData = {
-      legalStatus: oldAdmin.legalStatus,
-      tan: oldAdmin.tan,
-      pan: oldAdmin.pan,
-      year: oldAdmin.year,
-      name: oldAdmin.name,
-      address: oldAdmin.address,
-      city: oldAdmin.city,
-      state: oldAdmin.state,
-      country: oldAdmin.country,
-      pinCode: oldAdmin.pinCode,
-      phoneNumber: oldAdmin.phoneNumber
-    };
+    // Complete snapshot of old data
+    const oldData = { ...oldAdmin.toObject() };
 
     // New data from request body (already updated in DB)
-    const newData = {
-      legalStatus,
-      tan,
-      pan,
-      year,
-      name,
-      address,
-      city,
-      state,
-      country,
-      pinCode,
-      phoneNumber
-    };
+    const newData = { ...oldAdmin.toObject(), ...req.body };
 
   // After activityTracker logging, before return response
 if (req.admin.email) { // ensure admin email exists
@@ -111,6 +88,7 @@ if (req.admin.email) { // ensure admin email exists
       modelAffected: [MODEL_AFFECTED.model_user],
       eventType: COMPANY_DETAILS_UPDATED,
       actionDone: ACTIONS.update,
+      description: `${getFullName(req.admin.employeeInfo)} has updated the company details`,
       oldData: oldData,
       newData: newData
     });

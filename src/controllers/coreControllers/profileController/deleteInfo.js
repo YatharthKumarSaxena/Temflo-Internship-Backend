@@ -5,6 +5,7 @@ const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { OK } = require('@/config/httpStatus.config');
+const { getFullName } = require("@/utils/commonFunctions");
 
 const deleteInfo = async (req, res, next) => {
   const { infoType, deleteId } = req.params;
@@ -21,9 +22,6 @@ const deleteInfo = async (req, res, next) => {
     if (!user) {
       return throwDBResourceNotFoundError(res, `${infoType === 'degreeInfo' ? 'Degree' : 'Experience'}`);
     }
-
-    // Find the item to delete for oldData logging
-    const itemToDelete = user[infoType].find(item => item._id.toString() === deleteId);
 
     // Now delete the item
     const updatedUser = await User.findOneAndUpdate(
@@ -45,8 +43,9 @@ const deleteInfo = async (req, res, next) => {
       modelAffected: [MODEL_AFFECTED.model_user],
       eventType: PROFILE_DELETED,
       actionDone: ACTIONS.delete,
-      oldData: itemToDelete,
-      newData: null
+      oldData: { [infoType]: user[infoType] },
+      newData: { [infoType]: updatedUser[infoType] },
+      description: `${getFullName(req.admin.employeeInfo)} has deleted its ${infoType === 'degreeInfo' ? 'Degree' : 'Experience'}`
     });
 
     return res.status(OK).json({

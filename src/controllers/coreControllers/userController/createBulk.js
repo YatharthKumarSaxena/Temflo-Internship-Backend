@@ -9,6 +9,7 @@ const { employeeTemplate } = require("@/config/emailTemplates/employeeTemplate")
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 const { generateNanoId } = require('@/utils/idGenerator');
+const { getFullName } = require("@/utils/commonFunctions");
 
 const createBulk = async (req, res) => {
   try {
@@ -129,7 +130,7 @@ const createBulk = async (req, res) => {
         
               const emailConfig = {
                 ...employeeTemplate.employeeCreation,
-                user_name: emp.Name || "User",
+                user_name: getFullName(savedUser.employeeInfo),
                 actionlink: verificationLink, // dynamic verification link
                 action_link: verificationLink,
               };
@@ -160,7 +161,8 @@ for (const user of success) {
     eventType: USERS_CREATED_BULK,
     actionDone: ACTIONS.create,
     oldData: null,
-    newData: user
+    newData: user,
+    description: `User (in Bulk User Creation) created by ${getFullName(req.admin.employeeInfo)}: (Email: ${user.email}, EmployeeCode: ${user.employeeCode})`
   });
 }
 

@@ -7,6 +7,7 @@ const { employeeTemplate } = require("@/config/emailTemplates/employeeTemplate")
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 const { generateNanoId } = require('@/utils/idGenerator');
+const {getFullName} = require("@/utils/commonFunctions");
 
 const createUser = async (req, res) => {
   try {
@@ -96,7 +97,8 @@ const createUser = async (req, res) => {
       eventType: USER_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData:  userResult
+      newData:  userResult,
+      description: `User created by ${getFullName(req.admin.employeeInfo)}: (Email: ${userResult.email}, EmployeeCode: ${userResult.employeeCode})`
     });
     
     return res.status(200).json({

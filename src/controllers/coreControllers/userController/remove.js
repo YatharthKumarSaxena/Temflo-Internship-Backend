@@ -83,7 +83,9 @@ const remove = async (req, res) => {
       eventType: event,
       actionDone: action,
       oldData: oldData,
+      description: `User ${getFullName(user.employeeInfo)} was ${removed ? 'deactivated' : 'activated'} by ${getFullName(req.admin.employeeInfo)}`,
       newData: {
+        notes: "Rest fields are Same as Old Data only Removed field is updated",
         removed: removed
       }
     });
