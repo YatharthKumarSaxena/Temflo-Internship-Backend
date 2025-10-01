@@ -4,26 +4,33 @@ const { errorMessage, throwInternalServerError, throwDBResourceNotFoundError } =
 const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const update = async (Model, req, res) => {
   try {
     const companyId = req.admin.companyId;
-    const { description } = req.body;
 
-    // single query: update + return old document
-    const oldDepartment = await Model.findOneAndUpdate(
-      { _id: req.params.id, companyId: companyId },
-      { description },
-      { new: false }  // return pre-update document
-    );
+    // fetch old document before update
+    const oldDepartment = await Model.findOne(
+      { _id: req.params.id, companyId: companyId }
+    ).lean();
 
     if (!oldDepartment) {
       return throwDBResourceNotFoundError(res, "Department");
     }
 
+    // update document
+    await Model.updateOne(
+      { _id: req.params.id, companyId: companyId },
+      { description: req.body.description }
+    );
+
+    // fetch updated document for full snapshot
+    const updatedDepartment = await Model.findById(req.params.id).lean();
+
     logWithTime(`✅ 🎯 Department Updated Successfully 🚀`);
 
-    // Activity Tracker logging
+    // Activity Tracker logging with full snapshots
     activityTracker({
       userId: req.admin._id,
       companyId: companyId,
@@ -34,13 +41,14 @@ const update = async (Model, req, res) => {
       modelAffected: [MODEL_AFFECTED.model_department],
       eventType: DEPARTMENT_UPDATED,
       actionDone: ACTIONS.update,
-      oldData: { _id: req.params.id, description: oldDepartment.description },
-      newData: { description },
+      oldData: oldDepartment,
+      newData: updatedDepartment,
+      description: `Department '${oldDepartment.name}' updated by ${getFullName(req.admin.employeeInfo)} for Company ID: ${companyId}`
     });
 
     return res.status(OK).json({
       success: true,
-      result: { ...oldDepartment.toObject(), description }, // updated version return
+      result: updatedDepartment,
       message: "Department updated successfully",
     });
 

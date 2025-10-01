@@ -1,6 +1,7 @@
 const { BUSINESS_AREA_REMOVED } = require("@/config/activity.enums");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const remove = async (Model, req, res) => {
   try {
@@ -34,7 +35,8 @@ const remove = async (Model, req, res) => {
       newData: {
         note: "All fields same as old data, Soft deletion is done",
         removed: true
-      }
+      },
+      description: `Business Area '${updatedBusinessArea.name}' removed by ${getFullName(req.admin.employeeInfo)} for Company ID: ${id}`
     });
 
     return res.status(200).json({

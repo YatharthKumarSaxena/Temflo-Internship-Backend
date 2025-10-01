@@ -15605,3 +15605,4 @@
 2025-10-01T02:31:54.405Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/create - User-Agent: unknown
 2025-10-01T02:33:53.071Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/create - User-Agent: unknown
 2025-10-01T02:34:15.362Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/create - User-Agent: unknown
+2025-10-01T12:54:29.623Z [INFO] All security headers present - IP: ::1 - URL: /api/login - User-Agent: unknown

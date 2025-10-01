@@ -4,6 +4,7 @@ const { errorMessage, throwInternalServerError, throwDBResourceNotFoundError } =
 const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const remove = async (Model, req, res) => {
   try {
@@ -36,7 +37,8 @@ const remove = async (Model, req, res) => {
       newData: { 
         note: "All fields same as old data, Soft deletion is done",
         removed: true 
-      }
+      },
+      description: `Department '${updatedDepartment.name}' removed by ${getFullName(req.admin.employeeInfo)} for Company ID: ${companyId}`
     });
 
     return res.status(OK).json({

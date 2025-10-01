@@ -1,10 +1,10 @@
-const { company } = require("@/locale/translation/en_us");
 const { OK } = require("@/config/httpStatus.config");
 const { GSTIN_CREATED } = require("@/config/activity.enums");
 const { errorMessage, throwInternalServerError } = require("@/config/error-handler.config");
 const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const create = async (Model, req, res) => {
   try {
@@ -30,6 +30,7 @@ const create = async (Model, req, res) => {
       modelAffected: [MODEL_AFFECTED.model_gstinNumber],
       eventType: GSTIN_CREATED,
       actionDone: ACTIONS.create,
+      description: `GSTIN Number created by ${getFullName(req.admin.employeeInfo)} for Company ID: ${req.admin.companyId}`,
       oldData: null,
       newData: result
     });

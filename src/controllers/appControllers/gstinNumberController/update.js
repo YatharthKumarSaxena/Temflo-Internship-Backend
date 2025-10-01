@@ -4,27 +4,31 @@ const { errorMessage, throwInternalServerError, throwDBResourceNotFoundError } =
 const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const update = async (Model, req, res) => {
   try {
     const companyId = req.admin.companyId;
-
     const { stateCode, gstinNumber } = req.body;
 
-    // Single query → get old doc + perform update
-    const oldGSTIN_Number = await Model.findOneAndUpdate(
-      { _id: req.params.id, companyId: companyId },
-      { stateCode, gstinNumber },
-      { new: false } // return OLD data
-    );
-
-    if (!oldGSTIN_Number) {
+    // fetch old document before update
+    const oldGSTIN = await Model.findOne({ _id: req.params.id, companyId: companyId }).lean();
+    if (!oldGSTIN) {
       return throwDBResourceNotFoundError(res, "GSTIN Number");
     }
 
-    logWithTime(`✅ 🎯 Document updated Successfully 🚀`);
+    // update document
+    await Model.updateOne(
+      { _id: req.params.id, companyId: companyId },
+      { stateCode, gstinNumber }
+    );
 
-    // Activity Tracker logging
+    // fetch updated document for full snapshot
+    const updatedGSTIN = await Model.findById(req.params.id).lean();
+
+    logWithTime(`✅ 🎯 GSTIN Number Updated Successfully 🚀`);
+
+    // Activity Tracker logging with full snapshots
     activityTracker({
       userId: req.admin._id,
       companyId: companyId,
@@ -35,20 +39,14 @@ const update = async (Model, req, res) => {
       modelAffected: [MODEL_AFFECTED.model_gstinNumber],
       eventType: GSTIN_UPDATED,
       actionDone: ACTIONS.update,
-      oldData: {
-        _id: req.params.id,
-        stateCode: oldGSTIN_Number.stateCode,
-        gstinNumber: oldGSTIN_Number.gstinNumber
-      },
-      newData: {
-        stateCode,
-        gstinNumber
-      }, // request body already has new values
+      oldData: oldGSTIN,
+      newData: updatedGSTIN,
+      description: `GSTIN Number '${oldGSTIN.gstinNumber}' updated by ${getFullName(req.admin.employeeInfo)} for Company ID: ${companyId}`
     });
 
     return res.status(OK).json({
       success: true,
-      result: { stateCode, gstinNumber }, // return new data for client clarity
+      result: updatedGSTIN,
       message: "GSTIN Number updated successfully",
     });
 

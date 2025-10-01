@@ -1,8 +1,7 @@
-const { company } = require("@/locale/translation/en_us");
 const { BUSINESS_AREA_CREATED } = require("@/config/activity.enums");
-const { OK } = require("@/config/httpStatus.config");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const create = async (Model, req, res) => {
   // Creating a new document in the collection
@@ -23,6 +22,7 @@ const create = async (Model, req, res) => {
     modelAffected: [MODEL_AFFECTED.model_company],
     eventType: BUSINESS_AREA_CREATED,
     actionDone: ACTIONS.create,
+    description: `Business Area created by ${getFullName(req.admin.employeeInfo)} for Company ID: ${req.admin.companyId}`,
     oldData: null,   // abhi optional rakha hai
     newData: result  // abhi ke liye add kar diya
   });
