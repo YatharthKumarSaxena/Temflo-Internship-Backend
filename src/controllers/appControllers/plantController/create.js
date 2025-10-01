@@ -40,6 +40,7 @@ const create = async (Model, req, res) => {
       modelAffected: [MODEL_AFFECTED.model_plant],
       eventType: PLANT_CREATED,
       actionDone: ACTIONS.create,
+      description: `Plant with Code '${result.plantCode}' created successfully by ${getFullName(req.admin.employeeInfo)}`,
       oldData: null,
       newData: result
     });
@@ -73,7 +74,7 @@ const create = async (Model, req, res) => {
         generateMasterTemplate({
           ...appTemplate.plantCreation,
           user_name: getFullName(emailPerson.employeeInfo),
-          message_intro: `A new plant has been created using your Email ID for the company ${owner.name}`,
+          message_intro: `A new plant has been created using your Email ID for the company ${req.admin.name}`,
           actionlink: plantLink,
           fallback_note: appTemplate.plantCreation.fallback_note,
           actionbutton_text: appTemplate.plantCreation.actionbutton_text,

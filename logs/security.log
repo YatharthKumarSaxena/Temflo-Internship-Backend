@@ -15601,3 +15601,7 @@
 2025-09-30T12:56:05.152Z [INFO] All security headers present - IP: ::1 - URL: /api/employee/update-info/68da3542dbbb3505330447af - User-Agent: unknown
 2025-09-30T12:57:22.704Z [INFO] All security headers present - IP: ::1 - URL: /api/employee/update-info/68da3542dbbb3505330447af - User-Agent: unknown
 2025-09-30T12:58:08.039Z [INFO] All security headers present - IP: ::1 - URL: /api/employee/update-info/68da3542dbbb3505330447af - User-Agent: unknown
+2025-10-01T02:31:45.197Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/create - User-Agent: unknown
+2025-10-01T02:31:54.405Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/create - User-Agent: unknown
+2025-10-01T02:33:53.071Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/create - User-Agent: unknown
+2025-10-01T02:34:15.362Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/create - User-Agent: unknown

@@ -2,6 +2,7 @@ const User = require('../../../models/userModels/User'); // import your Employee
 const { PLANT_REMOVED } = require("@/config/activity.enums");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const remove = async (Model, req, res) => {
   try {
@@ -22,7 +23,7 @@ const remove = async (Model, req, res) => {
     }
 
     // Soft delete employees under this Plant
-    await User.updateMany(
+    const userUpdateResult = await User.updateMany(
       { plantId: req.params.id, companyId: req.admin.companyId },
       { removed: true }
     );
@@ -37,6 +38,8 @@ const remove = async (Model, req, res) => {
       fileAffected: FILE.file_plant_remove,
       modelAffected: [MODEL_AFFECTED.model_plant, MODEL_AFFECTED.model_user],
       eventType: PLANT_REMOVED,
+      description: `Plant with Code '${updatedPlant.plantCode}' was soft deleted by ${getFullName(req.admin.employeeInfo)}. 
+${userUpdateResult.modifiedCount} employees under this Plant were also marked as removed.`,
       actionDone: ACTIONS.delete,
       oldData: updatedPlant.toObject(),
       newData: {

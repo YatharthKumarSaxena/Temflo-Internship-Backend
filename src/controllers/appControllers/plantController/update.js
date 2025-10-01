@@ -4,11 +4,10 @@ const { errorMessage, throwInternalServerError, throwDBResourceNotFoundError } =
 const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const update = async (Model, req, res) => {
   try {
-    const  id  = req.admin._id; // Admin ID passed in URL
-    
     const companyId = req.admin.companyId;
 
     const updateData = {
@@ -22,7 +21,7 @@ const update = async (Model, req, res) => {
       email: req.body.email,
     };
 
-    // old document return hoga (new: false)
+    // return old document (new: false)
     const oldPlant = await Model.findOneAndUpdate(
       { _id: req.params.id, companyId },
       updateData,
@@ -46,23 +45,14 @@ const update = async (Model, req, res) => {
       modelAffected: [MODEL_AFFECTED.model_plant],
       eventType: PLANT_UPDATED,
       actionDone: ACTIONS.update,
-      oldData: {
-        _id: req.params.id,
-        name: oldPlant.name,
-        address: oldPlant.address,
-        city: oldPlant.city,
-        state: oldPlant.state,
-        postalCode: oldPlant.postalCode,
-        country: oldPlant.country,
-        phone: oldPlant.phone,
-        email: oldPlant.email
-      },
-      newData: updateData
+      description: `Plant with code '${oldPlant.plantCode}' was updated by ${getFullName(req.admin.employeeInfo)}.`,
+      oldData: oldPlant.toObject(),   // complete old snapshot
+      newData: { ...oldPlant.toObject(), ...updateData } // complete new snapshot
     });
 
     return res.status(OK).json({
       success: true,
-      result: { ...oldPlant.toObject(), ...updateData }, // old ke sath updated data merge karke bhej diya
+      result: { ...oldPlant.toObject(), ...updateData },
       message: 'Plant updated successfully',
     });
   } catch (error) {
