@@ -50,7 +50,6 @@ const getAdminActivities = async (req, res) => {
     try {
         const {
             userId,
-            companyId,
             plantId,
             module,
             fileAffected,
@@ -64,9 +63,10 @@ const getAdminActivities = async (req, res) => {
             limit = 20,
             selectFields,    // comma-separated top-level fields to return
             oldDataFields,   // comma-separated keys for oldData
+            userSnapshotFields, // comma-separated keys for User Snapshot Details
             newDataFields,   // comma-separated keys for newData
             oldDataSearch,   // JSON string
-            newDataSearch    // JSON string
+            newDataSearch   // JSON string
         } = req.query;
 
         // Validate userId(s)
@@ -131,6 +131,9 @@ const getAdminActivities = async (req, res) => {
         multiFilter("modelAffected", modelAffected, true);
         multiFilter("eventType", eventType);
         multiFilter("actionDone", actionDone);
+        multiFilter("userSnapshot.name", req.query.userSnapshotName);
+        multiFilter("userSnapshot.email", req.query.userSnapshotEmail);
+        multiFilter("userSnapshot.employeeCode", req.query.userSnapshotCode);
 
         // ✅ Force filter by admin's companyId
         if (req.admin?.companyId) {
@@ -179,7 +182,7 @@ const getAdminActivities = async (req, res) => {
         const topFields = selectFields ? selectFields.split(",").map(f => f.trim()) : null;
         const oldKeys = oldDataFields ? oldDataFields.split(",").map(k => k.trim()) : null;
         const newKeys = newDataFields ? newDataFields.split(",").map(k => k.trim()) : null;
-
+        const userSnapshotKeys = userSnapshotFields ? userSnapshotFields.split(",").map(k => k.trim()) : null;
         // Format response
         const formattedActivities = activities.map(act => {
             const topLevel = topFields ? extractSelectedFields(act, topFields) : {
@@ -191,11 +194,14 @@ const getAdminActivities = async (req, res) => {
                 subModuleAffected: act.subModuleAffected,
                 modelAffected: act.modelAffected,
                 event: act.eventType,
-                action: act.actionDone
+                action: act.actionDone,
+                userSnapshot: act.userSnapshot,
+                description: act.description
             };
 
             return {
                 ...topLevel,
+                userSnapshot: userSnapshotKeys ? extractSelectedFields(act.userSnapshot, userSnapshotKeys) : act.userSnapshot,
                 oldData: oldKeys ? extractSelectedFields(act.oldData, oldKeys) : act.oldData,
                 newData: newKeys ? extractSelectedFields(act.newData, newKeys) : act.newData,
                 time: new Date(act.timestamp).toLocaleString("en-IN", {

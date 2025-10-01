@@ -8,6 +8,10 @@ const { OK } = require('@/config/httpStatus.config');
 const UserPassword = require('../../../models/userModels/UserPassword')
 const bcrypt = require('bcryptjs');
 const { generate: uniqueId } = require('shortid');
+const { employeeTemplate } = require("@/config/emailTemplates/employeeTemplate");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
 
 class UpdateController {
 
@@ -39,7 +43,7 @@ class UpdateController {
             "employeeInfo.department": department,
             "employeeInfo.dateOfJoining": dateOfJoining,
             "employeeInfo.designation": designation,
-            // "employeeInfo.supervisor": supervisor
+            "employeeInfo.supervisor": supervisor
           }
         },
         { new: false } // return old doc
@@ -53,14 +57,16 @@ class UpdateController {
         mobile: oldUser.mobile,
       };
 
-      const newData = {
-        firstName, middleName, lastName, bloodGroup, gender, dob,
-        emailPersonal, department, dateOfJoining, designation,
-        mobile: contactNumber,
-      };
-
       logWithTime(`✅ 🎯 Employee Information by Admin Updated Successfully 🚀`);
 
+      // Merge old info + incoming update
+      const effectiveEmployeeInfo = {
+        ...oldUser.employeeInfo.toObject(), // old data
+        ...req.body,                        // overwrite with updated fields
+      };
+
+      const newData = effectiveEmployeeInfo;
+      const actionDescription = `Admin ${getFullName(req.admin.employeeInfo)} updated information of Employee ID: ${_id})`;
       activityTracker({
         userId: req.admin._id,
         companyId,
@@ -71,8 +77,32 @@ class UpdateController {
         modelAffected: [MODEL_AFFECTED.model_user],
         eventType: USER_INFO_UPDATED,
         actionDone: ACTIONS.update,
+        description: actionDescription,
         oldData, newData
       });
+
+      // Now use this for email
+      const empDetails = `Employee Id: ${_id}
+Employee Name: ${getFullName(effectiveEmployeeInfo)}`;
+
+      const empLink = `http://localhost:3000/employee/details/${_id}`;
+
+      if (supervisor) {
+        const supervisorPerson = await UserModel.findOne({ _id: supervisor, companyId: req.admin.companyId });
+        if (supervisorPerson) {
+          const emailConfig = {
+            ...employeeTemplate.employeeAssigned,
+            user_name: getFullName(supervisorPerson.employeeInfo),
+            notes: `${empDetails}`,
+            actionbutton_text: employeeTemplate.employeeAssigned.actionbutton_text,
+            actionlink: empLink,
+            fallback_note: employeeTemplate.employeeAssigned.fallback_note,
+            action_link: empLink
+          };
+          const html = generateMasterTemplate(emailConfig);
+          sendEmail(supervisorPerson.email, emailConfig.subject, html);
+        }
+      }
 
       return res.status(OK).json({
         success: true,
@@ -105,6 +135,7 @@ class UpdateController {
       );
 
       if (!oldUser) return throwDBResourceNotFoundError(res, "Employee");
+      const actionDescription = `Admin ${getFullName(req.admin.employeeInfo)} updated address of Employee ID: ${_id}`;
 
       const oldData = {
         userId: _id,
@@ -112,7 +143,10 @@ class UpdateController {
         presentAddress: oldUser.address.presentAddress,
       };
 
-      const newData = { permanentAddress, presentAddress };
+      const newData = {
+        ...oldUser.address, // old data
+        ...req.body                     // overwrite updated fields
+      };
 
       logWithTime(`✅ 🎯 Employee Address by Admin Updated Successfully 🚀`);
 
@@ -126,6 +160,7 @@ class UpdateController {
         modelAffected: [MODEL_AFFECTED.model_user],
         eventType: USER_ADDRESS_UPDATED,
         actionDone: ACTIONS.update,
+        description: actionDescription,
         oldData, newData
       });
 
@@ -164,9 +199,13 @@ class UpdateController {
       if (!oldUser) return throwDBResourceNotFoundError(res, "Employee");
 
       const oldData = { userId: _id, ...oldUser.emergencyContact.toObject() };
-      const newData = { name, address, number, email };
+      const newData = {
+        ...oldUser.emergencyContact, // old data
+        ...req.body                     // overwrite updated fields
+      };
 
       logWithTime(`✅ 🎯 Employee Emergency Contact By Admin Updated Successfully 🚀`);
+      const actionDescription = `Admin ${getFullName(req.admin.employeeInfo)} updated emergency contact of Employee ID: ${_id}`;
 
       activityTracker({
         userId: req.admin._id,
@@ -178,6 +217,7 @@ class UpdateController {
         modelAffected: [MODEL_AFFECTED.model_user],
         eventType: USER_EMERGENCY_CONTACT_UPDATED,
         actionDone: ACTIONS.update,
+        description: actionDescription,
         oldData, newData
       });
 
@@ -221,8 +261,17 @@ class UpdateController {
 
       if (!oldUser) return throwDBResourceNotFoundError(res, "Employee");
 
-      const oldData = { userId: _id, ...oldUser.bankDetail.toObject?.() };
-      const newData = { accountNumber, bankName, ifscCode, accountType, accountHolder, document: filename };
+      const oldData = { userId: _id, ...oldUser.bankDetail.toObject?.() || {} };
+      const newData = {
+        ...oldUser.bankDetail.toObject?.() || {},
+        accountNumber,
+        bankName,
+        ifscCode,
+        accountType,
+        accountHolder,
+        document: filename
+      };
+      const actionDescription = `Admin ${getFullName(req.admin.employeeInfo)} updated bank details of Employee ID: ${_id}`;
 
       logWithTime(`✅ 🎯 Employee Bank Detail by Admin Updated Successfully 🚀`);
 
@@ -236,6 +285,7 @@ class UpdateController {
         modelAffected: [MODEL_AFFECTED.model_user],
         eventType: USER_BANK_DETAIL_UPDATED,
         actionDone: ACTIONS.update,
+        description: actionDescription,
         oldData, newData
       });
 
@@ -286,6 +336,7 @@ class UpdateController {
 
       const oldData = { userId: _id, degreeInfo: oldUser.degreeInfo.slice() };
       const newData = { degreeInfo: [...oldUser.degreeInfo, newDegree] };
+      const actionDescription = `Admin ${getFullName(req.admin.employeeInfo)} added degree info of Employee ID: ${_id}`;
 
       logWithTime(`✅ 🎯 Employee Degree Information by Admin Updated Successfully 🚀`);
 
@@ -299,6 +350,7 @@ class UpdateController {
         modelAffected: [MODEL_AFFECTED.model_user],
         eventType: USER_DEGREE_ADDED,
         actionDone: ACTIONS.update,
+        description: actionDescription,
         oldData,
         newData
       });
@@ -348,6 +400,7 @@ class UpdateController {
 
       const oldData = { userId: _id, experience: oldUser.experience.slice() };
       const newData = { experience: [...oldUser.experience, newExperience] };
+      const actionDescription = `Admin ${getFullName(req.admin.employeeInfo)} added experience info of Employee ID: ${_id}`;
 
       logWithTime(`✅ 🎯 Employee Experience Information by Admin Updated Successfully 🚀`);
 
@@ -361,6 +414,7 @@ class UpdateController {
         modelAffected: [MODEL_AFFECTED.model_user],
         eventType: USER_EXPERIENCE_ADDED,
         actionDone: ACTIONS.update,
+        description: actionDescription,
         oldData,
         newData
       });
@@ -401,7 +455,10 @@ class UpdateController {
       logWithTime(`✅ 🎯 Employee PAN Information by Admin Updated Successfully 🚀`);
 
       const oldData = { userId: _id, panCard: oldUser.panaddhar?.panCard || null };
-      const newData = { panCard: filename };
+      const newData = {
+        panCard: filename
+      };
+      const actionDescription = `Admin ${getFullName(req.admin.employeeInfo)} updated PAN card of Employee ID: ${_id}`;
 
       activityTracker({
         userId: req.admin._id,
@@ -413,6 +470,7 @@ class UpdateController {
         modelAffected: [MODEL_AFFECTED.model_user],
         eventType: USER_PAN_UPDATED,
         actionDone: ACTIONS.update,
+        description: actionDescription,
         oldData,
         newData
       });
@@ -447,7 +505,10 @@ class UpdateController {
       logWithTime(`✅ 🎯 Employee Aadhar Information by Admin Updated Successfully 🚀`);
 
       const oldData = { userId: _id, aadharCard: oldUser.panaddhar?.aadharCard || null };
-      const newData = { aadharCard: filename };
+      const newData = {
+        aadharCard: filename
+      };
+      const actionDescription = `Admin ${getFullName(req.admin.employeeInfo)} updated Aadhar card of Employee ID: ${_id}`;
 
       activityTracker({
         userId: req.admin._id,
@@ -459,6 +520,7 @@ class UpdateController {
         modelAffected: [MODEL_AFFECTED.model_user],
         eventType: USER_AADHAR_UPDATED,
         actionDone: ACTIONS.update,
+        description: actionDescription,
         oldData,
         newData
       });
@@ -473,35 +535,35 @@ class UpdateController {
   };
 
 
-  updatePassword = async (req,res,next) =>{
+  updatePassword = async (req, res, next) => {
 
     const { password, confirmPassword } = req.body;
     const id = req.params.id;
 
     if (!id) {
-        return res.status(400).json({ msg: 'User ID is required in query.' });
+      return res.status(400).json({ msg: 'User ID is required in query.' });
     }
 
     if (!password || !confirmPassword) {
-        return res.status(400).json({ msg: 'New password and confirm password are required.' });
+      return res.status(400).json({ msg: 'New password and confirm password are required.' });
     }
 
     if (password.length < 8) {
-        return res.status(400).json({ msg: 'The new password must be at least 8 characters long.' });
+      return res.status(400).json({ msg: 'The new password must be at least 8 characters long.' });
     }
 
     if (password !== confirmPassword) {
-        return res.status(400).json({ msg: 'New password and confirm password do not match.' });
+      return res.status(400).json({ msg: 'New password and confirm password do not match.' });
     }
 
     // Step 1: Fetch existing password entry
     const existingPasswordDoc = await UserPassword.findOne({
-        user: id,
-        removed: false,
+      user: id,
+      removed: false,
     });
 
     if (!existingPasswordDoc) {
-        return res.status(404).json({ msg: 'Password record not found.' });
+      return res.status(404).json({ msg: 'Password record not found.' });
     }
 
     // Step 2: Generate and update new password
@@ -509,26 +571,26 @@ class UpdateController {
     const passwordHash = bcrypt.hashSync(salt + password);
 
     const resultPassword = await UserPassword.findOneAndUpdate(
-        { user: id, removed: false },
-        { $set: { password: passwordHash, salt } },
-        { new: true }
+      { user: id, removed: false },
+      { $set: { password: passwordHash, salt } },
+      { new: true }
     ).exec();
 
     if (!resultPassword) {
-        return res.status(403).json({
+      return res.status(403).json({
         success: false,
         result: null,
         message: "User password couldn't be updated correctly.",
-        });
+      });
     }
 
     return res.status(200).json({
-        success: true,
-        result: {},
-        message: 'Password updated successfully',
+      success: true,
+      result: {},
+      message: 'Password updated successfully',
     });
 
-}
+  }
 
 }
 

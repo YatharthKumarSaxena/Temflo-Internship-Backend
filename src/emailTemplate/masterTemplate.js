@@ -1,63 +1,63 @@
 // templates/masterTemplate.js
 
 exports.generateMasterTemplate = (config = {}) => {
-    const {
-        company_name = 'ERPICA',
-        user_name = 'User',
-        message_intro = '',
-        event_name = '',
-        action = '',
-        status,
-        action_cta = '',
-        actionbutton_text = '',
-        actionlink = '', // CTA button
-        fallback_note = '',
-        action_link = '',  // fallback plain URL
-        notes = '',
-        details = {},
-        currentyear = new Date().getFullYear()
-    } = config;
+  const {
+    company_name = 'ERPICA',
+    user_name = 'User',
+    message_intro = '',
+    event_name = '',
+    action = '',
+    status,
+    action_cta = '',
+    actionbutton_text = '',
+    actionlink = '', // CTA button
+    fallback_note = '',
+    action_link = '',  // fallback plain URL
+    notes = '',
+    details = {},
+    currentyear = new Date().getFullYear()
+  } = config;
 
-    const statusBadgeClass =
-        status === 'Approved' || status === 'Success'
-            ? 'status-approved'
-            : status === 'Pending'
-                ? 'status-pending'
-                : status === 'Rejected' || status === 'Failed'
-                    ? 'status-rejected'
-                    : '';
+  const statusBadgeClass =
+    status === 'Approved' || status === 'Success' || status === 'Activated'
+      ? 'status-approved'
+      : status === 'Pending'
+        ? 'status-pending'
+        : status === 'Rejected' || status === 'Failed' || status === 'Deactivated'
+          ? 'status-rejected'
+          : '';
 
-    const statusBlock =
-        Object.prototype.hasOwnProperty.call(config, 'status') &&
-            typeof status === 'string' &&
-            status.trim().length > 0
-            ? `<p><strong>Status:</strong> <span class="status-badge ${statusBadgeClass}">${status}</span></p>`
-            : '';
+  const statusBlock =
+    Object.prototype.hasOwnProperty.call(config, 'status') &&
+      typeof status === 'string' &&
+      status.trim().length > 0
+      ? `<p><strong>Status:</strong> <span class="status-badge ${statusBadgeClass}">${status}</span></p>`
+      : '';
 
-
-    const actionBlock =
-        actionlink && actionbutton_text
-            ? `
-        <p>${action_cta}</p>
-        <a href="${actionlink}" class="button">${actionbutton_text}</a>
-        ${fallback_note
-                ? `
-          <div class="fallback-link">
-            <p>${fallback_note}</p>
-            <p>Copy and paste this link in your browser:<br><span>${action_link}</span></p>
-          </div>
-        `
-                : ''
-            }
-      `
-            : '';
   const detailsBlock =
     details && typeof details === 'object' && Object.keys(details).length > 0
       ? Object.entries(details)
         .map(([key, value]) => value ? `<p><strong>${key}:</strong> ${value}</p>` : '')
         .join('')
       : '';
-    return `
+
+  const actionBlock =
+    actionlink && actionbutton_text
+      ? `
+        <p>${action_cta}</p>
+        <a href="${actionlink}" class="button">${actionbutton_text}</a>
+        ${fallback_note
+        ? `
+          <div class="fallback-link">
+            <p>${fallback_note}</p>
+            <p>Copy and paste this link in your browser:<br><span>${action_link}</span></p>
+          </div>
+        `
+        : ''
+      }
+      `
+      : '';
+  return `
   <!DOCTYPE html>
   <html lang="en">
   <head>
@@ -187,8 +187,8 @@ exports.generateMasterTemplate = (config = {}) => {
           <p><strong>Action:</strong> ${action}</p>
           ${statusBlock}
           ${detailsBlock}
-          ${actionBlock}
           ${notes ? `<p>${notes.replace(/\n/g, "<br>")}</p>` : ''}
+          ${actionBlock}
         </div>
         <p>Regards,<br><strong>${company_name} Team</strong></p>
       </div>

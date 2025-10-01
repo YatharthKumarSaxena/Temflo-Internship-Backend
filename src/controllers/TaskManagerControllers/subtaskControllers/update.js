@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { SUBTASK_UPDATED } = require("@/config/activity.enums");
-const { masterTemplate } = require("@/config/emailTemplate");
+const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 
@@ -90,8 +90,8 @@ const update = async (req, res) => {
           const html = generateMasterTemplate({
             company_name: req.admin.companyName,
             user_name: newUser.name,
-            event_name: masterTemplate.subtaskAssignedToEmployee.event_name,
-            action: masterTemplate.subtaskAssignedToEmployee.action,
+            event_name: taskManagerTemplate.subtaskAssignedToEmployee.event_name,
+            action: taskManagerTemplate.subtaskAssignedToEmployee.action,
             status: 'Assigned',
             message_intro: `A subtask has been assigned to you.`,
             notes: `
@@ -105,7 +105,7 @@ const update = async (req, res) => {
             actionlink: `http://localhost:3000/tasks/${subtask.taskId}/subtasks/${subtask._id}`,
             action_link: `http://localhost:3000/tasks/${subtask.taskId}/subtasks/${subtask._id}`
           });
-          sendEmail(newUser.email, masterTemplate.subtaskAssignedToEmployee.subject, html);
+          sendEmail(newUser.email, taskManagerTemplate.subtaskAssignedToEmployee.subject, html);
         }
       }
 
@@ -116,8 +116,8 @@ const update = async (req, res) => {
           const html = generateMasterTemplate({
             company_name: req.admin.companyName,
             user_name: oldUser.name,
-            event_name: masterTemplate.subtaskRemovedFromEmployee.event_name,
-            action: masterTemplate.subtaskRemovedFromEmployee.action,
+            event_name: taskManagerTemplate.subtaskRemovedFromEmployee.event_name,
+            action: taskManagerTemplate.subtaskRemovedFromEmployee.action,
             status: 'Removed',
             message_intro: `You have been unassigned from a subtask.`,
             notes: `
@@ -128,7 +128,7 @@ const update = async (req, res) => {
               Date: ${new Date().toLocaleString()}
             `
           });
-          sendEmail(oldUser.email, masterTemplate.subtaskRemovedFromEmployee.subject, html);
+          sendEmail(oldUser.email, taskManagerTemplate.subtaskRemovedFromEmployee.subject, html);
         }
       }
     }
@@ -140,8 +140,8 @@ if (comment && subtask.assignedTo) {
     const html = generateMasterTemplate({
       company_name: req.admin.companyName,
       user_name: assignedUser.name,
-      event_name: masterTemplate.subtaskCommentAdded.event_name,
-      action: masterTemplate.subtaskCommentAdded.action,
+      event_name: taskManagerTemplate.subtaskCommentAdded.event_name,
+      action: taskManagerTemplate.subtaskCommentAdded.action,
       status: 'Comment Added',
       message_intro: `A new comment has been added to a subtask assigned to you.`,
       notes: `
@@ -156,7 +156,7 @@ if (comment && subtask.assignedTo) {
       actionlink: `http://localhost:3000/tasks/${subtask.taskId}/subtasks/${subtask._id}`,
       action_link: `http://localhost:3000/tasks/${subtask.taskId}/subtasks/${subtask._id}`
     });
-    sendEmail(assignedUser.email, masterTemplate.subtaskCommentAdded.subject, html);
+    sendEmail(assignedUser.email, taskManagerTemplate.subtaskCommentAdded.subject, html);
   }
 }
 

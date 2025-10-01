@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { MEMBER_DELETED } = require("@/config/activity.enums");
-const { masterTemplate } = require("@/config/emailTemplate");
+const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 
@@ -62,8 +62,8 @@ const remove = async (req, res) => {
       const emailHtml = generateMasterTemplate({
         company_name: req.admin.companyName,
         user_name: assignedUser.name,
-        event_name: masterTemplate.employeeRemovedFromProject.event_name,
-        action: masterTemplate.employeeRemovedFromProject.action,
+        event_name: taskManagerTemplate.employeeRemovedFromProject.event_name,
+        action: taskManagerTemplate.employeeRemovedFromProject.action,
         status: 'Removed',
         message_intro: `You have been removed from the project.`,
         notes: `
@@ -77,7 +77,7 @@ const remove = async (req, res) => {
         action_link: `http://localhost:3000/projects/${member.projectId}`
       });
 
-      sendEmail(assignedUser.email, masterTemplate.employeeRemovedFromProject.subject, emailHtml);
+      sendEmail(assignedUser.email, taskManagerTemplate.employeeRemovedFromProject.subject, emailHtml);
     }
 
     return res.status(200).json({

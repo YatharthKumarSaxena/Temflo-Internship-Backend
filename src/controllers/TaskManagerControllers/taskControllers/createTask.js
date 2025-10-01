@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { TASK_CREATED } = require("@/config/activity.enums");
-const { masterTemplate } = require("@/config/emailTemplate");
+const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 
@@ -79,10 +79,10 @@ const createTask = async (req, res) => {
         const html = generateMasterTemplate({
           company_name: req.admin.companyName,
           user_name: assignedUser.name,
-          event_name: masterTemplate.taskAssignedToEmployee.event_name,
-          action: masterTemplate.taskAssignedToEmployee.action,
+          event_name: taskManagerTemplate.taskAssignedToEmployee.event_name,
+          action: taskManagerTemplate.taskAssignedToEmployee.action,
           status: 'Assigned',
-          message_intro: masterTemplate.taskAssignedToEmployee.message_intro,
+          message_intro: taskManagerTemplate.taskAssignedToEmployee.message_intro,
           notes: `
             <b>Task Title:</b> ${task.title}<br/>
             <b>Description:</b> ${task.description || '-'}<br/>
@@ -95,7 +95,7 @@ const createTask = async (req, res) => {
           action_link: taskLink
         });
 
-        sendEmail(assignedUser.email,masterTemplate.taskAssignedToEmployee.subject,html);
+        sendEmail(assignedUser.email,taskManagerTemplate.taskAssignedToEmployee.subject,html);
       }
     }
 
