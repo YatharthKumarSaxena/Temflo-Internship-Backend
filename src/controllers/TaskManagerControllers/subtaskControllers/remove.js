@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { SUBTASK_DELETED } = require("@/config/activity.enums");
-const { masterTemplate } = require("@/config/emailTemplate");
+const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 
@@ -49,8 +49,8 @@ const remove = async (req, res) => {
         const emailHtml = generateMasterTemplate({
           company_name: req.admin.companyName,
           user_name: assignedUser.name,
-          event_name: masterTemplate.subtaskRemovedFromEmployee.event_name,
-          action: masterTemplate.subtaskRemovedFromEmployee.action,
+          event_name: taskManagerTemplate.subtaskRemovedFromEmployee.event_name,
+          action: taskManagerTemplate.subtaskRemovedFromEmployee.action,
           status: 'Removed',
           message_intro: `A subtask assigned to you has been removed.`,
           notes: `
@@ -63,7 +63,7 @@ const remove = async (req, res) => {
           // ✅ No action button/link sent
         });
 
-        sendEmail(assignedUser.email, masterTemplate.subtaskRemovedFromEmployee.subject, emailHtml);
+        sendEmail(assignedUser.email, taskManagerTemplate.subtaskRemovedFromEmployee.subject, emailHtml);
       }
     }
 

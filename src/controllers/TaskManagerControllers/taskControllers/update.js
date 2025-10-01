@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { masterTemplate } = require("@/config/emailTemplate");
+const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
@@ -130,16 +130,16 @@ if (Object.keys(oldData).length > 0) {
           const html = generateMasterTemplate({
             company_name: req.admin.companyName,
             user_name: newUser.name,
-            event_name: masterTemplate.taskAssignedToEmployee.event_name,
-            action: masterTemplate.taskAssignedToEmployee.action,
+            event_name: taskManagerTemplate.taskAssignedToEmployee.event_name,
+            action: taskManagerTemplate.taskAssignedToEmployee.action,
             status: 'Assigned',
-            message_intro: masterTemplate.taskAssignedToEmployee.message_intro,
+            message_intro: taskManagerTemplate.taskAssignedToEmployee.message_intro,
             notes: `Task Title: ${task.title}<br/>Assigned By: ${req.admin.name}<br/>Date: ${new Date().toLocaleString()}`,
-            actionbutton_text: masterTemplate.taskAssignedToEmployee.actionbutton_text,
+            actionbutton_text: taskManagerTemplate.taskAssignedToEmployee.actionbutton_text,
             actionlink: `http://localhost:3000/tasks/${task._id}`,
             action_link: `http://localhost:3000/tasks/${task._id}`
           });
-          sendEmail(newUser.email, masterTemplate.taskAssignedToEmployee.subject, html);
+          sendEmail(newUser.email, taskManagerTemplate.taskAssignedToEmployee.subject, html);
         }
       }
 
@@ -150,13 +150,13 @@ if (Object.keys(oldData).length > 0) {
           const html = generateMasterTemplate({
             company_name: req.admin.companyName,
             user_name: oldUser.name,
-            event_name: masterTemplate.taskUnassignedFromEmployee.event_name,
-            action: masterTemplate.taskUnassignedFromEmployee.action,
+            event_name: taskManagerTemplate.taskUnassignedFromEmployee.event_name,
+            action: taskManagerTemplate.taskUnassignedFromEmployee.action,
             status: 'Removed',
-            message_intro: masterTemplate.taskUnassignedFromEmployee.message_intro,
+            message_intro: taskManagerTemplate.taskUnassignedFromEmployee.message_intro,
             notes: `Task Title: ${task.title}<br/>Removed By: ${req.admin.name}<br/>Date: ${new Date().toLocaleString()}`
           });
-          sendEmail(oldUser.email, masterTemplate.taskUnassignedFromEmployee.subject, html);
+          sendEmail(oldUser.email, taskManagerTemplate.taskUnassignedFromEmployee.subject, html);
         }
       }
     }
@@ -168,16 +168,16 @@ if (comment && task.assignedTo) {
     const html = generateMasterTemplate({
       company_name: req.admin.companyName,
       user_name: assignedUser.name,
-      event_name: masterTemplate.taskCommentAdded.event_name,
-      action: masterTemplate.taskCommentAdded.action,
+      event_name: taskManagerTemplate.taskCommentAdded.event_name,
+      action: taskManagerTemplate.taskCommentAdded.action,
       status: 'Comment Added',
-      message_intro: masterTemplate.taskCommentAdded.message_intro,
+      message_intro: taskManagerTemplate.taskCommentAdded.message_intro,
       notes: `Task Title: ${task.title}<br/>Comment: ${comment}<br/>Added By: ${req.admin.name}<br/>Date: ${new Date().toLocaleString()}`,
-      actionbutton_text: masterTemplate.taskCommentAdded.actionbutton_text || "View Task",
+      actionbutton_text: taskManagerTemplate.taskCommentAdded.actionbutton_text || "View Task",
       actionlink: `http://localhost:3000/tasks/${task._id}`,
       action_link: `http://localhost:3000/tasks/${task._id}`
     });
-    sendEmail(assignedUser.email, masterTemplate.taskCommentAdded.subject, html);
+    sendEmail(assignedUser.email, taskManagerTemplate.taskCommentAdded.subject, html);
   }
 }
 

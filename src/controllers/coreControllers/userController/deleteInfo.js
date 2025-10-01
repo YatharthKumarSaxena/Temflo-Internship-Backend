@@ -5,6 +5,7 @@ const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { OK } = require('@/config/httpStatus.config');
+const { getFullName } = require("@/utils/commonFunctions");
 
 const deleteInfo = async (req, res, next) => {
   const { infoType, id, deleteId } = req.params;
@@ -46,10 +47,9 @@ const deleteInfo = async (req, res, next) => {
       modelAffected: [MODEL_AFFECTED.model_user],
       eventType: USER_INFO_DELETED,
       actionDone: ACTIONS.delete,
-      oldData: deletedInfo || null,
-      newData: {
-        [infoType]: result[infoType] // updated array after deletion
-      }
+      oldData: { [infoType]: userBeforeUpdate[infoType] }, // poora array before deletion
+      newData: { [infoType]: result[infoType] },           // updated array after deletion
+      description: `${infoType === 'degreeInfo' ? 'Degree' : 'Experience'} deleted by ${getFullName(req.admin.employeeInfo)}: ${deletedInfo ? deletedInfo.title || deletedInfo.companyName || deletedInfo.institutionName : 'N/A'}`
     });
 
     return res.status(OK).json({ message: `${infoType === 'degreeInfo' ? 'Degree' : 'Experience'} deleted successfully`, data: result });

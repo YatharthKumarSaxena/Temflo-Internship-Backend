@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { MEMBER_CREATED } = require("@/config/activity.enums");
-const { masterTemplate } = require("@/config/emailTemplate");
+const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 
@@ -80,8 +80,8 @@ const createMember = async (req, res) => {
       const emailHtml = generateMasterTemplate({
         company_name: req.admin.companyName,
         user_name: assignedUser.name,
-        event_name: masterTemplate.employeeAssignedToProject.event_name,
-        action: masterTemplate.employeeAssignedToProject.action,
+        event_name: taskManagerTemplate.employeeAssignedToProject.event_name,
+        action: taskManagerTemplate.employeeAssignedToProject.action,
         status: 'Assigned',
         message_intro: `You have been assigned to a new project.`,
         notes: projectDetails,
@@ -90,7 +90,7 @@ const createMember = async (req, res) => {
         action_link: `http://localhost:3000/projects/${projectId}`
       });
 
-      sendEmail(assignedUser.email, masterTemplate.employeeAssignedToProject.subject, emailHtml);
+      sendEmail(assignedUser.email, taskManagerTemplate.employeeAssignedToProject.subject, emailHtml);
     }
 
     return res.status(200).json({

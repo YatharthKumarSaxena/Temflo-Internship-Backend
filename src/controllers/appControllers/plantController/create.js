@@ -1,10 +1,14 @@
-const { company } = require("@/locale/translation/en_us");
 const { OK } = require("@/config/httpStatus.config");
 const { PLANT_CREATED } = require("@/config/activity.enums");
 const { errorMessage, throwInternalServerError, throwConflictError } = require("@/config/error-handler.config");
 const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
+const { appTemplate } = require("@/config/emailTemplates/appTemplates");
+const mongoose = require("mongoose");
+const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 
 const create = async (Model, req, res) => {
   try {
@@ -36,9 +40,48 @@ const create = async (Model, req, res) => {
       modelAffected: [MODEL_AFFECTED.model_plant],
       eventType: PLANT_CREATED,
       actionDone: ACTIONS.create,
+      description: `Plant with Code '${result.plantCode}' created successfully by ${getFullName(req.admin.employeeInfo)}`,
       oldData: null,
       newData: result
     });
+
+    const User = mongoose.model('User')
+    const owner = await User.findOne({ companyId, role: "owner", removed: false });
+
+    const plantLink = `https://yourdomain.com/plant/${result._id}`;
+
+    if (owner) {
+      sendEmail(
+        owner.email,
+        appTemplate.plantCreation.subject,
+        generateMasterTemplate({
+          ...appTemplate.plantCreation,
+          user_name: getFullName(owner.employeeInfo),
+          actionlink: plantLink,
+          fallback_note: appTemplate.plantCreation.fallback_note,
+          actionbutton_text: appTemplate.plantCreation.actionbutton_text,
+          action_link: plantLink
+        })
+      );
+    }
+
+    const emailPerson = await User.findOne({ email: req.body.email, removed: false });
+
+    if (req.body.email) {
+      sendEmail(
+        req.body.email,
+        appTemplate.plantCreation.subject,
+        generateMasterTemplate({
+          ...appTemplate.plantCreation,
+          user_name: getFullName(emailPerson.employeeInfo),
+          message_intro: `A new plant has been created using your Email ID for the company ${req.admin.name}`,
+          actionlink: plantLink,
+          fallback_note: appTemplate.plantCreation.fallback_note,
+          actionbutton_text: appTemplate.plantCreation.actionbutton_text,
+          action_link: plantLink
+        })
+      );
+    }
 
     // Returning successfull response
     return res.status(OK).json({

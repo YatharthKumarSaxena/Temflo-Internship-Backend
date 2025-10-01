@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { TASK_REMOVED,SUBTASK_DELETED } = require("@/config/activity.enums");
-const { masterTemplate } = require("@/config/emailTemplate");
+const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 
@@ -72,17 +72,17 @@ const remove = async (req, res) => {
         const html = generateMasterTemplate({
           company_name: req.admin.companyName,
           user_name: assignedUser.name,
-          event_name: masterTemplate.taskUnassignedFromEmployee.event_name,
-          action: masterTemplate.taskUnassignedFromEmployee.action,
+          event_name: taskManagerTemplate.taskUnassignedFromEmployee.event_name,
+          action: taskManagerTemplate.taskUnassignedFromEmployee.action,
           status: 'Removed',
-          message_intro: masterTemplate.taskUnassignedFromEmployee.message_intro,
+          message_intro: taskManagerTemplate.taskUnassignedFromEmployee.message_intro,
           notes: `
             Task Title: ${task.title}<br/>
             Removed By: ${req.admin.name}<br/>
             Date: ${new Date().toLocaleString()}
           `
         });
-        sendEmail(assignedUser.email, masterTemplate.taskUnassignedFromEmployee.subject, html);
+        sendEmail(assignedUser.email, taskManagerTemplate.taskUnassignedFromEmployee.subject, html);
       }
     }
 

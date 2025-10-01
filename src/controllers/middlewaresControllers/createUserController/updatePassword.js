@@ -4,7 +4,7 @@ const { generate: uniqueId } = require('shortid');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { USER_PASSWORD_UPDATED_BY_ID } = require("@/config/activity.enums");
-const { masterTemplate } = require("@/config/emailTemplate");
+const { employeeTemplate } = require("@/config/emailTemplates/employeeTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 
@@ -57,7 +57,7 @@ const updatePassword = async (userModel, req, res) => {
   if (targetUser?.email) {
     // Inject dynamic values into template
     const emailConfig = {
-      ...masterTemplate.userPasswordChanged,
+      ...employeeTemplate.userPasswordChanged,
       user_name: targetUser.name || "User",
     };
 

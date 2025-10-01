@@ -5,6 +5,7 @@ const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { OK } = require('@/config/httpStatus.config');
+const { getFullName } = require("@/utils/commonFunctions");
 
 class UpdateController {
 
@@ -42,32 +43,17 @@ class UpdateController {
       logWithTime(`✅ 🎯 Employee Information Updated Successfully 🚀`);
 
       const oldData = {
-        firstName: oldUser.employeeInfo.firstName,
-        middleName: oldUser.employeeInfo.middleName,
-        lastName: oldUser.employeeInfo.lastName,
-        bloodGroup: oldUser.employeeInfo.bloodGroup,
-        gender: oldUser.employeeInfo.gender,
-        dob: oldUser.employeeInfo.dob,
-        emailPersonal: oldUser.employeeInfo.emailPersonal,
-        department: oldUser.employeeInfo.department,
-        dateOfJoining: oldUser.employeeInfo.dateOfJoining,
-        designation: oldUser.employeeInfo.designation,
+        ...oldUser.employeeInfo.toObject(),
         mobile: oldUser.mobile,
       };
 
-      const newData = {
-        firstName: req.body.firstName,
-        middleName: req.body.middleName,
-        lastName: req.body.lastName,
-        bloodGroup: req.body.bloodGroup,
-        gender: req.body.gender,
-        dob: req.body.dob,
-        emailPersonal: req.body.emailPersonal,
-        department: req.body.department,
-        dateOfJoining: req.body.dateOfJoining,
-        designation: req.body.designation,
-        mobile: req.body.contactNumber,
+      // Merge old info + incoming update
+      const effectiveEmployeeInfo = {
+        ...oldUser.employeeInfo.toObject(), // old data
+        ...req.body,                        // overwrite with updated fields
       };
+
+      const newData = effectiveEmployeeInfo;
 
       activityTracker({
         userId: _id,
@@ -79,6 +65,7 @@ class UpdateController {
         modelAffected: [MODEL_AFFECTED.model_user],
         eventType: PROFILE_UPDATED,
         actionDone: ACTIONS.update,
+        description: `${getFullName(req.admin.employeeInfo)} has updated his/her Personal Information`,
         oldData,
         newData,
       });
@@ -126,10 +113,14 @@ class UpdateController {
 
       logWithTime(`✅ 🎯 Employee Address Updated Successfully 🚀`);
 
-      const oldData = { ...oldUser.address };
+      const oldData = {
+        permanentAddress: oldUser.address.permanentAddress,
+        presentAddress: oldUser.address.presentAddress,
+      };
+
       const newData = {
-        permanentAddress,
-        presentAddress
+        ...oldUser.address, // old data
+        ...req.body                     // overwrite updated fields
       };
 
       activityTracker({
@@ -142,6 +133,7 @@ class UpdateController {
         modelAffected: [MODEL_AFFECTED.model_user],
         eventType: ADDRESS_UPDATED,
         actionDone: ACTIONS.update,
+        description: `${getFullName(req.admin.employeeInfo)} has updated his/her Address`,
         oldData,
         newData
       });
@@ -184,8 +176,11 @@ class UpdateController {
 
       logWithTime(`✅ 🎯 Employee Emergency Contact Updated Successfully 🚀`);
 
-      const oldData = { ...oldUser.emergencyContact.toObject?.() || oldUser.emergencyContact };
-      const newData = { name, address, number, email };
+      const oldData = { ...oldUser.emergencyContact.toObject() };
+      const newData = {
+        ...oldUser.emergencyContact, // old data
+        ...req.body                     // overwrite updated fields
+      };
 
       activityTracker({
         userId: _id,
@@ -197,6 +192,7 @@ class UpdateController {
         modelAffected: [MODEL_AFFECTED.model_user],
         eventType: EMERGENCY_CONTACT_UPDATED,
         actionDone: ACTIONS.update,
+        description: `${getFullName(req.admin.employeeInfo)} has updated his/her Emergency Contact`,
         oldData,
         newData
       });
@@ -244,8 +240,17 @@ class UpdateController {
 
       logWithTime(`✅ 🎯 Employee Bank Detail Updated Successfully 🚀`);
 
-      const oldData = oldUser.bankDetail || {};
-      const newData = { accountNumber, bankName, ifscCode, accountType, accountHolder, document: filename };
+      const oldData = oldUser.bankDetail ? { ...oldUser.bankDetail.toObject() } : {};
+
+      const newData = {
+        ...oldUser.bankDetail.toObject?.() || {},
+        accountNumber,
+        bankName,
+        ifscCode,
+        accountType,
+        accountHolder,
+        document: filename
+      };
 
       activityTracker({
         userId: _id,
@@ -257,6 +262,7 @@ class UpdateController {
         modelAffected: [MODEL_AFFECTED.model_user],
         eventType: BANK_DETAIL_UPDATED,
         actionDone: ACTIONS.update,
+        description: `${getFullName(req.admin.employeeInfo)} has updated his/her Bank Details`,
         oldData,
         newData
       });
@@ -293,8 +299,6 @@ class UpdateController {
         return throwDBResourceNotFoundError(res, "User");
       }
 
-      const oldData = { degreeInfo: user.degreeInfo.slice() };
-
       const newDegree = {
         degree,
         institute,
@@ -309,7 +313,10 @@ class UpdateController {
         { $push: { degreeInfo: newDegree } }
       );
 
-      const newData = { degreeInfo: [...oldData.degreeInfo, newDegree] };
+      const oldUser = user;  
+
+      const oldData = { degreeInfo: oldUser.degreeInfo.slice() };
+      const newData = { degreeInfo: [...oldUser.degreeInfo, newDegree] };
 
       logWithTime(`✅ 🎯 Employee Degree Information Updated Successfully 🚀`);
 
@@ -324,6 +331,7 @@ class UpdateController {
         modelAffected: [MODEL_AFFECTED.model_user],
         eventType: DEGREE_ADDED,
         actionDone: ACTIONS.update,
+        description: `${getFullName(req.admin.employeeInfo)} has updated his/her degree`,
         oldData,
         newData,
       });
@@ -361,8 +369,6 @@ class UpdateController {
         return throwDBResourceNotFoundError(res, "User");
       }
 
-      const oldData = { experience: user.experience.slice() };
-
       const newExperience = {
         company,
         position,
@@ -377,7 +383,10 @@ class UpdateController {
         { $push: { experience: newExperience } }
       );
 
-      const newData = { experience: [...oldData.experience, newExperience] };
+      const oldUser = user; 
+
+      const oldData = { experience: oldUser.experience.slice() };
+      const newData = { experience: [...oldUser.experience, newExperience] };
 
       logWithTime(`✅ 🎯 Employee Experience Information Updated Successfully 🚀`);
 
@@ -392,6 +401,7 @@ class UpdateController {
         modelAffected: [MODEL_AFFECTED.model_user],
         eventType: EXPERIENCE_ADDED,
         actionDone: ACTIONS.update,
+        description: `${getFullName(req.admin.employeeInfo)} has updated his/her experience`,
         oldData,
         newData,
       });
@@ -435,7 +445,9 @@ class UpdateController {
       logWithTime(`✅ 🎯 Employee PAN Information Updated Successfully 🚀`);
 
       const oldData = { panCard: oldUser.panaddhar?.panCard || null };
-      const newData = { panCard: filename };
+      const newData = {
+        panCard: filename
+      };
 
       activityTracker({
         userId: _id,
@@ -447,6 +459,7 @@ class UpdateController {
         modelAffected: [MODEL_AFFECTED.model_user],
         eventType: PAN_UPDATED,
         actionDone: ACTIONS.update,
+        description: `${getFullName(req.admin.employeeInfo)} has updated his/her Pan Information`,
         oldData,
         newData
       });
@@ -491,14 +504,9 @@ class UpdateController {
 
       logWithTime(`✅ 🎯 Employee Aadhar Information Updated Successfully 🚀`);
 
-      // oldData from returned doc
-      const oldData = {
-        aadharCard: oldUser.panaddhar?.aadharCard || null,
-      };
-
-      // newData from request body
+      const oldData = { aadharCard: oldUser.panaddhar?.aadharCard || null };
       const newData = {
-        aadharCard: filename,
+        aadharCard: filename
       };
 
       // Activity Tracker logging
@@ -512,6 +520,7 @@ class UpdateController {
         modelAffected: [MODEL_AFFECTED.model_user],
         eventType: AADHAR_UPDATED,
         actionDone: ACTIONS.update,
+        description: `${getFullName(req.admin.employeeInfo)} has updated his/her Adhar Information`,
         oldData: oldData,
         newData: newData,
       });

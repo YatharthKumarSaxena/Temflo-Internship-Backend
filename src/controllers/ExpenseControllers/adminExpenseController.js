@@ -7,7 +7,7 @@ const ErrorHandler = require('../../utils/errorHandler');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { EXPENSE_CATEGORY_CREATED, EXPENSE_FORM_CREATED, EXPENSE_FORM_UPDATED, EXPENSE_CATEGORY_UPDATED, EXPENSE_CATEGORY_DELETED, EXPENSE_CLAIM_CREATED, WALLET_DEBITED, WALLET_REFUNDED, EXPENSE_UPDATED, COMMENT_ADDED, FILE_UPLOADED } = require("@/config/activity.enums");
-const { masterTemplate } = require("@/config/emailTemplate");
+const { expenseTemplate } = require("@/config/emailTemplates/expenseTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 
@@ -601,8 +601,8 @@ exports.claimExpense = async (req, res, next) => {
 
     // Employee Email
     const emailHtmlEmployee = generateMasterTemplate({
-      event_name: masterTemplate.expenseClaimCreated.event_name,
-      action: masterTemplate.expenseClaimCreated.action,
+      event_name: expenseTemplate.expenseClaimCreated.event_name,
+      action: expenseTemplate.expenseClaimCreated.action,
       message_intro:
         req.admin.role === 'employee'
           ? 'You submitted an expense claim.'
@@ -612,35 +612,35 @@ exports.claimExpense = async (req, res, next) => {
       }<br/>Date: ${new Date().toLocaleString()}<br/>Wallet Deducted: ${
         shouldDeductFromWallet ? 'Yes' : 'No'
       }`,
-        actionbutton_text: masterTemplate.expenseClaimCreated.actionbutton_text,
-        actionlink: masterTemplate.expenseClaimCreated.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
-        fallback_note: masterTemplate.expenseClaimCreated.fallback_note,
-        action_link: masterTemplate.expenseClaimCreated.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+        actionbutton_text: expenseTemplate.expenseClaimCreated.actionbutton_text,
+        actionlink: expenseTemplate.expenseClaimCreated.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+        fallback_note: expenseTemplate.expenseClaimCreated.fallback_note,
+        action_link: expenseTemplate.expenseClaimCreated.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
     });
 
     if (employeeEmailForEmail) {
-      sendEmail(employeeEmailForEmail, masterTemplate.expenseClaimCreated.subject, emailHtmlEmployee);
+      sendEmail(employeeEmailForEmail, expenseTemplate.expenseClaimCreated.subject, emailHtmlEmployee);
     }
 
     // Admin Email
     if (req.admin.role === 'admin' || req.admin.role === 'owner') {
       const emailHtmlAdmin = generateMasterTemplate({
-        event_name: masterTemplate.expenseClaimCreated.event_name,
-        action: masterTemplate.expenseClaimCreated.action,
+        event_name: expenseTemplate.expenseClaimCreated.event_name,
+        action: expenseTemplate.expenseClaimCreated.action,
         message_intro: `You have submitted an expense claim successfully.`,
         notes: `Expense ID: ${newExpense._id}<br/>Employee: ${employeeNameForEmail}<br/>Amount: ₹${expenseAmount}<br/>Category: ${category}${
           subCategory ? ` (${subCategory})` : ''
         }<br/>Date: ${new Date().toLocaleString()}<br/>Wallet Deducted: ${
           shouldDeductFromWallet ? 'Yes' : 'No'
         }`,
-        actionbutton_text: masterTemplate.expenseClaimCreated.actionbutton_text,
-        actionlink: masterTemplate.expenseClaimCreated.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
-        fallback_note: masterTemplate.expenseClaimCreated.fallback_note,
-        action_link: masterTemplate.expenseClaimCreated.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+        actionbutton_text: expenseTemplate.expenseClaimCreated.actionbutton_text,
+        actionlink: expenseTemplate.expenseClaimCreated.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+        fallback_note: expenseTemplate.expenseClaimCreated.fallback_note,
+        action_link: expenseTemplate.expenseClaimCreated.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
       });
 
       if (req.admin.email) {
-        sendEmail(req.admin.email, masterTemplate.expenseClaimCreated.subject, emailHtmlAdmin);
+        sendEmail(req.admin.email, expenseTemplate.expenseClaimCreated.subject, emailHtmlAdmin);
       }
     }
 
@@ -915,32 +915,32 @@ exports.updateExpense = async (req, res) => {
             const emailHtmlEmployee = generateMasterTemplate({
               company_name: req.admin.companyName,
               user_name: employee.name || employee.employeeCode,
-              event_name: masterTemplate.walletRefunded.event_name,
-              action: masterTemplate.walletRefunded.action,
-              status: masterTemplate.walletRefunded.status,
+              event_name: expenseTemplate.walletRefunded.event_name,
+              action: expenseTemplate.walletRefunded.action,
+              status: expenseTemplate.walletRefunded.status,
               message_intro: 'Your wallet has been refunded due to rejected expense claim by Admin.',
               notes: `Expense ID: ${expense._id}<br/>Refund Amount: ${refundAmount}<br/>New Balance: ${newBalance}<br/>Date: ${new Date().toLocaleString()}`,
-              actionbutton_text: masterTemplate.walletRefunded.actionbutton_text || 'View Wallet',
-              actionlink: masterTemplate.walletRefunded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
-              fallback_note: masterTemplate.walletRefunded.fallback_note,
-              action_link: masterTemplate.walletRefunded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+              actionbutton_text: expenseTemplate.walletRefunded.actionbutton_text || 'View Wallet',
+              actionlink: expenseTemplate.walletRefunded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+              fallback_note: expenseTemplate.walletRefunded.fallback_note,
+              action_link: expenseTemplate.walletRefunded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
             });
-            sendEmail(employeeEmail, masterTemplate.walletRefunded.subject, emailHtmlEmployee);
+            sendEmail(employeeEmail, expenseTemplate.walletRefunded.subject, emailHtmlEmployee);
           }
 
           if (req.admin.email) {
             const emailHtmlAdmin = generateMasterTemplate({
-              event_name: masterTemplate.walletRefunded.event_name,
-              action: masterTemplate.walletRefunded.action,
-              status: masterTemplate.walletRefunded.status,
+              event_name: expenseTemplate.walletRefunded.event_name,
+              action: expenseTemplate.walletRefunded.action,
+              status: expenseTemplate.walletRefunded.status,
               message_intro: "You have processed a wallet refund for an employee's rejected expense claim.",
               notes: `Expense ID: ${expense._id}<br/>Employee ID: ${employee._id}<br/>Refund Amount: ${refundAmount}<br/>New Balance: ${newBalance}<br/>Date: ${new Date().toLocaleString()}`,
-              actionbutton_text: masterTemplate.walletRefunded.actionbutton_text || 'View Wallet',
-              actionlink: masterTemplate.walletRefunded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
-              fallback_note: masterTemplate.walletRefunded.fallback_note,
-              action_link: masterTemplate.walletRefunded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+              actionbutton_text: expenseTemplate.walletRefunded.actionbutton_text || 'View Wallet',
+              actionlink: expenseTemplate.walletRefunded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+              fallback_note: expenseTemplate.walletRefunded.fallback_note,
+              action_link: expenseTemplate.walletRefunded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
             });
-            sendEmail(req.admin.email, masterTemplate.walletRefunded.subject, emailHtmlAdmin);
+            sendEmail(req.admin.email, expenseTemplate.walletRefunded.subject, emailHtmlAdmin);
           }
         }
       }
@@ -971,30 +971,30 @@ exports.updateExpense = async (req, res) => {
       const employeeEmail = expense.employeeId?.email || '';
       if (employeeEmail) {
         const emailHtml = generateMasterTemplate({
-          event_name: masterTemplate.expenseFileUploaded.event_name,
-          action: masterTemplate.expenseFileUploaded.action,
+          event_name: expenseTemplate.expenseFileUploaded.event_name,
+          action: expenseTemplate.expenseFileUploaded.action,
           message_intro: 'New file(s) have been uploaded to your expense claim by Admin.',
           notes: `Expense ID: ${expense._id}<br/>Files: ${uploadedUrls.join('<br/>')}<br/>Date: ${new Date().toLocaleString()}`,
-          actionbutton_text: masterTemplate.expenseFileUploaded.actionbutton_text || 'View Files',
-          actionlink: masterTemplate.expenseFileUploaded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
-          fallback_note: masterTemplate.expenseFileUploaded.fallback_note,
-          action_link: masterTemplate.expenseFileUploaded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+          actionbutton_text: expenseTemplate.expenseFileUploaded.actionbutton_text || 'View Files',
+          actionlink: expenseTemplate.expenseFileUploaded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+          fallback_note: expenseTemplate.expenseFileUploaded.fallback_note,
+          action_link: expenseTemplate.expenseFileUploaded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
         });
-        sendEmail(employeeEmail, masterTemplate.expenseFileUploaded.subject, emailHtml);
+        sendEmail(employeeEmail, expenseTemplate.expenseFileUploaded.subject, emailHtml);
       }
 
       if (req.admin.email) {
         const emailHtmlAdmin = generateMasterTemplate({
-          event_name: masterTemplate.expenseFileUploaded.event_name,
-          action: masterTemplate.expenseFileUploaded.action,
+          event_name: expenseTemplate.expenseFileUploaded.event_name,
+          action: expenseTemplate.expenseFileUploaded.action,
           message_intro: "You have uploaded new file(s) to an employee's expense claim.",
           notes: `Expense ID: ${expense._id}<br/>Files: ${uploadedUrls.join('<br/>')}<br/>Employee ID: ${expense.employeeId}<br/>Date: ${new Date().toLocaleString()}`,
-          actionbutton_text: masterTemplate.expenseFileUploaded.actionbutton_text || 'View Files',
-          actionlink: masterTemplate.expenseFileUploaded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
-          fallback_note: masterTemplate.expenseFileUploaded.fallback_note,
-          action_link: masterTemplate.expenseFileUploaded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+          actionbutton_text: expenseTemplate.expenseFileUploaded.actionbutton_text || 'View Files',
+          actionlink: expenseTemplate.expenseFileUploaded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+          fallback_note: expenseTemplate.expenseFileUploaded.fallback_note,
+          action_link: expenseTemplate.expenseFileUploaded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
         });
-        sendEmail(req.admin.email, masterTemplate.expenseFileUploaded.subject, emailHtmlAdmin);
+        sendEmail(req.admin.email, expenseTemplate.expenseFileUploaded.subject, emailHtmlAdmin);
       }
     }
 
@@ -1018,30 +1018,30 @@ exports.updateExpense = async (req, res) => {
       const employeeEmail = expense.employeeId?.email || '';
       if (employeeEmail) {
         const emailHtml = generateMasterTemplate({
-          event_name: masterTemplate.expenseCommentAdded.event_name,
-          action: masterTemplate.expenseCommentAdded.action,
+          event_name: expenseTemplate.expenseCommentAdded.event_name,
+          action: expenseTemplate.expenseCommentAdded.action,
           message_intro: 'A new comment has been added to your expense claim by Admin.',
           notes: `Expense ID: ${expense._id}<br/>Comment: ${comment.trim()}<br/>Date: ${new Date().toLocaleString()}`,
-          actionbutton_text: masterTemplate.expenseCommentAdded.actionbutton_text || 'View Expense',
-          actionlink: masterTemplate.expenseCommentAdded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
-          fallback_note: masterTemplate.expenseCommentAdded.fallback_note,
-          action_link: masterTemplate.expenseCommentAdded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+          actionbutton_text: expenseTemplate.expenseCommentAdded.actionbutton_text || 'View Expense',
+          actionlink: expenseTemplate.expenseCommentAdded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+          fallback_note: expenseTemplate.expenseCommentAdded.fallback_note,
+          action_link: expenseTemplate.expenseCommentAdded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
         });
-        sendEmail(employeeEmail, masterTemplate.expenseCommentAdded.subject, emailHtml);
+        sendEmail(employeeEmail, expenseTemplate.expenseCommentAdded.subject, emailHtml);
       }
 
       if (req.admin.email) {
         const emailHtmlAdmin = generateMasterTemplate({
-          event_name: masterTemplate.expenseCommentAdded.event_name,
-          action: masterTemplate.expenseCommentAdded.action,
+          event_name: expenseTemplate.expenseCommentAdded.event_name,
+          action: expenseTemplate.expenseCommentAdded.action,
           message_intro: "You have added a new comment to an employee's expense claim.",
           notes: `Expense ID: ${expense._id}<br/>Comment: ${comment.trim()}<br/>Employee ID: ${expense.employeeId}<br/>Date: ${new Date().toLocaleString()}`,
-          actionbutton_text: masterTemplate.expenseCommentAdded.actionbutton_text || 'View Expense',
-          actionlink: masterTemplate.expenseCommentAdded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
-          fallback_note: masterTemplate.expenseCommentAdded.fallback_note,
-          action_link: masterTemplate.expenseCommentAdded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+          actionbutton_text: expenseTemplate.expenseCommentAdded.actionbutton_text || 'View Expense',
+          actionlink: expenseTemplate.expenseCommentAdded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+          fallback_note: expenseTemplate.expenseCommentAdded.fallback_note,
+          action_link: expenseTemplate.expenseCommentAdded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
         });
-        sendEmail(req.admin.email, masterTemplate.expenseCommentAdded.subject, emailHtmlAdmin);
+        sendEmail(req.admin.email, expenseTemplate.expenseCommentAdded.subject, emailHtmlAdmin);
       }
     }
 
@@ -1069,16 +1069,16 @@ exports.updateExpense = async (req, res) => {
     // Expense Updated Email
     if (expense.employeeId?.email) {
       const emailHtml = generateMasterTemplate({
-        event_name: masterTemplate.expenseUpdated.event_name,
-        action: masterTemplate.expenseUpdated.action,
+        event_name: expenseTemplate.expenseUpdated.event_name,
+        action: expenseTemplate.expenseUpdated.action,
         message_intro: 'Your expense has been updated by Admin.',
         notes: `Expense ID: ${expense._id}<br/>Updated Fields: ${JSON.stringify(updateFields)}<br/>Date: ${new Date().toLocaleString()}`,
-        actionbutton_text: masterTemplate.expenseUpdated.actionbutton_text || 'View Expense',
-        actionlink: masterTemplate.expenseUpdated.actionlink?.replace('<EXPENSE_LINK>', `#`),
-        fallback_note: masterTemplate.expenseUpdated.fallback_note || 'Having trouble with the button?',
-        action_link: masterTemplate.expenseUpdated.action_link?.replace('<EXPENSE_LINK>', `#`),
+        actionbutton_text: expenseTemplate.expenseUpdated.actionbutton_text || 'View Expense',
+        actionlink: expenseTemplate.expenseUpdated.actionlink?.replace('<EXPENSE_LINK>', `#`),
+        fallback_note: expenseTemplate.expenseUpdated.fallback_note || 'Having trouble with the button?',
+        action_link: expenseTemplate.expenseUpdated.action_link?.replace('<EXPENSE_LINK>', `#`),
       });
-      sendEmail(expense.employeeId.email, masterTemplate.expenseUpdated.subject, emailHtml);
+      sendEmail(expense.employeeId.email, expenseTemplate.expenseUpdated.subject, emailHtml);
     }
 
     await session.commitTransaction();
@@ -1143,32 +1143,32 @@ const employeeEmail = expenseWithEmployee.employeeId?.email || '';
 
     if (employeeEmail) {
       const emailHtml = generateMasterTemplate({
-        event_name: masterTemplate.expenseCommentAdded.event_name,
-        action: masterTemplate.expenseCommentAdded.action,
+        event_name: expenseTemplate.expenseCommentAdded.event_name,
+        action: expenseTemplate.expenseCommentAdded.action,
         message_intro: 'A new comment has been added to your expense claim by Admin.',
         notes: `Expense ID: ${expense._id}<br/>Comment: ${comment.trim()}<br/>Date: ${new Date().toLocaleString()}`,
-        actionbutton_text: masterTemplate.expenseCommentAdded.actionbutton_text,
-        actionlink: masterTemplate.expenseCommentAdded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
-        fallback_note: masterTemplate.expenseCommentAdded.fallback_note,
-        action_link: masterTemplate.expenseCommentAdded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+        actionbutton_text: expenseTemplate.expenseCommentAdded.actionbutton_text,
+        actionlink: expenseTemplate.expenseCommentAdded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+        fallback_note: expenseTemplate.expenseCommentAdded.fallback_note,
+        action_link: expenseTemplate.expenseCommentAdded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
       });
-      sendEmail(employeeEmail, masterTemplate.expenseCommentAdded.subject, emailHtml);
+      sendEmail(employeeEmail, expenseTemplate.expenseCommentAdded.subject, emailHtml);
     }
 
     const adminEmail = req.admin.email || (await User.findById(req.admin._id).select('email')).email;
 
     if (adminEmail) {
       const emailHtmlAdmin = generateMasterTemplate({
-        event_name: masterTemplate.expenseCommentAdded.event_name,
-        action: masterTemplate.expenseCommentAdded.action,
+        event_name: expenseTemplate.expenseCommentAdded.event_name,
+        action: expenseTemplate.expenseCommentAdded.action,
         message_intro: "You have added a new comment to an employee's expense claim.",
         notes: `Expense ID: ${expense._id}<br/>Comment: ${comment.trim()}<br/>Employee ID: ${expense.employeeId}<br/>Date: ${new Date().toLocaleString()}`,
-        actionbutton_text: masterTemplate.expenseCommentAdded.actionbutton_text,
-        actionlink: masterTemplate.expenseCommentAdded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
-        fallback_note: masterTemplate.expenseCommentAdded.fallback_note,
-        action_link: masterTemplate.expenseCommentAdded.action_link.replace('<APPROVED_REQUEST_LINK>', '#')
+        actionbutton_text: expenseTemplate.expenseCommentAdded.actionbutton_text,
+        actionlink: expenseTemplate.expenseCommentAdded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+        fallback_note: expenseTemplate.expenseCommentAdded.fallback_note,
+        action_link: expenseTemplate.expenseCommentAdded.action_link.replace('<APPROVED_REQUEST_LINK>', '#')
       });
-      sendEmail(adminEmail, masterTemplate.expenseCommentAdded.subject, emailHtmlAdmin);
+      sendEmail(adminEmail, expenseTemplate.expenseCommentAdded.subject, emailHtmlAdmin);
     }
 
     return res.status(200).json({

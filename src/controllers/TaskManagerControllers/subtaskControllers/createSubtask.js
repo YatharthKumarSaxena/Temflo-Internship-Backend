@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { SUBTASK_CREATED } = require("@/config/activity.enums");
-const { masterTemplate } = require("@/config/emailTemplate");
+const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 
@@ -85,8 +85,8 @@ const createSubtask = async (req, res) => {
         const emailHtml = generateMasterTemplate({
           company_name: req.admin.companyName,
           user_name: assignedUser.name,
-          event_name: masterTemplate.subtaskAssignedToEmployee.event_name,
-          action: masterTemplate.subtaskAssignedToEmployee.action,
+          event_name: taskManagerTemplate.subtaskAssignedToEmployee.event_name,
+          action: taskManagerTemplate.subtaskAssignedToEmployee.action,
           status: 'Assigned',
           message_intro: `You have been assigned a new subtask.`,
           notes: `
@@ -101,7 +101,7 @@ const createSubtask = async (req, res) => {
           action_link: `http://localhost:3000/tasks/${task._id}/subtasks/${subtask._id}`
         });
 
-        sendEmail(assignedUser.email, masterTemplate.subtaskAssignedToEmployee.subject, emailHtml);
+        sendEmail(assignedUser.email, taskManagerTemplate.subtaskAssignedToEmployee.subject, emailHtml);
       }
     }
 

@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { LEAVE_BALANCE_UPDATED_BY_EMPLOYEE, LEAVE_REQUEST_CREATED_BY_EMPLOYEE, LEAVE_REQUEST_DELETED_BY_EMPLOYEE, LEAVE_REQUEST_STATUS_UPDATED_BY_EMPLOYEE } = require("@/config/activity.enums");
-const { masterTemplate } = require("@/config/emailTemplate");
+const { leaveTemplate } = require("@/config/emailTemplates/leaveTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 
@@ -196,24 +196,24 @@ const approver = await User.findOne({
     const emailHtml = generateMasterTemplate({
       company_name: req.admin.companyName,
       user_name: user.name,
-      event_name: masterTemplate.leaveRequestCreatedByEmployee.event_name,
-      action: masterTemplate.leaveRequestCreatedByEmployee.action,
+      event_name: leaveTemplate.leaveRequestCreatedByEmployee.event_name,
+      action: leaveTemplate.leaveRequestCreatedByEmployee.action,
       message_intro: "You have successfully submitted a leave request. Your Request has been sent to Leave Approver",
       notes: `${leaveDetails}<br/>Applied On: ${applyDate}`
     });
-    sendEmail(user.email, masterTemplate.leaveRequestCreatedByEmployee.subject, emailHtml);
+    sendEmail(user.email, leaveTemplate.leaveRequestCreatedByEmployee.subject, emailHtml);
 
 // Mail to Approver/Admin
 if (approver) {
   const emailHtmlAdmin = generateMasterTemplate({
     company_name: req.admin.companyName,
     user_name: approver.name,
-    event_name: masterTemplate.leaveRequestCreatedByEmployee.event_name,
-    action: masterTemplate.leaveRequestCreatedByEmployee.action,
+    event_name: leaveTemplate.leaveRequestCreatedByEmployee.event_name,
+    action: leaveTemplate.leaveRequestCreatedByEmployee.action,
     message_intro: `Employee whose Id: ${req.admin._id} has applied for leave request.`,
     notes: `${leaveDetails}<br/>Applied On: ${applyDate}`
   });
-  sendEmail(approver.email, masterTemplate.leaveRequestCreatedByEmployee.subject, emailHtmlAdmin);
+  sendEmail(approver.email, leaveTemplate.leaveRequestCreatedByEmployee.subject, emailHtmlAdmin);
 }
     return res.status(200).json({
       success: true,
@@ -334,24 +334,24 @@ const approver = await User.findOne({
     const emailHtml = generateMasterTemplate({
       company_name: req.admin.companyName,
       user_name: employee.name,
-      event_name: masterTemplate.leaveRequestDeletedByEmployee.event_name,
-      action: masterTemplate.leaveRequestDeletedByEmployee.action,
+      event_name: leaveTemplate.leaveRequestDeletedByEmployee.event_name,
+      action: leaveTemplate.leaveRequestDeletedByEmployee.action,
       message_intro: "Your leave request has been deleted.",
       notes: `${leaveDetails}<br/>Cancelled On: ${cancelDate}`
     });
-    sendEmail(employee.email, masterTemplate.leaveRequestDeletedByEmployee.subject, emailHtml);
+    sendEmail(employee.email, leaveTemplate.leaveRequestDeletedByEmployee.subject, emailHtml);
 
 // Mail to Approver/Admin
 if (approver) {
   const emailHtmlAdmin = generateMasterTemplate({
     company_name: req.admin.companyName,
     user_name: approver.name,
-    event_name: masterTemplate.leaveRequestDeletedByEmployee.event_name,
-    action: masterTemplate.leaveRequestDeletedByEmployee.action,
+    event_name: leaveTemplate.leaveRequestDeletedByEmployee.event_name,
+    action: leaveTemplate.leaveRequestDeletedByEmployee.action,
     message_intro: `Employee whose Id: ${req.admin._id} has cancelled his/her leave request.`,
     notes: `${leaveDetails}<br/>Cancelled On: ${cancelDate}`
   });
-  sendEmail(approver.email, masterTemplate.leaveRequestDeletedByEmployee.subject, emailHtmlAdmin);
+  sendEmail(approver.email, leaveTemplate.leaveRequestDeletedByEmployee.subject, emailHtmlAdmin);
 }
 
     return res.json({ success: true, message: 'Leave request cancelled and balance restored' });
@@ -603,25 +603,25 @@ if (request.approverId.toString() !== req.admin._id.toString()) {
     const emailHtmlToEmployee = generateMasterTemplate({
       company_name: adminUser.companyName,
       user_name: employee.name,
-      event_name: masterTemplate.leaveRequestStatusUpdatedByEmployee.event_name,
-      action: masterTemplate.leaveRequestStatusUpdatedByEmployee.action,
+      event_name: leaveTemplate.leaveRequestStatusUpdatedByEmployee.event_name,
+      action: leaveTemplate.leaveRequestStatusUpdatedByEmployee.action,
       status,
       message_intro: `Your leave request has been ${status.toLowerCase()} by Admin.`,
       notes: `${leaveDetails}<br/>Processed On: ${requestDate}`,
     });
-    sendEmail(employee.email, masterTemplate.leaveRequestStatusUpdatedByEmployee.subject, emailHtmlToEmployee);
+    sendEmail(employee.email, leaveTemplate.leaveRequestStatusUpdatedByEmployee.subject, emailHtmlToEmployee);
 
     // Email to Admin
     const emailHtmlToAdmin = generateMasterTemplate({
       company_name: adminUser.companyName,
       user_name: adminUser.name,
-      event_name: masterTemplate.leaveRequestStatusUpdatedByEmployee.event_name,
-      action: masterTemplate.leaveRequestStatusUpdatedByEmployee.action,
+      event_name: leaveTemplate.leaveRequestStatusUpdatedByEmployee.event_name,
+      action: leaveTemplate.leaveRequestStatusUpdatedByEmployee.action,
       status,
       message_intro: `You have ${status.toLowerCase()} the leave request for Employee Id: ${employee._id}.`,
       notes: `${leaveDetails}<br/>Processed On: ${requestDate}`,
     });
-    sendEmail(adminUser.email, masterTemplate.leaveRequestStatusUpdatedByEmployee.subject, emailHtmlToAdmin);
+    sendEmail(adminUser.email, leaveTemplate.leaveRequestStatusUpdatedByEmployee.subject, emailHtmlToAdmin);
 
     return res.status(200).json({
       success: true,

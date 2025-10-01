@@ -60,6 +60,19 @@ const activitySchema = new mongoose.Schema({
     default: null,
   },
 
+  // ✅ New field to store user snapshot
+  userSnapshot: {
+    name: { type: String, default: null },
+    email: { type: String, default: null },
+    employeeCode: { type: String, default: null },
+  },
+
+  // Optional description field
+  description: {
+    type: String,
+    default: null,
+  },
+
   timestamp: {
     type: Date,
     default: Date.now,
