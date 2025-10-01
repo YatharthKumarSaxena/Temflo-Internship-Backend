@@ -3,6 +3,7 @@ const { ROLE_TYPES } = require('@/config/user.config');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { USER_LOGGED_IN } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const authUser = async (req, res, { user, databasePassword, password, UserPasswordModel }) => {
   try {
@@ -75,6 +76,7 @@ const authUser = async (req, res, { user, databasePassword, password, UserPasswo
       modelAffected: [MODEL_AFFECTED.model_userPassword],
       eventType: USER_LOGGED_IN,
       actionDone: ACTIONS.update,
+      description: `${getFullName(user.employeeInfo)} successfully logged in`,
       oldData: { jwtTokenIssuedAt: databasePassword.lastActivity || null },
       newData: { jwtTokenIssuedAt: new Date() }
     });

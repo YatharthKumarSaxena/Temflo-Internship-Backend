@@ -5,6 +5,7 @@ const { activityTracker } = require("@/utils/activityTracker");
 const { USER_PASSWORD_RESET, USER_LOGGED_OUT } = require("@/config/activity.enums");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { RESET_TOKEN_EXPIRY } = require("@/config/token.config");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const resetPassword = async (req, res, { userModel }) => {
   try {
@@ -52,7 +53,7 @@ const resetPassword = async (req, res, { userModel }) => {
     userPassword.resetToken = null;
 
     // Check if there are any active refresh tokens
-    const oldTokens = userPassword.activeSessions.map(s => s.refreshToken);
+    const oldTokens = userPassword.activeSessions.map(s => s.refreshToken) || [];
     const hasActiveRefreshToken = oldTokens.some(token => token);
 
     if (hasActiveRefreshToken) {
@@ -74,6 +75,7 @@ const resetPassword = async (req, res, { userModel }) => {
       modelAffected: [MODEL_AFFECTED.model_userPassword],
       eventType: USER_PASSWORD_RESET,
       actionDone: ACTIONS.update,
+      description: `${getFullName(user.employeeInfo)} reset their password`,
       oldData: { resetToken: "Old Token", passwordChanged: false, sessionsCleared: false },
       newData: { resetToken: null, passwordChanged: true, sessionsCleared: hasActiveRefreshToken },
     });
@@ -89,6 +91,7 @@ const resetPassword = async (req, res, { userModel }) => {
         fileAffected: FILE.file_createAuth_resetPassword,
         modelAffected: [MODEL_AFFECTED.model_userPassword],
         eventType: USER_LOGGED_OUT,
+        description: `${getFullName(user.employeeInfo)} was logged out from all devices after password reset`,
         actionDone: ACTIONS.update,
         oldData: { refreshToken: oldTokens },
         newData: { refreshToken: [] },
