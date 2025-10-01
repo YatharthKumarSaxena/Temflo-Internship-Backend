@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
-const { PERMISSION_CREATED, ASSET_TYPE_CREATED, ASSET_TYPE_DELETED, ASSET_TYPE_UPDATED, ASSET_ADDED, ASSET_DELETED, ASSET_UPDATED, ASSET_BULK_CREATED, ASSET_TRANSFER_APPROVED, ASSET_TRANSFER_REJECTED } = require("@/config/activity.enums");
+const { ASSET_TYPE_CREATED, ASSET_TYPE_DELETED, ASSET_TYPE_UPDATED, ASSET_ADDED, ASSET_DELETED, ASSET_UPDATED, ASSET_BULK_CREATED, ASSET_TRANSFER_APPROVED, ASSET_TRANSFER_REJECTED } = require("@/config/activity.enums");
 const { assetTemplate } = require("@/config/emailTemplates/assetTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
@@ -35,6 +35,7 @@ exports.createAssetType = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_assetType],
       eventType: ASSET_TYPE_CREATED,
       actionDone: ACTIONS.create,
+      description: `Asset Type '${name || "with Unspecified Name"}' was created successfully by ${getFullName(req.admin.employeeInfo)}.`,
       oldData: null,
       newData: assetTypes.toObject()
     });
@@ -84,6 +85,7 @@ exports.deleteAssetType = async (req, res) => {
       fileAffected: FILE.file_admin_asset,
       modelAffected: [MODEL_AFFECTED.model_assetType],
       eventType: ASSET_TYPE_DELETED,
+      description: `Asset Type '${assetType.name || "with Unspecified Name"}' was hard deleted by ${getFullName(req.admin.employeeInfo)}.`,
       actionDone: ACTIONS.delete,
       oldData: assetType.toObject(),
       newData: null
@@ -100,7 +102,7 @@ exports.updateAssetType = async (req, res) => {
     const { name, description } = req.body;
 
     if (!name) {
-      res.status(500).json({ success: false, message: 'All field Required' });
+      return res.status(500).json({ success: false, message: 'All fields Required' });
     }
 
     // Fetch the existing asset type first
@@ -109,27 +111,20 @@ exports.updateAssetType = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Asset Type not found' });
     }
 
-    // Save oldData for activity tracking (only changed fields)
-    const oldData = {};
-    const newData = {};
-    oldData._id = req.params.id
-    if (name && name !== assetType.name) {
-      oldData.name = assetType.name;
-      newData.name = name;
-      assetType.name = name;
-    }
-    if (description && description !== assetType.description) {
-      oldData.description = assetType.description;
-      newData.description = description;
-      assetType.description = description;
-    }
+    // Take complete old snapshot
+    const oldData = assetType.toObject();
+
+    // Update fields
+    assetType.name = name;
+    assetType.description = description;
 
     // Save updated asset type
     await assetType.save();
 
+    // Take complete new snapshot
+    const newData = assetType.toObject();
 
-    if (!assetType)
-      return res.status(404).json({ success: false, message: 'Asset Type Not Found' });
+    // Activity Tracker logging
     activityTracker({
       userId: req.admin._id,
       companyId: req.admin.companyId,
@@ -140,8 +135,9 @@ exports.updateAssetType = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_assetType],
       eventType: ASSET_TYPE_UPDATED,
       actionDone: ACTIONS.update,
-      oldData: oldData,
-      newData: newData
+      description: `Asset Type '${assetType.name || "with Unspecified Name"}' was updated by ${getFullName(req.admin.employeeInfo)}.`,
+      oldData: oldData,   // complete old snapshot
+      newData: newData    // complete new snapshot
     });
 
     return res.status(200).json({ success: true, assetType });
@@ -250,6 +246,7 @@ exports.addAsset = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_asset],
       eventType: ASSET_ADDED,
       actionDone: ACTIONS.create,
+      description: `Asset '${asset.name || "With Unspecified Name"}' with Serial Number '${asset.serialNumber}' was created in Plant ID '${plantId}' by ${getFullName(req.admin.employeeInfo)}.`,
       oldData: null,
       newData: asset.toObject(),
     });
@@ -507,6 +504,7 @@ exports.deleteAsset = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_asset],
       eventType: ASSET_DELETED,
       actionDone: ACTIONS.delete,
+      description: `Asset '${asset.name || "Unnamed Asset"}' with Serial Number '${asset.serialNumber || "N/A"}' was hard deleted from Plant ID '${req.admin.plantId || "N/A"}' by ${getFullName(req.admin.employeeInfo)}.`,
       oldData: asset.toObject(),
       newData: null,
     });
@@ -694,19 +692,21 @@ exports.updateAsset = async (req, res) => {
       }
     }
 
-    // Update oldData/newData
-    const oldData = { _id: assetId }, newData = {};
+    // Store complete old snapshot
+    const oldData = existingAsset.toObject();
+
+    // Apply updates
     Object.keys(updateData).forEach(key => {
-      if (updateData[key] !== existingAsset[key]) {
-        oldData[key] = existingAsset[key];
-        newData[key] = updateData[key];
-        existingAsset[key] = updateData[key];
-      }
+      existingAsset[key] = updateData[key];
     });
 
+    // Save updated asset
     await existingAsset.save();
 
-    if (Object.keys(newData).length) {
+    // Store complete new snapshot
+    const newData = existingAsset.toObject();
+
+    if (JSON.stringify(oldData) !== JSON.stringify(newData)) {
       activityTracker({
         userId: req.admin._id,
         companyId: req.admin.companyId,
@@ -717,6 +717,7 @@ exports.updateAsset = async (req, res) => {
         modelAffected: [MODEL_AFFECTED.model_asset],
         eventType: ASSET_UPDATED,
         actionDone: ACTIONS.update,
+        description: `Asset '${existingAsset.name || "Unnamed Asset"}' with Serial Number '${existingAsset.serialNumber || "N/A"}' in Plant ID '${req.admin.plantId || "N/A"}' was updated by ${getFullName(req.admin.employeeInfo)}. Updated fields: ${Object.keys(newData).length ? Object.keys(newData).map(key => `${key}: '${newData[key]}'`).join(", ") : "No changes detected"}.`,
         oldData,
         newData,
       });
@@ -931,6 +932,7 @@ exports.createBulkAssets = async (req, res) => {
           modelAffected: [MODEL_AFFECTED.model_asset],
           eventType: ASSET_BULK_CREATED,
           actionDone: ACTIONS.create,
+          description: `Asset '${newAsset.name || "Unnamed Asset"}' with Serial Number '${newAsset.serialNumber || "N/A"}' created in Plant ID '${plantId || "N/A"}' by ${getFullName(req.admin.employeeInfo)}. Assigned To: '${row["AssignedTo"] || "N/A"}', Responsible: '${row["Responsible"] || "N/A"}', Asset Type: '${row["AssetType"] || "N/A"}', Status: '${row.Status || "Available"}', Purchase Date: '${PurchaseDate || "N/A"}', Expiry Date: '${ExpiryDate || "N/A"}'.`,
           oldData: null,
           newData: newAsset.toObject(),
         });
@@ -1064,15 +1066,9 @@ exports.approveAssetTransfer = async (req, res) => {
     }
 
     // Save old data for activity tracker
-    const oldAssetData = { _id: transfer.assetId._id, assignedTo: asset.assignedTo, status: asset.status };
-    const oldTransferData = {
-      _id: transferId,
-      status: transfer.status,
-      approvedBy: transfer.approvedBy,
-      approvedAt: transfer.approvedAt,
-      completedAt: transfer.completedAt,
-      adminNotes: transfer.adminNotes
-    };
+    const oldAssetData = asset.toObject();
+    // --- OLD DATA SNAPSHOT (Complete Transfer Object) ---
+    const oldTransferData = transfer.toObject();
 
     // Update the asset assignment
     asset.assignedTo = transfer.toEmployee;
@@ -1089,19 +1085,12 @@ exports.approveAssetTransfer = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_asset],
       eventType: ASSET_UPDATED,
       actionDone: ACTIONS.update,
+      description: `Asset updated: reassigned from Employee ${oldAssetData.assignedTo?._id || 'N/A'} to Employee ${asset.assignedTo?._id || 'N/A'}`,
       oldData: oldAssetData,
-      newData: { assignedTo: asset.assignedTo, status: asset.status },
+      newData: asset.toObject(),
     });
 
-    const newData = {
-      status: 'Completed',
-      approvedBy: adminId,
-      approvedAt: new Date(),
-      completedAt: new Date(),
-      adminNotes: adminNotes.trim()
-    }
-
-    // Update the transfer request
+    // --- UPDATE TRANSFER ---
     transfer.status = 'Completed';
     transfer.approvedBy = adminId;
     transfer.approvedAt = new Date();
@@ -1120,7 +1109,8 @@ exports.approveAssetTransfer = async (req, res) => {
       eventType: ASSET_TRANSFER_APPROVED,
       actionDone: ACTIONS.update,
       oldData: oldTransferData,
-      newData: newData,
+      newData: transfer.toObject(),
+      description: `Approved asset transfer from Employee ${oldTransferData.fromEmployee?._id || 'N/A'} to Employee ${oldTransferData.toEmployee?._id || 'N/A'}`
     });
 
     await session.commitTransaction();
@@ -1159,7 +1149,7 @@ exports.approveAssetTransfer = async (req, res) => {
     const adminMsg = `
       ${baseNotes}
       From Employee ID: ${transfer.fromEmployee._id} to Employee ID: ${transfer.toEmployee._id}
-      Notes: ${adminNotes.trim() || 'None'}'}
+      Notes: ${adminNotes.trim() || 'None'}'
       Date: ${approveDate}
     `;
 
@@ -1167,7 +1157,7 @@ exports.approveAssetTransfer = async (req, res) => {
     const resMsg = `
       ${baseNotes}
       From Employee ID: ${transfer.fromEmployee._id} to Employee ID: ${transfer.toEmployee._id}
-      Notes: ${adminNotes.trim() || 'None'}'}
+      Notes: ${adminNotes.trim() || 'None'}'
       Date: ${approveDate}
     `;
 
@@ -1282,20 +1272,8 @@ exports.rejectAssetTransfer = async (req, res) => {
       status: 'Assigned',
     });
 
-    const oldTransferData = {
-      _id: transferId,
-      status: transfer.status,
-      approvedBy: transfer.approvedBy,
-      rejectedAt: transfer.rejectedAt,
-      adminNotes: transfer.adminNotes
-    };
-
-    const newData = {
-      status: 'Rejected',
-      approvedBy: adminId,
-      rejectedAt: new Date(),
-      adminNotes: adminNotes.trim()
-    }
+    // --- OLD DATA SNAPSHOT (Complete Transfer Object) ---
+    const oldTransferData = transfer.toObject();
 
     transfer.status = 'Rejected';
     transfer.approvedBy = adminId;
@@ -1314,7 +1292,8 @@ exports.rejectAssetTransfer = async (req, res) => {
       eventType: ASSET_TRANSFER_REJECTED,
       actionDone: ACTIONS.update,
       oldData: oldTransferData,
-      newData: newData
+      newData: transfer.toObject(),
+      description: `Rejected asset transfer from Employee ${oldTransferData.fromEmployee?._id || 'N/A'} to Employee ${oldTransferData.toEmployee?._id || 'N/A'}`
     });
 
     const assetLink = `https://yourdomain.com/assets/${asset._id}`;

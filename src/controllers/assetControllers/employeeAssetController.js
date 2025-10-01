@@ -1,7 +1,6 @@
 const Asset = require('../../models/AssetModels/Asset');
 const AssetTransfer = require('../../models/AssetModels/AssetTransfer');
 const User = require('../../models/userModels/User');
-const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { ASSET_TRANSFER_REQUESTED } = require('@/config/activity.enums');
@@ -228,6 +227,7 @@ exports.requestAssetTransfer = async (req, res) => {
       actionDone: ACTIONS.create,
       oldData: null,
       newData: transferRequest.toObject(),
+      description: `Asset transfer requested by Employee ${fromEmployeeId} to Employee ${toEmployeeId} for Asset ${assetId}. Reason: ${reason.trim() || "No Reason Mentioned"}`,
     });
 
     res.status(201).json({
