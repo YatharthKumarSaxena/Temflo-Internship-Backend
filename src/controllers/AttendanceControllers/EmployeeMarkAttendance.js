@@ -8,6 +8,9 @@ const moment = require('moment');
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require('@/config/structure.config');
 const { activityTracker } = require('@/utils/activityTracker');
 const { getFullName } = require('@/utils/commonFunctions');
+const { attendanceTemplate } = require('@/config/emailTemplates/attendanceTemplates');
+const { generateMasterTemplate } = require('@/emailTemplate/masterTemplate');
+const { sendEmail } = require('@/utils/emailSender');
 const { ATTENDANCE_MARKED_BY_EMP, EMP_ATTENDANCE_UPDATED, EMP_ATTENDANCE_MARKED } = require('@/config/activity.enums');
 
 const haversineDistance = (coords1, coords2) => {
@@ -105,6 +108,56 @@ const EmployeeMarkAttendance = async (req, res) => {
         description: `Attendance request created by employee ${getFullName(req.admin.employeeInfo)} (${req.admin.employeeCode || employee.employeeCode}) for date ${attendanceDate.format('YYYY-MM-DD')}`
       });
 
+      // ---- EMAIL INTEGRATION ----
+      const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+      const requestLink = `${baseUrl}attendance/requests`;
+
+      const requestDetails = `
+        Date: ${attendanceDate.format('YYYY-MM-DD')}<br/>
+        Reason: ${reason || 'Marked attendance for past date'}<br/>
+        Employee: ${getFullName(req.admin.employeeInfo)} (${req.admin.employeeCode || employee.employeeCode})
+      `;
+      const requestDate = new Date().toLocaleString();
+
+      // Email to Employee (confirmation)
+      if (employee?.email) {
+        const emailHtmlToEmployee = generateMasterTemplate({
+          company_name: req.admin.companyName,
+          user_name: employee.name,
+          event_name: attendanceTemplate.attendanceRequestCreated.event_name,
+          action: attendanceTemplate.attendanceRequestCreated.action,
+          status: 'Submitted',
+          message_intro: `Your attendance request has been submitted and is pending approval`,
+          notes: `${requestDetails}<br/>Submitted On: ${requestDate}`,
+          actionbutton_text: attendanceTemplate.attendanceRequestCreated.actionbutton_text,
+          actionlink: requestLink,
+          fallback_note: attendanceTemplate.attendanceRequestCreated.fallback_note,
+          action_link: requestLink
+        });
+        sendEmail(employee.email, attendanceTemplate.attendanceRequestCreated.subject, emailHtmlToEmployee);
+      }
+
+      // Email to Supervisor (if exists)
+      if (approver) {
+        const supervisor = await User.findById(approver);
+        if (supervisor?.email) {
+          const emailHtmlToSupervisor = generateMasterTemplate({
+            company_name: req.admin.companyName,
+            user_name: supervisor.name,
+            event_name: attendanceTemplate.attendanceRequestCreated.event_name,
+            action: attendanceTemplate.attendanceRequestCreated.action,
+            status: 'Pending Approval',
+            message_intro: `An attendance request has been submitted by ${getFullName(req.admin.employeeInfo)} and requires your approval`,
+            notes: `${requestDetails}<br/>Submitted On: ${requestDate}`,
+            actionbutton_text: 'Review Request',
+            actionlink: requestLink,
+            fallback_note: attendanceTemplate.attendanceRequestCreated.fallback_note,
+            action_link: requestLink
+          });
+          sendEmail(supervisor.email, attendanceTemplate.attendanceRequestCreated.subject, emailHtmlToSupervisor);
+        }
+      }
+
       return res.status(200).json({
         success: true,
         message: 'Attendance request submitted for approval',
@@ -190,6 +243,58 @@ const EmployeeMarkAttendance = async (req, res) => {
       newData: attendance.toObject(),
       description: `Attendance ${oldData ? 'updated' : 'marked'} by employee ${getFullName(req.admin.employeeInfo)} (${req.admin.employeeCode || employee.employeeCode}) for date ${attendanceDate.format('YYYY-MM-DD')}${inTime ? ` - In: ${inTime}` : ''}${outTime ? ` - Out: ${outTime}` : ''}`
     });
+
+    // ---- EMAIL INTEGRATION ----
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const attendanceLink = `${baseUrl}attendance/my-attendance`;
+
+    const attendanceDetails = `
+      Date: ${attendanceDate.format('YYYY-MM-DD')}<br/>
+      ${inTime ? `In Time: ${inTime}<br/>` : ''}
+      ${outTime ? `Out Time: ${outTime}<br/>` : ''}
+      Status: ${settings.isApprovalRequired ? 'Pending Approval' : 'Marked'}
+    `;
+    const markDate = new Date().toLocaleString();
+
+    // Email to Employee (confirmation)
+    if (employee?.email) {
+      const templateToUse = oldData ? attendanceTemplate.attendanceUpdatedByEmployee : attendanceTemplate.attendanceMarkedByEmployee;
+      const emailHtmlToEmployee = generateMasterTemplate({
+        company_name: req.admin.companyName,
+        user_name: employee.name,
+        event_name: templateToUse.event_name,
+        action: templateToUse.action,
+        status: settings.isApprovalRequired ? 'Pending Approval' : 'Confirmed',
+        message_intro: `Your attendance has been ${oldData ? 'updated' : 'marked'} successfully${settings.isApprovalRequired ? ' and is pending approval' : ''}`,
+        notes: `${attendanceDetails}<br/>${oldData ? 'Updated' : 'Marked'} On: ${markDate}`,
+        actionbutton_text: templateToUse.actionbutton_text,
+        actionlink: attendanceLink,
+        fallback_note: templateToUse.fallback_note,
+        action_link: attendanceLink
+      });
+      sendEmail(employee.email, templateToUse.subject, emailHtmlToEmployee);
+    }
+
+    // Email to Supervisor (if approval required and supervisor exists)
+    if (settings.isApprovalRequired && attendance.approver) {
+      const supervisor = await User.findById(attendance.approver);
+      if (supervisor?.email) {
+        const emailHtmlToSupervisor = generateMasterTemplate({
+          company_name: req.admin.companyName,
+          user_name: supervisor.name,
+          event_name: oldData ? attendanceTemplate.attendanceUpdatedByEmployee.event_name : attendanceTemplate.attendanceMarkedByEmployee.event_name,
+          action: oldData ? attendanceTemplate.attendanceUpdatedByEmployee.action : attendanceTemplate.attendanceMarkedByEmployee.action,
+          status: 'Pending Your Approval',
+          message_intro: `${getFullName(req.admin.employeeInfo)} has ${oldData ? 'updated' : 'marked'} attendance and requires your approval`,
+          notes: `${attendanceDetails}<br/>${oldData ? 'Updated' : 'Marked'} On: ${markDate}`,
+          actionbutton_text: 'Review Attendance',
+          actionlink: `${baseUrl}attendance/requests`,
+          fallback_note: 'Please review and approve the attendance request',
+          action_link: `${baseUrl}attendance/requests`
+        });
+        sendEmail(supervisor.email, 'Attendance Approval Required', emailHtmlToSupervisor);
+      }
+    }
 
     return res.status(200).json({ message: 'Attendance marked successfully', attendance });
 
