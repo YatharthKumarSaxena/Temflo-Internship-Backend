@@ -18,13 +18,18 @@ const search = async (Model, req, res) => {
     fields.$or.push({ [field]: { $regex: new RegExp(req.query.q, 'i') } });
   }
 
-  let results = await Model.find({
+  let query = Model.find({
     ...fields,
     removed: false,
     companyId: req.admin.companyId,
-  })
-    .limit(20)
-    .exec();
+  }).limit(20);
+
+  // Add businessArea population for Plant model
+  if (Model.modelName === 'Plant') {
+    query = query.populate('businessArea', 'businessArea description');
+  }
+
+  let results = await query.exec();
 
   if (results.length >= 1) {
     return res.status(200).json({

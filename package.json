@@ -11,10 +11,7 @@
     "production": "NODE_ENV=production",
     "setup": "node src/setup/setup.js",
     "upgrade": "node src/setup/upgrade.js",
-    "reset": "node src/setup/reset.js",
-    "auth:migrate": "node src/scripts/migrateAuthData.js",
-    "auth:rollback": "node src/scripts/migrateAuthData.js --rollback",
-    "auth:test": "node src/testing/authFlowComprehensiveTest.js"
+    "reset": "node src/setup/reset.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.509.0",

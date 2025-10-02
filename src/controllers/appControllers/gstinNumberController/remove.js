@@ -34,7 +34,7 @@ const remove = async (Model, req, res) => {
       actionDone: ACTIONS.delete,
       oldData: updatedGSTINNumber.toObject(),
       newData: {
-        note: "All fields same as old data, Soft delettion is done",
+        note: "All fields same as old data, Soft deletion is done",
         removed: true
       },
       description: `GSTIN Number '${updatedGSTINNumber.gstinNumber}' removed by ${getFullName(req.admin.employeeInfo)} for Company ID: ${companyId}`

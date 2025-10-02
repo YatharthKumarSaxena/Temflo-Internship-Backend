@@ -5,19 +5,21 @@ const GstinNumberSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
       },
-      enabled: {
-        type: Boolean,
-        default: true,
-      },
       companyId:{
         type: String,
         required: true,
         immutable: true },      
       stateCode:{
-        type: String,   
+        type: String, 
+        required:true  
+      },
+      stateName:{
+        type: String, 
+        required:true
       },
       gstinNumber:{
-        type:String
+        type:String,
+        required:true
       }
 
 })

@@ -39,6 +39,15 @@ const signUp = async (req, res, { userModel }) => {
       return throwMissingFieldsError(res, 'All fields required');
     }
 
+    // Validate company code: exactly 4 alphanumeric characters (letters and/or digits)
+    const isValidCompanyCode = /^[A-Za-z\d]{4}$/.test(code || '');
+    if (!isValidCompanyCode) {
+      return throwMissingFieldsError(
+        res,
+        'Invalid Company Code. Use exactly 4 letters and/or digits'
+      );
+    }
+
     // Check if email already exists
     const existingAdmin = await Admin.findOne({ email });
     if (existingAdmin) {
@@ -85,7 +94,7 @@ const signUp = async (req, res, { userModel }) => {
     await new AdminPassword(adminPasswordData).save();
 
     // Send verification email
-    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
     const verificationLink = `${baseUrl}/verify/${adminResult._id}/${emailToken.token}`;
 
     const emailHtml = emailVerfication({

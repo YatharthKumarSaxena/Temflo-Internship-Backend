@@ -26,6 +26,7 @@ const paginatedList = async (Model, req, res) => {
       .skip(skip)
       .limit(limit)
       .sort({ [sortBy]: sortValue })
+      .populate('gstinNumber')
       .exec();
   
     // Counting the total documents
