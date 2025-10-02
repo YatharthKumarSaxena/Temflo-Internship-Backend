@@ -1,7 +1,9 @@
 const EmployeeAttendanceSetting = require('../../models/AttendanceModels/AttendanceEmployeeSetting');
+const User = require('../../models/userModels/User');
 const { EMP_ATTENDANCE_SETTING_CREATED, EMP_ATTENDANCE_SETTING_UPDATED } = require('@/config/activity.enums');
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const EmpAttendanceSetting = async (req,res) => {
 
@@ -47,6 +49,9 @@ const EmpAttendanceSetting = async (req,res) => {
           { new: true, upsert: true }
         );
     
+        // Get employee info for description
+        const employee = await User.findById(userId).select('employeeCode employeeInfo');
+
         // Trigger activity tracker
     activityTracker({
       userId: req.admin._id,
@@ -60,6 +65,7 @@ const EmpAttendanceSetting = async (req,res) => {
       actionDone: oldData ? ACTIONS.update : ACTIONS.create,
       oldData: oldData ? oldData.toObject() : null,
       newData: updatedSetting.toObject(),
+      description: `Employee attendance setting ${oldData ? 'updated' : 'created'} for ${getFullName(employee?.employeeInfo)} (${employee?.employeeCode}) by ${getFullName(req.admin.employeeInfo)}`
     });
 
         res.status(200).json({

@@ -8,6 +8,7 @@ const mongoose = require('mongoose')
 const moment = require('moment');
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 const { ATTENDANCE_SETTINGS_UPDATED, ATTENDANCE_SETTINGS_CREATED, HOLIDAY_ADDED, HOLIDAY_DELETED, ATTENDANCE_WEEKLY_OFF_UPDATED, ATTENDANCE_MARKED_BY_ADMIN, ATTENDANCE_WORKING_HOURS_UPDATED, ATTENDANCE_POLICY_CREATED, ATTENDANCE_POLICY_UPDATED, ATTENDANCE_POLICY_APPLIED_TO_ALL, ATTENDANCE_POLICY_APPLIED_TO_SELECTED, ATTENDANCE_REQUEST_STATUS_UPDATED } = require('@/config/activity.enums');
 
 // Create or update settings for plant
@@ -32,11 +33,17 @@ exports.setSettings = async (req, res) => {
     };
 
 
+    // Get existing settings for proper tracking
+    const existingSettings = await AttendanceSettings.findOne({ plantId, companyId: req.admin.companyId });
+    const oldData = existingSettings ? existingSettings.toObject() : null;
+
     const updated = await AttendanceSettings.findOneAndUpdate(
       { plantId,companyId: req.admin.companyId },
       updateFields,
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
+
+    const newData = updated.toObject();
 
     // Activity Tracker
     activityTracker({
@@ -49,8 +56,9 @@ exports.setSettings = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_attendanceSetting],
       eventType: oldData ? ATTENDANCE_SETTINGS_UPDATED : ATTENDANCE_SETTINGS_CREATED,
       actionDone: oldData ? ACTIONS.update : ACTIONS.create,
-      oldData: oldData ? oldData : null,
+      oldData: oldData,
       newData: newData,
+      description: `Attendance settings ${oldData ? 'updated' : 'created'} for plant ${plantId} by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({ success: true, settings: updated });
@@ -113,7 +121,8 @@ exports.addHoliday = async (req, res) => {
       eventType: HOLIDAY_ADDED,
       actionDone: ACTIONS.create,
       oldData: oldData,
-      newData: newData
+      newData: newData,
+      description: `Holiday '${occasion}' added for date ${date} by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({ success: true, settings });
@@ -161,7 +170,8 @@ exports.deleteHoliday = async (req, res) => {
       eventType: HOLIDAY_DELETED,
       actionDone: ACTIONS.delete,
       oldData: { holidays: [holidayToDelete.toObject()] },
-      newData: null
+      newData: null,
+      description: `Holiday '${holidayToDelete.occasion}' deleted for date ${holidayToDelete.date} by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({ success: true, message: 'Holiday deleted', settings });
@@ -202,7 +212,8 @@ exports.setWeeklyOff = async (req, res) => {
       eventType: ATTENDANCE_WEEKLY_OFF_UPDATED,
       actionDone: existingSettings ? ACTIONS.update : ACTIONS.create,
       oldData: oldData,
-      newData: { weeklyOffs }
+      newData: { weeklyOffs },
+      description: `Weekly offs ${existingSettings ? 'updated' : 'set'} for plant ${plantId} by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({ success: true, settings });
@@ -232,11 +243,7 @@ exports.markAttendance = async (req, res) => {
       }
     });
 
-    const oldData = existingAttendance ? {
-      inTime: existingAttendance.inTime,
-      outTime: existingAttendance.outTime,
-      status: existingAttendance.status
-    } : null;
+    const oldData = existingAttendance ? existingAttendance.toObject() : null;
 
     const attendance = await Attendance.findOneAndUpdate(
       {
@@ -260,6 +267,8 @@ exports.markAttendance = async (req, res) => {
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
+    const newData = attendance.toObject();
+
     // Activity Tracker
     activityTracker({
       userId: req.admin._id,
@@ -272,7 +281,8 @@ exports.markAttendance = async (req, res) => {
       eventType: ATTENDANCE_MARKED_BY_ADMIN,
       actionDone: existingAttendance ? ACTIONS.update : ACTIONS.create,
       oldData: oldData,
-      newData: { inTime, outTime, status }
+      newData: newData,
+      description: `Attendance ${existingAttendance ? 'updated' : 'marked'} by admin ${getFullName(req.admin.employeeInfo)} for employee ${getFullName(employee.employeeInfo)} (${employee.employeeCode}) on ${date}`
     });
 
     return res.status(200).json({
@@ -318,7 +328,8 @@ exports.setWorkingHours = async (req, res) => {
       eventType: ATTENDANCE_WORKING_HOURS_UPDATED,
       actionDone: existingSettings ? ACTIONS.update : ACTIONS.create,
       oldData: oldData,
-      newData: { workingHours: { start, end, minHoursRequired } }
+      newData: { workingHours: { start, end, minHoursRequired } },
+      description: `Working hours ${existingSettings ? 'updated' : 'set'} for plant ${plantId} (${start} - ${end}, ${minHoursRequired}h required) by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({ success: true, message: 'Working hours updated successfully', settings });
@@ -395,7 +406,8 @@ exports.createAttendancePolicy = async (req,res) => {
       eventType: ATTENDANCE_POLICY_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: policy.toObject()
+      newData: policy.toObject(),
+      description: `Attendance policy '${name}' created for plant ${plantId} by ${getFullName(req.admin.employeeInfo)}`
     });
           return res.status(200).json({
             success: true,
@@ -483,7 +495,8 @@ exports.updateAttendancePolicy = async (req,res) => {
       eventType: ATTENDANCE_POLICY_UPDATED,
       actionDone: ACTIONS.update,
       oldData: existingPolicy.toObject(),
-      newData: changedFields
+      newData: policy.toObject(),
+      description: `Attendance policy '${name}' updated for plant ${plantId} by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({ success: true, policy });
@@ -567,6 +580,7 @@ exports.applyAttendancePolicy = async (req, res) => {
         actionDone: ACTIONS.update,
         oldData: oldSetting ? oldSetting.toObject() : null,
         newData: updatedData,
+        description: `Attendance policy '${policy.name}' applied to employee ${getFullName(employee.employeeInfo)} (${employee.employeeCode}) by ${getFullName(req.admin.employeeInfo)}`
       });
 
       createdCount++;
@@ -632,6 +646,7 @@ exports.applyAttendancePolicyToSelectedEmployees = async (req, res) => {
         actionDone: ACTIONS.update,
         oldData: oldSetting ? oldSetting.toObject() : null,
         newData: updatedData,
+        description: `Attendance policy '${policy.name}' applied to selected employee ${user.name} (${user.employeeCode}) by ${getFullName(req.admin.employeeInfo)}`
       });
     }
 
@@ -899,6 +914,9 @@ exports.updateAttendanceRequestStatus = async (req, res) => {
     request.status = status;
     await request.save();
 
+    // Get employee info for description
+    const employee = await User.findById(request.userId).select('employeeCode employeeInfo');
+
     // Activity tracker
     activityTracker({
       userId: userId,
@@ -912,6 +930,7 @@ exports.updateAttendanceRequestStatus = async (req, res) => {
       actionDone: ACTIONS.update,
       oldData: oldData,
       newData: request.toObject(),
+      description: `Attendance request status updated to '${status}' for employee ${getFullName(employee?.employeeInfo)} (${employee?.employeeCode}) by ${getFullName(req.admin.employeeInfo)}`
     });
 
     let message = '';

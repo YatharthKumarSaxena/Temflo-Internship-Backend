@@ -7,6 +7,7 @@ const moment = require('moment');
 
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require('@/config/structure.config');
 const { activityTracker } = require('@/utils/activityTracker');
+const { getFullName } = require('@/utils/commonFunctions');
 const { ATTENDANCE_MARKED_BY_EMP, EMP_ATTENDANCE_UPDATED, EMP_ATTENDANCE_MARKED } = require('@/config/activity.enums');
 
 const haversineDistance = (coords1, coords2) => {
@@ -101,6 +102,7 @@ const EmployeeMarkAttendance = async (req, res) => {
         actionDone: ACTIONS.create,
         oldData: null,
         newData: request.toObject(),
+        description: `Attendance request created by employee ${getFullName(req.admin.employeeInfo)} (${req.admin.employeeCode || employee.employeeCode}) for date ${attendanceDate.format('YYYY-MM-DD')}`
       });
 
       return res.status(200).json({
@@ -186,6 +188,7 @@ const EmployeeMarkAttendance = async (req, res) => {
       actionDone: oldData ? ACTIONS.update : ACTIONS.create,
       oldData: oldData,
       newData: attendance.toObject(),
+      description: `Attendance ${oldData ? 'updated' : 'marked'} by employee ${getFullName(req.admin.employeeInfo)} (${req.admin.employeeCode || employee.employeeCode}) for date ${attendanceDate.format('YYYY-MM-DD')}${inTime ? ` - In: ${inTime}` : ''}${outTime ? ` - Out: ${outTime}` : ''}`
     });
 
     return res.status(200).json({ message: 'Attendance marked successfully', attendance });

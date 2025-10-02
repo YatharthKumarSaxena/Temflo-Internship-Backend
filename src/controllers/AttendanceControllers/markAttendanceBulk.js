@@ -5,6 +5,7 @@ const moment = require('moment');
 
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require('@/config/structure.config');
 const { activityTracker } = require('@/utils/activityTracker');
+const { getFullName } = require('@/utils/commonFunctions');
 const { BULK_ATTENDANCE_CREATED } = require('@/config/activity.enums');
 
 const markAttendanceBulk = async (req, res) => {
@@ -105,6 +106,7 @@ const markAttendanceBulk = async (req, res) => {
           actionDone: ACTIONS.create,
           oldData: null,
           newData: attendance.toObject(),
+          description: `Bulk attendance created for employee ${getFullName(user.employeeInfo)} (${user.employeeCode}) on ${date.format('YYYY-MM-DD')} by ${getFullName(req.admin.employeeInfo)}`
         });
 
         success.push({ employeeCode, date: date.format('YYYY-MM-DD') });
