@@ -3,12 +3,13 @@ const LeaveRequest = require('../../models/LeaveModels/LeaveRequest');
 const LeaveBalance = require('../../models/LeaveModels/LeaveBalanace');
 const User = require('../../models/userModels/User');
 const mongoose = require('mongoose');
-const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
-const { LEAVE_BALANCE_UPDATED_BY_EMPLOYEE, LEAVE_REQUEST_CREATED_BY_EMPLOYEE, LEAVE_REQUEST_DELETED_BY_EMPLOYEE, LEAVE_REQUEST_STATUS_UPDATED_BY_EMPLOYEE } = require("@/config/activity.enums");
+const { LEAVE_BALANCE_UPDATED_BY_EMPLOYEE, LEAVE_REQUEST_CREATED_BY_EMPLOYEE, LEAVE_REQUEST_DELETED_BY_EMPLOYEE, LEAVE_REQUEST_STATUS_UPDATED_BY_EMPLOYEE, LEAVE_REQUEST_STATUS_UPDATED, LEAVE_REQUEST_STATUS_UPDATED, LEAVE_BALANCE_UPDATED } = require("@/config/activity.enums");
 const { leaveTemplate } = require("@/config/emailTemplates/leaveTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
 
 // 1. View leave balances
 exports.getMyLeaveBalances = async (req, res) => {
@@ -143,23 +144,16 @@ exports.applyForLeave = async (req, res) => {
       eventType: LEAVE_REQUEST_CREATED_BY_EMPLOYEE,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: { _id: request._id, daysRequested: request.daysRequested, leaveTypeId: request.leaveTypeId }
+      newData: request.toObject(),
+      description: `Leave request created by employee ${user.name} (${user.employeeCode}) for policy '${policy.name}' by ${getFullName(req.admin.employeeInfo) || req.admin.name || 'Employee'}`
     });
 
-    // Update leave balance
-    const oldDataBalance = {};
-    if (balance.balance != null) oldDataBalance.balance = balance.balance;
-    if (balance.availed != null) oldDataBalance.availed = balance.availed;
-    if (!('_id' in oldDataBalance)) oldDataBalance._id = balance._id;
-
+    // Update leave balance with full snapshot
+    const oldDataBalance = balance.toObject();
     balance.balance -= daysRequested;
     balance.availed = (balance.availed || 0) + daysRequested;
     await balance.save();
-
-    const newDataBalance = {};
-    if (oldDataBalance.balance !== balance.balance) newDataBalance.balance = balance.balance;
-    if (oldDataBalance.availed !== balance.availed) newDataBalance.availed = balance.availed;
-    if (!('_id' in newDataBalance)) newDataBalance._id = balance._id;
+    const newDataBalance = balance.toObject();
 
     activityTracker({
       userId: req.admin._id,
@@ -172,17 +166,21 @@ exports.applyForLeave = async (req, res) => {
       eventType: LEAVE_BALANCE_UPDATED_BY_EMPLOYEE,
       actionDone: ACTIONS.update,
       oldData: oldDataBalance,
-      newData: newDataBalance
+      newData: newDataBalance,
+      description: `Leave balance updated for employee ${user.name} (${user.employeeCode}) after applying leave for policy '${policy.name}' by ${getFullName(req.admin.employeeInfo)}`
     });
 
-// Find Admin/Supervisor who belongs to same company & plant
-const approver = await User.findOne({
-  _id: request.approverId,        // kyunki apply ke time approverId save ho gaya tha
-  companyId: req.admin.companyId,
-  plantId: req.admin.plantId
-});
+    // Find Admin/Supervisor who belongs to same company & plant
+    const approver = await User.findOne({
+      _id: request.approverId,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId
+    });
 
     // ---- EMAIL INTEGRATION ----
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const leaveLink = `${baseUrl}/leave/${request._id}`;
+
     const leaveDetails = `
       Leave Type: ${policy.name}<br/>
       Duration: ${durationType}<br/>
@@ -199,22 +197,35 @@ const approver = await User.findOne({
       event_name: leaveTemplate.leaveRequestCreatedByEmployee.event_name,
       action: leaveTemplate.leaveRequestCreatedByEmployee.action,
       message_intro: "You have successfully submitted a leave request. Your Request has been sent to Leave Approver",
-      notes: `${leaveDetails}<br/>Applied On: ${applyDate}`
+      notes: `${leaveDetails}<br/>Applied On: ${applyDate}`,
+      actionbutton_text: leaveTemplate.leaveRequestCreatedByEmployee.actionbutton_text,
+      actionlink: leaveLink,
+      fallback_note: leaveTemplate.leaveRequestCreatedByEmployee.fallback_note,
+      action_link: leaveLink
     });
-    sendEmail(user.email, leaveTemplate.leaveRequestCreatedByEmployee.subject, emailHtml);
+    if (user?.email) {
+      sendEmail(user.email, leaveTemplate.leaveRequestCreatedByEmployee.subject, emailHtml);
+    }
 
-// Mail to Approver/Admin
-if (approver) {
-  const emailHtmlAdmin = generateMasterTemplate({
-    company_name: req.admin.companyName,
-    user_name: approver.name,
-    event_name: leaveTemplate.leaveRequestCreatedByEmployee.event_name,
-    action: leaveTemplate.leaveRequestCreatedByEmployee.action,
-    message_intro: `Employee whose Id: ${req.admin._id} has applied for leave request.`,
-    notes: `${leaveDetails}<br/>Applied On: ${applyDate}`
-  });
-  sendEmail(approver.email, leaveTemplate.leaveRequestCreatedByEmployee.subject, emailHtmlAdmin);
-}
+    // Mail to Approver/Admin
+    if (approver) {
+      const emailHtmlAdmin = generateMasterTemplate({
+        company_name: req.admin.companyName,
+        user_name: approver.name,
+        event_name: leaveTemplate.leaveRequestCreated.event_name,
+        action: leaveTemplate.leaveRequestCreated.action,
+        message_intro: `Employee ${getFullName(req.admin.employeeInfo)} has applied for leave request.`,
+        notes: `${leaveDetails}<br/>Applied On: ${applyDate}`,
+        actionbutton_text: leaveTemplate.leaveRequestCreated.actionbutton_text,
+        actionlink: leaveLink,
+        fallback_note: leaveTemplate.leaveRequestCreated.fallback_note,
+        action_link: leaveLink
+      });
+      if (approver?.email) {
+        sendEmail(approver.email, leaveTemplate.leaveRequestCreated.subject, emailHtmlAdmin);
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Leave request submitted and balance updated',
@@ -248,7 +259,7 @@ exports.cancelLeaveRequest = async (req, res) => {
       _id: req.params.requestId,
       userId: req.admin._id,
       status: 'Pending',
-    });
+    }).populate('leaveTypeId', 'name');
 
     if (!request) {
       return res
@@ -264,19 +275,13 @@ exports.cancelLeaveRequest = async (req, res) => {
     });
 
     if (balance) {
-      const oldDataBalance = {};
-      if (balance.balance != null) oldDataBalance.balance = balance.balance;
-      if (balance.availed != null) oldDataBalance.availed = balance.availed;
-      if (!('_id' in oldDataBalance)) oldDataBalance._id = balance._id;
+      const oldDataBalance = balance.toObject();
 
       balance.balance += request.daysRequested;
       balance.availed = Math.max(0, (balance.availed || 0) - request.daysRequested);
       await balance.save();
 
-      const newDataBalance = {};
-      if (oldDataBalance.balance !== balance.balance) newDataBalance.balance = balance.balance;
-      if (oldDataBalance.availed !== balance.availed) newDataBalance.availed = balance.availed;
-      if (!('_id' in newDataBalance)) newDataBalance._id = balance._id;
+      const newDataBalance = balance.toObject();
 
       activityTracker({
         userId: req.admin._id,
@@ -289,11 +294,12 @@ exports.cancelLeaveRequest = async (req, res) => {
         eventType: LEAVE_BALANCE_UPDATED_BY_EMPLOYEE,
         actionDone: ACTIONS.update,
         oldData: oldDataBalance,
-        newData: newDataBalance
+        newData: newDataBalance,
+        description: `Leave balance restored for employee ${getFullName(req.admin.employeeInfo)} (${req.admin.employeeCode}) after cancelling leave request`
       });
     }
 
-    const oldRequestData = { _id: request._id }; // Only ID for tracing
+    const oldRequestData = request.toObject(); // Full snapshot for tracing
     await request.deleteOne();
 
     activityTracker({
@@ -307,22 +313,26 @@ exports.cancelLeaveRequest = async (req, res) => {
       eventType: LEAVE_REQUEST_DELETED_BY_EMPLOYEE,
       actionDone: ACTIONS.delete,
       oldData: oldRequestData,
-      newData: null
+      newData: null,
+      description: `Leave request deleted by employee ${getFullName(req.admin.employeeInfo)} (${req.admin.employeeCode}) for policy '${oldRequestData.leaveTypeName || ''}'`
     });
 
-// Find Admin/Supervisor who belongs to same company & plant
-const approver = await User.findOne({
-  _id: request.approverId,        // kyunki apply ke time approverId save ho gaya tha
-  companyId: req.admin.companyId,
-  plantId: req.admin.plantId
-});
+    // Find Admin/Supervisor who belongs to same company & plant
+    const approver = await User.findOne({
+      _id: request.approverId,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId
+    });
 
     // ---- EMAIL INTEGRATION ----
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const leaveBalanceLink = `${baseUrl}/leave/balance`;
+
     const employee = await User.findById(req.admin._id);
     const policy = await LeavePolicy.findById(request.leaveTypeId);
 
     const leaveDetails = `
-      Leave Type: ${policy.name}<br/>
+      Leave Type: ${policy?.name || 'Unknown'}<br/>
       Duration: ${request.durationType}<br/>
       From: ${request.fromDate}<br/>
       To: ${request.toDate}<br/>
@@ -337,22 +347,34 @@ const approver = await User.findOne({
       event_name: leaveTemplate.leaveRequestDeletedByEmployee.event_name,
       action: leaveTemplate.leaveRequestDeletedByEmployee.action,
       message_intro: "Your leave request has been deleted.",
-      notes: `${leaveDetails}<br/>Cancelled On: ${cancelDate}`
+      notes: `${leaveDetails}<br/>Cancelled On: ${cancelDate}`,
+      actionbutton_text: "View Leave Balance",
+      actionlink: leaveBalanceLink,
+      fallback_note: "Having trouble with the button?",
+      action_link: leaveBalanceLink
     });
-    sendEmail(employee.email, leaveTemplate.leaveRequestDeletedByEmployee.subject, emailHtml);
+    if (employee?.email) {
+      sendEmail(employee.email, leaveTemplate.leaveRequestDeletedByEmployee.subject, emailHtml);
+    }
 
-// Mail to Approver/Admin
-if (approver) {
-  const emailHtmlAdmin = generateMasterTemplate({
-    company_name: req.admin.companyName,
-    user_name: approver.name,
-    event_name: leaveTemplate.leaveRequestDeletedByEmployee.event_name,
-    action: leaveTemplate.leaveRequestDeletedByEmployee.action,
-    message_intro: `Employee whose Id: ${req.admin._id} has cancelled his/her leave request.`,
-    notes: `${leaveDetails}<br/>Cancelled On: ${cancelDate}`
-  });
-  sendEmail(approver.email, leaveTemplate.leaveRequestDeletedByEmployee.subject, emailHtmlAdmin);
-}
+    // Mail to Approver/Admin
+    if (approver) {
+      const emailHtmlAdmin = generateMasterTemplate({
+        company_name: req.admin.companyName,
+        user_name: approver.name,
+        event_name: leaveTemplate.leaveRequestDeletedByEmployee.event_name,
+        action: leaveTemplate.leaveRequestDeletedByEmployee.action,
+        message_intro: `Employee whose Id: ${req.admin._id} has cancelled his/her leave request.`,
+        notes: `${leaveDetails}<br/>Cancelled On: ${cancelDate}`,
+        actionbutton_text: "View Leave Requests",
+        actionlink: `${baseUrl}/leave/requests`,
+        fallback_note: "Having trouble with the button?",
+        action_link: `${baseUrl}/leave/requests`
+      });
+      if (approver?.email) {
+        sendEmail(approver.email, leaveTemplate.leaveRequestDeletedByEmployee.subject, emailHtmlAdmin);
+      }
+    }
 
     return res.json({ success: true, message: 'Leave request cancelled and balance restored' });
   } catch (err) {
@@ -507,12 +529,11 @@ exports.updateLeaveRequestStatus = async (req, res) => {
 
     const request = await LeaveRequest.findById(req.params.id);
 
-if (request.approverId.toString() !== req.admin._id.toString()) {
-  return res
-    .status(404)
-    .json({ success: false, message: `You do not have right to approve leave.` });
-}
-
+    if (request.approverId.toString() !== req.admin._id.toString()) {
+      return res
+        .status(404)
+        .json({ success: false, message: `You do not have right to approve leave.` });
+    }
 
     if (request.status == status) {
       return res.status(404).json({ success: false, message: `Leave Status is already ${status}` });
@@ -525,16 +546,10 @@ if (request.approverId.toString() !== req.admin._id.toString()) {
       });
     }
 
-    const oldStatus = request.status;
+    const oldDataRequest = request.toObject(); // Full snapshot
     request.status = status;
     await request.save();
-
-    // Only keep changed fields for tracing
-    const oldDataRequest = { status: oldStatus };
-    if (!('_id' in oldDataRequest)) oldDataRequest._id = request._id;
-
-    const newDataRequest = { status: request.status };
-    if (!('_id' in newDataRequest)) newDataRequest._id = request._id;
+    const newDataRequest = request.toObject();
 
     activityTracker({
       userId: req.admin._id,
@@ -544,53 +559,57 @@ if (request.approverId.toString() !== req.admin._id.toString()) {
       subModuleAffected: null,
       fileAffected: FILE.file_employee_leave,
       modelAffected: [MODEL_AFFECTED.model_leaveRequest],
-      eventType: LEAVE_REQUEST_STATUS_UPDATED_BY_EMPLOYEE,
+      eventType: LEAVE_REQUEST_STATUS_UPDATED,
       actionDone: ACTIONS.update,
       oldData: oldDataRequest,
-      newData: newDataRequest
+      newData: newDataRequest,
+      description: `Leave request status updated by approver ${getFullName(req.admin.employeeInfo)} (${req.admin.employeeCode}) from '${oldDataRequest.status}' to '${status}'`
     });
 
-    const balance = await LeaveBalance.findOne({
-      userId: request.userId,
-      leaveTypeId: request.leaveTypeId,
-      companyId: req.admin.companyId,
-    });
+    // Only update balance if request is being rejected
+    if (status === 'Rejected') {
+      const balance = await LeaveBalance.findOne({
+        userId: request.userId,
+        leaveTypeId: request.leaveTypeId,
+        companyId: req.admin.companyId,
+      });
 
-    const oldDataBalance = {};
-    if (balance.balance != null) oldDataBalance.balance = balance.balance;
-    if (balance.availed != null) oldDataBalance.availed = balance.availed;
-    if (!('_id' in oldDataBalance)) oldDataBalance._id = balance._id;
+      if (balance) {
+        const oldDataBalance = balance.toObject();
 
-    balance.balance += request.daysRequested;
-    balance.availed = (balance.availed || 0) - request.daysRequested;
-    await balance.save();
+        balance.balance += request.daysRequested;
+        balance.availed = (balance.availed || 0) - request.daysRequested;
+        await balance.save();
 
-    const newDataBalance = {};
-    if (oldDataBalance.balance !== balance.balance) newDataBalance.balance = balance.balance;
-    if (oldDataBalance.availed !== balance.availed) newDataBalance.availed = balance.availed;
-    if (!('_id' in newDataBalance)) newDataBalance._id = balance._id;
+        const newDataBalance = balance.toObject();
 
-    activityTracker({
-      userId: req.admin._id,
-      companyId: req.admin.companyId,
-      plantId: req.admin.plantId || null,
-      module: MODULE.leave,
-      subModuleAffected: null,
-      fileAffected: FILE.file_employee_leave,
-      modelAffected: [MODEL_AFFECTED.model_balance],
-      eventType: LEAVE_BALANCE_UPDATED_BY_EMPLOYEE,
-      actionDone: ACTIONS.update,
-      oldData: oldDataBalance,
-      newData: newDataBalance
-    });
+        activityTracker({
+          userId: req.admin._id,
+          companyId: req.admin.companyId,
+          plantId: req.admin.plantId || null,
+          module: MODULE.leave,
+          subModuleAffected: null,
+          fileAffected: FILE.file_employee_leave,
+          modelAffected: [MODEL_AFFECTED.model_balance],
+          eventType: LEAVE_BALANCE_UPDATED,
+          actionDone: ACTIONS.update,
+          oldData: oldDataBalance,
+          newData: newDataBalance,
+          description: `Leave balance updated for Employee ${request.userId} due to leave rejection by ${getFullName(req.admin.employeeInfo)}`
+        });
+      }
+    }
 
     // ---- EMAIL INTEGRATION ----
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const leaveLink = `${baseUrl}/leave/${request._id}`;
+
     const employee = await User.findById(request.userId);
     const policy = await LeavePolicy.findById(request.leaveTypeId);
     const adminUser = req.admin;
 
     const leaveDetails = `
-      Leave Type: ${policy.name}<br/>
+      Leave Type: ${policy?.name || 'Unknown'}<br/>
       Duration: ${request.durationType}<br/>
       From: ${request.fromDate}<br/>
       To: ${request.toDate}<br/>
@@ -599,29 +618,39 @@ if (request.approverId.toString() !== req.admin._id.toString()) {
     `;
     const requestDate = new Date().toLocaleString();
 
-    // Email to Employee
     const emailHtmlToEmployee = generateMasterTemplate({
       company_name: adminUser.companyName,
       user_name: employee.name,
-      event_name: leaveTemplate.leaveRequestStatusUpdatedByEmployee.event_name,
-      action: leaveTemplate.leaveRequestStatusUpdatedByEmployee.action,
+      event_name: leaveTemplate.leaveRequestStatusUpdated.event_name,
+      action: leaveTemplate.leaveRequestStatusUpdated.action,
       status,
       message_intro: `Your leave request has been ${status.toLowerCase()} by Admin.`,
       notes: `${leaveDetails}<br/>Processed On: ${requestDate}`,
+      actionbutton_text: leaveTemplate.leaveRequestStatusUpdated.actionbutton_text,
+      actionlink: leaveLink,
+      fallback_note: leaveTemplate.leaveRequestStatusUpdated.fallback_note,
+      action_link: leaveLink
     });
-    sendEmail(employee.email, leaveTemplate.leaveRequestStatusUpdatedByEmployee.subject, emailHtmlToEmployee);
+    if (employee?.email) {
+      sendEmail(employee.email, leaveTemplate.leaveRequestStatusUpdated.subject, emailHtmlToEmployee);
+    }
 
-    // Email to Admin
     const emailHtmlToAdmin = generateMasterTemplate({
       company_name: adminUser.companyName,
       user_name: adminUser.name,
-      event_name: leaveTemplate.leaveRequestStatusUpdatedByEmployee.event_name,
-      action: leaveTemplate.leaveRequestStatusUpdatedByEmployee.action,
+      event_name: leaveTemplate.leaveRequestStatusUpdated.event_name,
+      action: leaveTemplate.leaveRequestStatusUpdated.action,
       status,
       message_intro: `You have ${status.toLowerCase()} the leave request for Employee Id: ${employee._id}.`,
       notes: `${leaveDetails}<br/>Processed On: ${requestDate}`,
+      actionbutton_text: leaveTemplate.leaveRequestStatusUpdated.actionbutton_text,
+      actionlink: leaveLink,
+      fallback_note: leaveTemplate.leaveRequestStatusUpdated.fallback_note,
+      action_link: leaveLink
     });
-    sendEmail(adminUser.email, leaveTemplate.leaveRequestStatusUpdatedByEmployee.subject, emailHtmlToAdmin);
+    if (adminUser?.email) {
+      sendEmail(adminUser.email, leaveTemplate.leaveRequestStatusUpdated.subject, emailHtmlToAdmin);
+    }
 
     return res.status(200).json({
       success: true,

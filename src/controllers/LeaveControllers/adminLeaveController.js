@@ -3,13 +3,15 @@ const LeaveBalance = require('../../models/LeaveModels/LeaveBalanace');
 const LeaveRequest = require('../../models/LeaveModels/LeaveRequest');
 const Permission = require('../../models/userModels/Permission');
 const User = require('../../models/userModels/User');
+const Plant = require('../../models/coreModels/Plant');
 const mongoose = require('mongoose');
-const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { LEAVE_POLICY_CREATED, LEAVE_REQUEST_CREATED, LEAVE_POLICY_UPDATED, LEAVE_POLICY_STATUS_UPDATED, LEAVE_POLICY_DELETED, LEAVE_BALANCE_UPDATED, LEAVE_BALANCE_CREATED, LEAVE_REQUEST_STATUS_UPDATED, LEAVE_BALANCE_RESET } = require("@/config/activity.enums");
 const { leaveTemplate } = require("@/config/emailTemplates/leaveTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const getPeriodString = (policy, date = new Date()) => {
   const year = date.getFullYear();
@@ -108,6 +110,44 @@ exports.createLeavePolicy = async (req, res) => {
 
     await policy.save();
 
+    // ---- EMAIL INTEGRATION ----
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const policyLink = `${baseUrl}/leave/policies`;
+
+    // Email to Admins about new policy
+    const adminUsers = await User.find({
+      companyId: req.admin.companyId,
+      role: { $in: ['admin', 'owner'] }
+    });
+
+    const policyDetails = `
+      Policy Name: ${name}<br/>
+      Type: ${normalizedType === 'wfh' ? 'Work From Home' : 'Leave'}<br/>
+      Plant: ${plantId}<br/>
+      ${!isWFHWithoutPolicy ? `Count: ${count}<br/>` : ''}
+      Created By: ${getFullName(req.admin.employeeInfo) || req.admin.name || 'Admin'}
+    `;
+    const createDate = new Date().toLocaleString();
+
+    for (const adminUser of adminUsers) {
+      const emailHtml = generateMasterTemplate({
+        company_name: req.admin.companyName,
+        user_name: adminUser.name,
+        event_name: normalizedType === 'wfh' ? leaveTemplate.wfhPolicyCreated.event_name : leaveTemplate.leavePolicyCreated.event_name,
+        action: normalizedType === 'wfh' ? leaveTemplate.wfhPolicyCreated.action : leaveTemplate.leavePolicyCreated.action,
+        status: 'Created',
+        message_intro: `A new ${normalizedType === 'wfh' ? 'Work From Home' : 'Leave'} policy has been created`,
+        notes: `${policyDetails}<br/>Created On: ${createDate}`,
+        actionbutton_text: normalizedType === 'wfh' ? leaveTemplate.wfhPolicyCreated.actionbutton_text : leaveTemplate.leavePolicyCreated.actionbutton_text,
+        actionlink: policyLink,
+        fallback_note: normalizedType === 'wfh' ? leaveTemplate.wfhPolicyCreated.fallback_note : leaveTemplate.leavePolicyCreated.fallback_note,
+        action_link: policyLink
+      });
+      if (adminUser?.email) {
+        sendEmail(adminUser.email, normalizedType === 'wfh' ? leaveTemplate.wfhPolicyCreated.subject : leaveTemplate.leavePolicyCreated.subject, emailHtml);
+      }
+    }
+
     activityTracker({
       userId: req.admin._id,
       companyId: req.admin.companyId,
@@ -119,7 +159,8 @@ exports.createLeavePolicy = async (req, res) => {
       eventType: LEAVE_POLICY_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: policy.toObject()
+      newData: policy.toObject(),
+      description: `${normalizedType === 'wfh' ? 'WFH' : 'Leave'} policy '${name}' created for plant ${plantId} by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({
@@ -181,17 +222,8 @@ exports.updateLeavePolicy = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Policy not found' });
     }
 
-    // Collect only changed fields for oldData
-    const oldData = { _id: policy._id };
-    if (policy.name !== name) oldData.name = policy.name;
-    if (policy.type !== normalizedType) oldData.type = policy.type;
-    if (policy.plantId.toString() !== plantId.toString()) oldData.plantId = policy.plantId;
-    if (policy.count !== (isWFHWithoutPolicy ? null : count)) oldData.count = policy.count;
-    if (JSON.stringify(policy.credit) !== JSON.stringify(isWFHWithoutPolicy ? null : credit)) oldData.credit = policy.credit;
-    if (JSON.stringify(policy.expiry) !== JSON.stringify(isWFHWithoutPolicy ? null : expiry)) oldData.expiry = policy.expiry;
-    if (policy.creditOnCreation !== (isWFHWithoutPolicy ? false : (creditOnCreation ?? false))) oldData.creditOnCreation = policy.creditOnCreation;
-    if (policy.isAdvanceAllowed !== (isWFHWithoutPolicy ? false : (isAdvanceAllowed ?? false))) oldData.isAdvanceAllowed = policy.isAdvanceAllowed;
-    if (policy.applyToAll !== (isWFHWithoutPolicy ? false : (applyToAll ?? true))) oldData.applyToAll = policy.applyToAll;
+    // Take complete snapshot before update
+    const oldData = policy.toObject();
 
     // Update the document fields
     policy.name = name;
@@ -207,7 +239,45 @@ exports.updateLeavePolicy = async (req, res) => {
     // Save updated document
     await policy.save();
 
-    // Activity tracker
+    // ---- EMAIL INTEGRATION ----
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const policyLink = `${baseUrl}/leave/policies`;
+
+    // Email to Admins about policy update
+    const adminUsers = await User.find({
+      companyId: req.admin.companyId,
+      role: { $in: ['admin', 'owner'] }
+    });
+
+    const policyDetails = `
+      Policy Name: ${name}<br/>
+      Type: ${normalizedType === 'wfh' ? 'Work From Home' : 'Leave'}<br/>
+      Plant: ${plantId}<br/>
+      ${!isWFHWithoutPolicy ? `Count: ${count}<br/>` : ''}
+      Updated By: ${getFullName(req.admin.employeeInfo) || req.admin.name || 'Admin'}
+    `;
+    const updateDate = new Date().toLocaleString();
+
+    for (const adminUser of adminUsers) {
+      const emailHtml = generateMasterTemplate({
+        company_name: req.admin.companyName,
+        user_name: adminUser.name,
+        event_name: leaveTemplate.leavePolicyUpdated.event_name,
+        action: leaveTemplate.leavePolicyUpdated.action,
+        status: 'Updated',
+        message_intro: `A ${normalizedType === 'wfh' ? 'Work From Home' : 'Leave'} policy has been updated`,
+        notes: `${policyDetails}<br/>Updated On: ${updateDate}`,
+        actionbutton_text: leaveTemplate.leavePolicyUpdated.actionbutton_text,
+        actionlink: policyLink,
+        fallback_note: leaveTemplate.leavePolicyUpdated.fallback_note,
+        action_link: policyLink
+      });
+      if (adminUser?.email) {
+        sendEmail(adminUser.email, leaveTemplate.leavePolicyUpdated.subject, emailHtml);
+      }
+    }
+
+    // Activity tracker with full snapshots + description
     activityTracker({
       userId: req.admin._id,
       companyId: req.admin.companyId,
@@ -220,6 +290,7 @@ exports.updateLeavePolicy = async (req, res) => {
       actionDone: ACTIONS.update,
       oldData: oldData,
       newData: policy.toObject(),
+      description: `${normalizedType === 'wfh' ? 'WFH' : 'Leave'} policy '${name}' updated for plant ${plantId} by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({ success: true, policy });
@@ -262,9 +333,13 @@ exports.deleteLeavePolicy = async (req, res) => {
       actionDone: ACTIONS.delete,
       oldData: policy.toObject(),
       newData: {
-        note: "All fields same as Old Data, Soft deletion is Done",
-        removed: true        
+        isActive: updated.isActive,
+        note: updated.isActive
+          ? "Policy reactivated, rest fields same as Old Data"
+          : "Policy soft-deleted, rest fields same as Old Data"
       }
+      ,
+      description: `${policy.type === 'wfh' ? 'WFH' : 'Leave'} policy '${policy.name}' ${updated.isActive ? 'reactivated' : 'soft-deleted'} for plant ${policy.plantId} by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.json({
@@ -349,24 +424,16 @@ exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
       }
 
       if (existingBalance) {
-        // Save only changed fields + id for tracing
-        const oldData = { 
-          _id: existingBalance._id, 
-          balance: existingBalance.balance,
-          lastCredited: existingBalance.lastCredited,
-          lastCreditedPeriod: existingBalance.lastCreditedPeriod
-        };
+        // Take full snapshot before update
+        const oldData = existingBalance.toObject();
 
         existingBalance.balance += policy.count;
         existingBalance.lastCredited = now;
         existingBalance.lastCreditedPeriod = period;
         await existingBalance.save({ session });
 
-        const newData = {
-          balance: existingBalance.balance,
-          lastCredited: existingBalance.lastCredited,
-          lastCreditedPeriod: existingBalance.lastCreditedPeriod
-        };
+        // Take full snapshot after update
+        const newData = existingBalance.toObject();
 
         activityTracker({
           userId: req.admin._id,
@@ -379,7 +446,8 @@ exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
           eventType: LEAVE_BALANCE_UPDATED,
           actionDone: ACTIONS.update,
           oldData,
-          newData
+          newData,
+          description: `Leave balance updated for user ${user.name} (${user.employeeCode}) under policy '${policy.name}' by ${getFullName(req.admin.employeeInfo)}`
         });
       } else {
         const newBalance = await LeaveBalance.create(
@@ -397,14 +465,8 @@ exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
           { session }
         );
 
-        const newData = {
-          _id: newBalance[0]._id,
-          userId: newBalance[0].userId,
-          leaveTypeId: newBalance[0].leaveTypeId,
-          balance: newBalance[0].balance,
-          lastCredited: newBalance[0].lastCredited,
-          lastCreditedPeriod: newBalance[0].lastCreditedPeriod
-        };
+        // Full snapshot of newly created document
+        const newData = newBalance[0].toObject();
 
         activityTracker({
           userId: req.admin._id,
@@ -417,8 +479,42 @@ exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
           eventType: LEAVE_BALANCE_CREATED,
           actionDone: ACTIONS.create,
           oldData: null,
-          newData
+          newData,
+          description: `Leave balance created for user ${user.name} (${user.employeeCode}) under policy '${policy.name}' by ${getFullName(req.admin.employeeInfo)}`
         });
+      }
+
+      // ---- EMAIL INTEGRATION ----
+      const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+      const leaveBalanceLink = `${baseUrl}/leave/balance`;
+
+      // Email to employee about policy application
+      const userDetails = await User.findById(user._id).select('email name');
+      if (userDetails?.email) {
+        const policyDetails = `
+          Policy: ${policy.name}<br/>
+          Leave Balance: ${policy.count} days<br/>
+          Applied By: ${getFullName(req.admin.employeeInfo) || req.admin.name || 'Admin'}
+        `;
+        const applyDate = new Date().toLocaleString();
+
+        const emailHtml = generateMasterTemplate({
+          company_name: req.admin.companyName,
+          user_name: userDetails.name,
+          event_name: policy.type === 'wfh' ? leaveTemplate.wfhPolicyApplied.event_name : leaveTemplate.leavePolicyApplied.event_name,
+          action: policy.type === 'wfh' ? leaveTemplate.wfhPolicyApplied.action : leaveTemplate.leavePolicyApplied.action,
+          status: 'Applied',
+          message_intro: `A new ${policy.type === 'wfh' ? 'Work From Home' : 'leave'} policy has been applied to your account`,
+          notes: `${policyDetails}<br/>Applied On: ${applyDate}`,
+          actionbutton_text: policy.type === 'wfh' ? leaveTemplate.wfhPolicyApplied.actionbutton_text : leaveTemplate.leavePolicyApplied.actionbutton_text,
+          actionlink: policy.type === 'wfh' ? `${baseUrl}/wfh/options` : leaveBalanceLink,
+          fallback_note: policy.type === 'wfh' ? leaveTemplate.wfhPolicyApplied.fallback_note : leaveTemplate.leavePolicyApplied.fallback_note,
+          action_link: policy.type === 'wfh' ? `${baseUrl}/wfh/options` : leaveBalanceLink
+        });
+
+        if (userDetails?.email) {
+          sendEmail(userDetails.email, policy.type === 'wfh' ? leaveTemplate.wfhPolicyApplied.subject : leaveTemplate.leavePolicyApplied.subject, emailHtml);
+        }
       }
     }
 
@@ -428,7 +524,7 @@ exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Leave policy applied successfully to selected employees.',
-      alreadyApplied, // List of users who already had leave applied
+      alreadyApplied,
     });
   } catch (err) {
     await session.abortTransaction();
@@ -561,14 +657,8 @@ exports.activatePolicy = async (req, res) => {
       return res.status(404).json({ message: 'Policy not found or access denied' });
     }
 
-    // 2. Old data only changed fields + _id
-    const oldData = { _id: policy._id };
-    const newData = { _id: policy._id };
-
-    if (policy.isActive !== isActive) {
-      oldData.isActive = policy.isActive;
-      newData.isActive = isActive;
-    }
+    // 2. Take full snapshot before update
+    const oldData = policy.toObject();
 
     // 3. Update field
     policy.isActive = isActive;
@@ -576,7 +666,10 @@ exports.activatePolicy = async (req, res) => {
     // 4. Save changes
     await policy.save();
 
-    // 5. Track activity
+    // 5. Take full snapshot after update
+    const newData = policy.toObject();
+
+    // 6. Track activity
     activityTracker({
       userId: req.admin._id,
       companyId: req.admin.companyId,
@@ -588,7 +681,8 @@ exports.activatePolicy = async (req, res) => {
       eventType: LEAVE_POLICY_STATUS_UPDATED,
       actionDone: ACTIONS.update,
       oldData,
-      newData
+      newData,
+      description: `Policy '${policy.name}' ${isActive ? 'activated' : 'deactivated'} by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({
@@ -687,6 +781,7 @@ exports.markLeave = async (req, res) => {
 
     await request.save();
 
+    // ---- Activity Tracker for Leave Request ----
     activityTracker({
       userId: req.admin._id,
       companyId: req.admin.companyId,
@@ -698,48 +793,38 @@ exports.markLeave = async (req, res) => {
       eventType: LEAVE_REQUEST_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: request.toObject()
+      newData: request.toObject(),
+      description: `Leave request created for user ${userId} under policy '${policy.name}' by ${getFullName(req.admin.employeeInfo)}`
     });
 
-    // Update leave balance with changed fields only
-    const oldData = { _id: balance._id };
-    const newData = { _id: balance._id };
-    let hasChange = false;
-
-    if (balance.balance !== balance.balance - daysRequested) {
-      oldData.balance = balance.balance;
-      newData.balance = balance.balance - daysRequested;
-      hasChange = true;
-    }
-    if ((balance.availed || 0) !== ((balance.availed || 0) + daysRequested)) {
-      oldData.availed = balance.availed || 0;
-      newData.availed = (balance.availed || 0) + daysRequested;
-      hasChange = true;
-    }
-
+    // ---- Update leave balance with full snapshots ----
+    const oldBalanceSnapshot = balance.toObject();
     balance.balance -= daysRequested;
     balance.availed = (balance.availed || 0) + daysRequested;
     await balance.save();
+    const newBalanceSnapshot = balance.toObject();
 
-    if (hasChange) {
-      activityTracker({
-        userId: req.admin._id,
-        companyId: req.admin.companyId,
-        plantId: req.admin.plantId || null,
-        module: MODULE.leave,
-        subModuleAffected: null,
-        fileAffected: FILE.file_admin_leave,
-        modelAffected: [MODEL_AFFECTED.model_balance],
-        eventType: LEAVE_BALANCE_UPDATED,
-        actionDone: ACTIONS.update,
-        oldData,
-        newData
-      });
-    }
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.leave,
+      subModuleAffected: null,
+      fileAffected: FILE.file_admin_leave,
+      modelAffected: [MODEL_AFFECTED.model_balance],
+      eventType: LEAVE_BALANCE_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData: oldBalanceSnapshot,
+      newData: newBalanceSnapshot,
+      description: `Leave balance updated for user ${userId} under policy '${policy.name}' by ${getFullName(req.admin.employeeInfo)}`
+    });
 
     // ---- EMAIL INTEGRATION ----
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const leaveLink = `${baseUrl}/leave/${request._id}`;
+
     const employee = await User.findById(userId);
-    const adminUser = req.admin; // Assuming req.admin is the admin performing the action
+    const adminUser = req.admin;
     const leaveDetails = `
       Leave Type: ${policy.name}<br/>
       Duration: ${durationType}<br/>
@@ -758,7 +843,11 @@ exports.markLeave = async (req, res) => {
       action: leaveTemplate.leaveRequestCreated.action,
       status: 'Approved',
       message_intro: `Your leave has been successfully applied and approved by Admin.`,
-      notes: `${leaveDetails}<br/>Requested On: ${requestDate}`
+      notes: `${leaveDetails}<br/>Requested On: ${requestDate}`,
+      actionbutton_text: leaveTemplate.leaveRequestCreated.actionbutton_text,
+      actionlink: leaveLink,
+      fallback_note: leaveTemplate.leaveRequestCreated.fallback_note,
+      action_link: leaveLink
     });
     sendEmail(employee.email, leaveTemplate.leaveRequestCreated.subject, emailHtmlToEmployee);
 
@@ -770,7 +859,11 @@ exports.markLeave = async (req, res) => {
       action: leaveTemplate.leaveRequestCreated.action,
       status: 'Approved',
       message_intro: `A leave has been applied by You and approved for Employee Id: ${employee._id}.`,
-      notes: `${leaveDetails}<br/>Requested On: ${requestDate}`
+      notes: `${leaveDetails}<br/>Requested On: ${requestDate}`,
+      actionbutton_text: leaveTemplate.leaveRequestCreated.actionbutton_text,
+      actionlink: leaveLink,
+      fallback_note: leaveTemplate.leaveRequestCreated.fallback_note,
+      action_link: leaveLink
     });
     sendEmail(adminUser.email, leaveTemplate.leaveRequestCreated.subject, emailHtmlToAdmin);
 
@@ -949,10 +1042,11 @@ exports.updateLeaveRequestStatus = async (req, res) => {
       });
     }
 
-    // Track leave request status change
-    const oldStatus = request.status;
+    // ---- Track leave request status change ----
+    const oldRequestSnapshot = request.toObject();
     request.status = status;
     await request.save();
+    const newRequestSnapshot = request.toObject();
 
     activityTracker({
       userId: req.admin._id,
@@ -964,11 +1058,12 @@ exports.updateLeaveRequestStatus = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_leaveRequest],
       eventType: LEAVE_REQUEST_STATUS_UPDATED,
       actionDone: ACTIONS.update,
-      oldData: { status: oldStatus, _id: request._id }, // _id included for trace
-      newData: oldStatus !== status ? { status: request.status } : {}, // only changed field
+      oldData: oldRequestSnapshot,
+      newData: newRequestSnapshot,
+      description: `Leave request for user ${request.userId} under policy '${request.leaveTypeId}' ${status.toLowerCase()} by ${getFullName(req.admin.employeeInfo)}`
     });
 
-    // If status is rejection, return early without balance update
+    // ---- If status is Rejected, update leave balance ----
     if (status === 'Rejected') {
       const balance = await LeaveBalance.findOne({
         userId: request.userId,
@@ -977,19 +1072,11 @@ exports.updateLeaveRequestStatus = async (req, res) => {
       });
 
       if (balance) {
-        const oldBalanceData = {};
-        if (balance.balance != null) oldBalanceData.balance = balance.balance;
-        if (balance.availed != null) oldBalanceData.availed = balance.availed;
-        if (!('_id' in oldBalanceData)) oldBalanceData._id = balance._id; // include for trace if missing
-
+        const oldBalanceSnapshot = balance.toObject();
         balance.balance += request.daysRequested;
         balance.availed -= request.daysRequested;
         await balance.save();
-
-        const newBalanceData = {};
-        if (oldBalanceData.balance !== balance.balance) newBalanceData.balance = balance.balance;
-        if (oldBalanceData.availed !== balance.availed) newBalanceData.availed = balance.availed;
-        if (!('_id' in newBalanceData)) newBalanceData._id = balance._id;
+        const newBalanceSnapshot = balance.toObject();
 
         activityTracker({
           userId: req.admin._id,
@@ -1001,13 +1088,17 @@ exports.updateLeaveRequestStatus = async (req, res) => {
           modelAffected: [MODEL_AFFECTED.model_balance],
           eventType: LEAVE_BALANCE_UPDATED,
           actionDone: ACTIONS.update,
-          oldData: oldBalanceData,
-          newData: newBalanceData,
+          oldData: oldBalanceSnapshot,
+          newData: newBalanceSnapshot,
+          description: `Leave balance updated for user ${request.userId} due to leave request rejection by ${getFullName(req.admin.employeeInfo)}`
         });
       }
     }
 
     // ---- EMAIL INTEGRATION ----
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const leaveLink = `${baseUrl}/leave/${request._id}`;
+
     const employee = await User.findById(request.userId);
     const policy = await LeavePolicy.findById(request.leaveTypeId);
     const adminUser = req.admin;
@@ -1026,26 +1117,33 @@ exports.updateLeaveRequestStatus = async (req, res) => {
     const emailHtmlToEmployee = generateMasterTemplate({
       company_name: adminUser.companyName,
       user_name: employee.name,
-      event_name: leaveTemplate.leaveRequestCreated.event_name,
-      action: leaveTemplate.leaveRequestCreated.action,
+      event_name: leaveTemplate.leaveRequestStatusUpdated.event_name,
+      action: leaveTemplate.leaveRequestStatusUpdated.action,
       status,
       message_intro: `Your leave request has been ${status.toLowerCase()} by Admin.`,
       notes: `${leaveDetails}<br/>Processed On: ${requestDate}`,
+      actionbutton_text: leaveTemplate.leaveRequestStatusUpdated.actionbutton_text,
+      actionlink: leaveLink,
+      fallback_note: leaveTemplate.leaveRequestStatusUpdated.fallback_note,
+      action_link: leaveLink
     });
-    sendEmail(employee.email, leaveTemplate.leaveRequestCreated.subject, emailHtmlToEmployee);
+    sendEmail(employee.email, leaveTemplate.leaveRequestStatusUpdated.subject, emailHtmlToEmployee);
 
     // Email to Admin
     const emailHtmlToAdmin = generateMasterTemplate({
       company_name: adminUser.companyName,
       user_name: adminUser.name,
-      event_name: leaveTemplate.leaveRequestCreated.event_name,
-      action: leaveTemplate.leaveRequestCreated.action,
+      event_name: leaveTemplate.leaveRequestStatusUpdated.event_name,
+      action: leaveTemplate.leaveRequestStatusUpdated.action,
       status,
       message_intro: `You have ${status.toLowerCase()} the leave request for Employee Id: ${employee._id}.`,
       notes: `${leaveDetails}<br/>Processed On: ${requestDate}`,
+      actionbutton_text: leaveTemplate.leaveRequestStatusUpdated.actionbutton_text,
+      actionlink: leaveLink,
+      fallback_note: leaveTemplate.leaveRequestStatusUpdated.fallback_note,
+      action_link: leaveLink
     });
-    sendEmail(adminUser.email, leaveTemplate.leaveRequestCreated.subject, emailHtmlToAdmin);
-
+    sendEmail(adminUser.email, leaveTemplate.leaveRequestStatusUpdated.subject, emailHtmlToAdmin);
 
     return res.status(200).json({
       success: true,
@@ -1064,12 +1162,13 @@ exports.createLeaveBalance = async (req, res) => {
       companyId: req.admin.companyId,
       plantId: req.params.plantId,
     });
+
     const policy = await LeavePolicy.findOne({
       _id: req.params.policyId,
       companyId: req.admin.companyId,
     });
 
-    if (employees.length === 0 || policy.length === 0) {
+    if (employees.length === 0 || !policy) {
       return res.status(400).json({ success: false, message: 'No employees or policies found.' });
     }
 
@@ -1089,6 +1188,36 @@ exports.createLeaveBalance = async (req, res) => {
           balance: policy.count,
           lastCredited: new Date(),
         });
+
+        // ---- EMAIL INTEGRATION ----
+        const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+        const leaveBalanceLink = `${baseUrl}/leave/balance`;
+
+        const balanceDetails = `
+          Policy: ${policy.name}<br/>
+          Balance: ${policy.count} days<br/>
+          Created By: ${getFullName(req.admin.employeeInfo) || req.admin.name || 'Admin'}
+        `;
+        const createDate = new Date().toLocaleString();
+
+        // Email to employee about balance creation
+        const emailHtml = generateMasterTemplate({
+          company_name: req.admin.companyName,
+          user_name: employee.name,
+          event_name: leaveTemplate.leaveBalanceCreated.event_name,
+          action: leaveTemplate.leaveBalanceCreated.action,
+          status: 'Created',
+          message_intro: `Your leave balance has been created`,
+          notes: `${balanceDetails}<br/>Created On: ${createDate}`,
+          actionbutton_text: leaveTemplate.leaveBalanceCreated.actionbutton_text,
+          actionlink: leaveBalanceLink,
+          fallback_note: leaveTemplate.leaveBalanceCreated.fallback_note,
+          action_link: leaveBalanceLink
+        });
+        if (employee?.email) {
+          sendEmail(employee.email, leaveTemplate.leaveBalanceCreated.subject, emailHtml);
+        }
+
         activityTracker({
           userId: req.admin._id,
           companyId: req.admin.companyId,
@@ -1100,8 +1229,10 @@ exports.createLeaveBalance = async (req, res) => {
           eventType: LEAVE_BALANCE_CREATED,
           actionDone: ACTIONS.create,
           oldData: null,
-          newData: balance.toObject()
+          newData: balance.toObject(),
+          description: `Leave balance created for user ${employee.name} (${employee.employeeCode}) under policy '${policy.name}' by ${getFullName(req.admin.employeeInfo)}`
         });
+
         createdCount++;
       }
     }
@@ -1138,21 +1269,45 @@ exports.resetLeaveBalance = async (req, res) => {
       });
 
       if (leaveBalance) {
-        // Only keep changed fields for tracing
-        const oldData = {};
-        if (leaveBalance.balance != null) oldData.balance = leaveBalance.balance;
-        if (leaveBalance.lastCredited != null) oldData.lastCredited = leaveBalance.lastCredited;
-        if (!('_id' in oldData)) oldData._id = leaveBalance._id; // include for trace
+        // Full snapshot for oldData
+        const oldData = leaveBalance.toObject();
 
         leaveBalance.balance = 0;
         leaveBalance.lastCredited = new Date();
         await leaveBalance.save();
 
-        // Only include changed fields in newData
-        const newData = {};
-        if (oldData.balance !== leaveBalance.balance) newData.balance = leaveBalance.balance;
-        if (oldData.lastCredited !== leaveBalance.lastCredited) newData.lastCredited = leaveBalance.lastCredited;
-        if (!('_id' in newData)) newData._id = leaveBalance._id;
+        // Full snapshot for newData
+        const newData = leaveBalance.toObject();
+
+        // ---- EMAIL INTEGRATION ----
+        const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+        const leaveBalanceLink = `${baseUrl}/leave/balance`;
+
+        const resetDetails = `
+          Policy: ${policy.name}<br/>
+          Previous Balance: ${oldData.balance}<br/>
+          New Balance: 0<br/>
+          Reset By: ${getFullName(req.admin.employeeInfo) || req.admin.name || 'Admin'}
+        `;
+        const resetDate = new Date().toLocaleString();
+
+        // Email to employee about balance reset
+        const emailHtml = generateMasterTemplate({
+          company_name: req.admin.companyName,
+          user_name: employee.name,
+          event_name: leaveTemplate.leaveBalanceReset.event_name,
+          action: leaveTemplate.leaveBalanceReset.action,
+          status: 'Reset',
+          message_intro: `Your leave balance has been reset by the administration`,
+          notes: `${resetDetails}<br/>Reset On: ${resetDate}`,
+          actionbutton_text: leaveTemplate.leaveBalanceReset.actionbutton_text,
+          actionlink: leaveBalanceLink,
+          fallback_note: leaveTemplate.leaveBalanceReset.fallback_note,
+          action_link: leaveBalanceLink
+        });
+        if (employee?.email) {
+          sendEmail(employee.email, leaveTemplate.leaveBalanceReset.subject, emailHtml);
+        }
 
         activityTracker({
           userId: req.admin._id,
@@ -1164,8 +1319,9 @@ exports.resetLeaveBalance = async (req, res) => {
           modelAffected: [MODEL_AFFECTED.model_balance],
           eventType: LEAVE_BALANCE_RESET,
           actionDone: ACTIONS.update,
-          oldData: oldData,
-          newData: newData
+          oldData,
+          newData,
+          description: `Leave balance reset for user ${employee.name} (${employee.employeeCode}) under policy '${policy.name}' by ${getFullName(req.admin.employeeInfo)}`
         });
 
         updatedCount++;
