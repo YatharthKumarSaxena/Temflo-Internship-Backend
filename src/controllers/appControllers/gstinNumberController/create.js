@@ -1,3 +1,9 @@
+const { OK } = require("@/config/httpStatus.config");
+const { GSTIN_CREATED } = require("@/config/activity.enums");
+const { logWithTime } = require("@/utils/time-stamps");
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 const User = require('../../../models/userModels/User')
 const stateMap = {
   "01": "Jammu & Kashmir",
@@ -100,7 +106,26 @@ const create = async (Model, req, res) => {
       companyId,
     }).save();
 
-    return res.status(200).json({
+    logWithTime(`✅ 🎯 GSTIN Number created Successfully 🚀`);
+
+    // Activity Tracker logging
+    activityTracker({
+      userId: req.admin._id, // admin ka Mongo ID as userId
+      companyId: companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.app,
+      subModuleAffected: SUBMODULE.gstinNumber,
+      fileAffected: FILE.file_gstinNumber_create,
+      modelAffected: [MODEL_AFFECTED.model_gstinNumber],
+      eventType: GSTIN_CREATED,
+      actionDone: ACTIONS.create,
+      description: `GSTIN Number created by ${getFullName(req.admin.employeeInfo)} for Company ID: ${req.admin.companyId}`,
+      oldData: null,
+      newData: result
+    });
+
+    // Returning successfull response
+    return res.status(OK).json({
       success: true,
       result,
       message: "Successfully Added GSTIN Number",

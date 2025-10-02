@@ -65,19 +65,13 @@ const create = async (Model, req, res) => {
     const User = mongoose.model('User')
     const owner = await User.findOne({ companyId, role: "owner", removed: false });
 
-    const plantLink = `https://yourdomain.com/plant/${result._id}`;
-
     if (owner) {
       sendEmail(
         owner.email,
         appTemplate.plantCreation.subject,
         generateMasterTemplate({
           ...appTemplate.plantCreation,
-          user_name: getFullName(owner.employeeInfo),
-          actionlink: plantLink,
-          fallback_note: appTemplate.plantCreation.fallback_note,
-          actionbutton_text: appTemplate.plantCreation.actionbutton_text,
-          action_link: plantLink
+          user_name: getFullName(owner.employeeInfo)
         })
       );
     }
@@ -91,11 +85,7 @@ const create = async (Model, req, res) => {
         generateMasterTemplate({
           ...appTemplate.plantCreation,
           user_name: getFullName(emailPerson.employeeInfo),
-          message_intro: `A new plant has been created using your Email ID for the company ${req.admin.name}`,
-          actionlink: plantLink,
-          fallback_note: appTemplate.plantCreation.fallback_note,
-          actionbutton_text: appTemplate.plantCreation.actionbutton_text,
-          action_link: plantLink
+          message_intro: `A new plant has been created using your Email ID for the company ${req.admin.name}`
         })
       );
     }

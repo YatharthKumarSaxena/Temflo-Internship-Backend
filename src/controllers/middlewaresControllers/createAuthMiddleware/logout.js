@@ -2,6 +2,7 @@ const authService = require('@/services/authService');
 const { USER_LOGGED_OUT } = require("@/config/activity.enums");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const logout = async (req, res, { userModel }) => {
   try {
@@ -45,6 +46,7 @@ const logout = async (req, res, { userModel }) => {
       modelAffected: [MODEL_AFFECTED.model_userPassword],
       eventType: USER_LOGGED_OUT,
       actionDone: ACTIONS.update,
+      description: `${getFullName(req.admin.employeeInfo)} logged out${logoutAll ? " from all devices" : ""}`,
       oldData: {
         refreshToken: "A Refresh Token"
       },  

@@ -135,14 +135,14 @@
 // module.exports = update;
 
 
-const update= async (Model, req, res) => {
+const update = async (Model, req, res) => {
   try {
     return res.status(404).json({
       success: false,
       message: 'You Can Not Update the GSTIN Number',
     });
 
-   
+
   } catch (error) {
     console.error('Update Admin Error:', error);
     return res.status(500).json({
@@ -151,7 +151,7 @@ const update= async (Model, req, res) => {
     });
   }
 
-  
+
 };
 
 module.exports = update;

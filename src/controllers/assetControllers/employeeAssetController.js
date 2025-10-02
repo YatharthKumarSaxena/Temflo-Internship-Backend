@@ -126,7 +126,8 @@ exports.requestAssetTransfer = async (req, res) => {
 
     await transferRequest.save();
 
-    const assetLink = `https://yourdomain.com/assets/${asset._id}`;
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const assetLink = `${baseUrl}/assets/${asset._id}`;
 
     // Fetch users
     const fromEmployee = await User.findById(fromEmployeeId);

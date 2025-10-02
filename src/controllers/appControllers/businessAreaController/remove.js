@@ -1,11 +1,11 @@
-const remove= async (Model, req, res) => {
+const remove = async (Model, req, res) => {
   try {
     return res.status(404).json({
       success: false,
       message: 'You Can Not delete the Business Area ',
     });
 
-   
+
   } catch (error) {
     console.error('Update Admin Error:', error);
     return res.status(500).json({
@@ -14,7 +14,7 @@ const remove= async (Model, req, res) => {
     });
   }
 
-  
+
 };
 
 module.exports = remove;

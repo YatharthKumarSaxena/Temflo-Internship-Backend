@@ -3,6 +3,7 @@ const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/s
 const { activityTracker } = require("@/utils/activityTracker");
 const { USER_PROFILE_UPDATED } = require("@/config/activity.enums");
 const { throwDBResourceNotFoundError } = require("@/config/error-handler.config");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const updateProfile = async (userModel, req, res) => {
   const User = mongoose.model(userModel);
@@ -34,24 +35,9 @@ const updateProfile = async (userModel, req, res) => {
     { _id: userProfile._id, removed: false },
     { $set: updates },
     { new: true }
-  ).exec();
+  ).lean(); // lean() ensures we get plain JS object
 
-  const oldData = {
-    _id: userProfile._id,
-    email: oldDataDoc.email,
-    name: oldDataDoc.name,
-    surname: oldDataDoc.surname,
-    photo: oldDataDoc.photo || null,
-  };
-
-  const newData = {
-    email: result.email,
-    name: result.name,
-    surname: result.surname,
-    photo: result.photo || null,
-  };
-
-  // Activity Tracker logging
+  // Activity Tracker logging with full snapshots
   activityTracker({
     userId: req.admin._id,
     companyId: req.admin.companyId,
@@ -62,8 +48,9 @@ const updateProfile = async (userModel, req, res) => {
     modelAffected: [MODEL_AFFECTED.model_user],
     eventType: USER_PROFILE_UPDATED,
     actionDone: ACTIONS.update,
-    oldData,
-    newData,
+    oldData: oldDataDoc,  // full old document
+    newData: result,      // full updated document
+    description: `Profile updated by ${getFullName(req.admin.employeeInfo)} for ${getFullName(userProfile.employeeInfo)} whose user Id: ${userProfile._id}`
   });
 
   return res.status(200).json({
