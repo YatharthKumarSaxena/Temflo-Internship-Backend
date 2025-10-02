@@ -27379,3 +27379,8 @@
 2025-10-01T15:55:27.806Z [INFO] All security headers present - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
 2025-10-01T15:56:27.828Z [INFO] All security headers present - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
 2025-10-01T15:57:27.847Z [INFO] All security headers present - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-10-02T07:48:09.586Z [INFO] All security headers present - IP: ::1 - URL: /api/employee/update-info/68da3542dbbb3505330447af - User-Agent: unknown
+2025-10-02T07:49:36.445Z [INFO] All security headers present - IP: ::1 - URL: /api/employee/update-info/68da3542dbbb3505330447af - User-Agent: unknown
+2025-10-02T07:49:49.282Z [INFO] All security headers present - IP: ::1 - URL: /api/employee/update-info/68da3542dbbb3505330447af - User-Agent: unknown
+2025-10-02T07:53:00.562Z [INFO] All security headers present - IP: ::1 - URL: /api/employee/update-info/68da3542dbbb3505330447af - User-Agent: unknown
+2025-10-02T07:53:08.138Z [INFO] All security headers present - IP: ::1 - URL: /api/employee/update-info/68da3542dbbb3505330447af - User-Agent: unknown

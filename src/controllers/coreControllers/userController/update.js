@@ -12,6 +12,7 @@ const { employeeTemplate } = require("@/config/emailTemplates/employeeTemplate")
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
 const { getFullName } = require("@/utils/commonFunctions");
+const mongoose = require("mongoose");
 
 class UpdateController {
 
@@ -43,7 +44,7 @@ class UpdateController {
             "employeeInfo.department": department,
             "employeeInfo.dateOfJoining": dateOfJoining,
             "employeeInfo.designation": designation,
-            "employeeInfo.supervisor": supervisor
+            "supervisor": supervisor
           }
         },
         { new: false } // return old doc
@@ -85,9 +86,10 @@ class UpdateController {
       const empDetails = `Employee Id: ${_id}
 Employee Name: ${getFullName(effectiveEmployeeInfo)}`;
 
-      const empLink = `http://localhost:3000/employee/details/${_id}`;
+      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const empLink = `${baseUrl}/employee/${_id}`;
 
-      if (supervisor) {
+      if (supervisor && String(supervisor) !== String(oldUser.supervisor)) {
         const supervisorPerson = await UserModel.findOne({ _id: supervisor, companyId: req.admin.companyId });
         if (supervisorPerson) {
           const emailConfig = {
@@ -583,6 +585,38 @@ Employee Name: ${getFullName(effectiveEmployeeInfo)}`;
         message: "User password couldn't be updated correctly.",
       });
     }
+
+  // Fetch user for email
+  const User = mongoose.model("User");
+  const targetUser = await User.findById(req.params.id).lean();
+
+  if (targetUser?.email) {
+    // Inject dynamic values into template
+    const emailConfig = {
+      ...employeeTemplate.userPasswordChanged,
+      user_name: targetUser.name || "User",
+    };
+
+    const html = generateMasterTemplate(emailConfig);
+
+    // Fire & Forget (async, don’t block API response)
+    sendEmail(targetUser.email, emailConfig.subject, html);
+  }
+    // Activity Tracker logging
+    activityTracker({
+      userId: req.admin._id, // admin ka Mongo ID as userId
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.core,
+      subModuleAffected: SUBMODULE.user,
+      fileAffected: FILE.file_user_update,
+      modelAffected: [MODEL_AFFECTED.model_userPassword],
+      eventType: USER_PASSWORD_UPDATED_BY_ID,
+      actionDone: ACTIONS.update,
+      description: `Password updated by ${getFullName(req.admin.employeeInfo)} for ${getFullName(targetUser.employeeInfo)} whose user Id: ${targetUser._id}`,
+      oldData: { _id: req.params.id, passwordChanged: false },
+      newData: { passwordChanged: true }
+    });
 
     return res.status(200).json({
       success: true,

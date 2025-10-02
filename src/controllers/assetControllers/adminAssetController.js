@@ -257,7 +257,8 @@ exports.addAsset = async (req, res) => {
       Serial Number: ${asset.serialNumber || 'N/A'}
     `;
 
-    const assetLink = `https://yourdomain.com/assets/${asset._id}`;
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const assetLink = `${baseUrl}/assets/${asset._id}`;
     const requestDate = new Date().toLocaleString();
 
     // ----- EMAILS -----
@@ -532,7 +533,8 @@ exports.updateAsset = async (req, res) => {
     const existingAsset = await Asset.findOne({ companyId: req.admin.companyId, _id: assetId });
     if (!existingAsset) return res.status(404).json({ success: false, message: 'Asset not found' });
 
-    const assetLink = `https://yourdomain.com/assets/${existingAsset._id}`;
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const assetLink = `${baseUrl}/assets/${existingAsset._id}`;
     const assetDetails = `Asset Name: ${existingAsset.name}\nAsset ID: ${existingAsset._id}\nSerial Number: ${existingAsset.serialNumber || 'N/A'}`;
 
     // Handle Responsible change
@@ -881,7 +883,8 @@ exports.createBulkAssets = async (req, res) => {
         existingSerialSet.add(serial);
 
         // -------- EMAILS --------
-        const assetLink = `${process.env.FRONTEND_URL}/asset/${newAsset._id}`;
+        const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+        const assetLink = `${baseUrl}/asset/${newAsset._id}`;
         const assetDetails = `Asset: ${newAsset.name} (SN: ${newAsset.serialNumber})`;
 
         // Responsible email
@@ -943,7 +946,8 @@ exports.createBulkAssets = async (req, res) => {
 
     // ----- EMAIL TO ADMIN -----
     const requestDate = new Date().toLocaleString();
-    const assetLink = `${process.env.FRONTEND_URL}/assets`;
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const assetLink = `${baseUrl}/assets`;
 
     const emailHtmlToAdmin = generateMasterTemplate({
       ...assetTemplate.assetCreated,
@@ -1125,7 +1129,8 @@ exports.approveAssetTransfer = async (req, res) => {
       Serial Number: ${asset.serialNumber || 'N/A'}
     `;
 
-    const assetLink = `https://yourdomain.com/assets/${asset._id}`; // ya jo bhi frontend link ho
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const assetLink = `${baseUrl}/assets/${asset._id}`; // ya jo bhi frontend link ho
 
     // From Employee (requester)
     const fromEmployeeMsg = `
@@ -1149,7 +1154,7 @@ exports.approveAssetTransfer = async (req, res) => {
     const adminMsg = `
       ${baseNotes}
       From Employee ID: ${transfer.fromEmployee._id} to Employee ID: ${transfer.toEmployee._id}
-      Notes: ${adminNotes.trim() || 'None'}'
+      Notes: ${adminNotes.trim() || 'None'}
       Date: ${approveDate}
     `;
 
@@ -1157,7 +1162,7 @@ exports.approveAssetTransfer = async (req, res) => {
     const resMsg = `
       ${baseNotes}
       From Employee ID: ${transfer.fromEmployee._id} to Employee ID: ${transfer.toEmployee._id}
-      Notes: ${adminNotes.trim() || 'None'}'
+      Notes: ${adminNotes.trim() || 'None'}
       Date: ${approveDate}
     `;
 
@@ -1272,6 +1277,10 @@ exports.rejectAssetTransfer = async (req, res) => {
       status: 'Assigned',
     });
 
+    if (!asset) {
+      return res.status(400).json({ success: false, message: "Asset not found or unassigned" });
+    }
+
     // --- OLD DATA SNAPSHOT (Complete Transfer Object) ---
     const oldTransferData = transfer.toObject();
 
@@ -1296,7 +1305,8 @@ exports.rejectAssetTransfer = async (req, res) => {
       description: `Rejected asset transfer from Employee ${oldTransferData.fromEmployee?._id || 'N/A'} to Employee ${oldTransferData.toEmployee?._id || 'N/A'}`
     });
 
-    const assetLink = `https://yourdomain.com/assets/${asset._id}`;
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const assetLink = `${baseUrl}/assets/${asset._id}`;
 
     // ----- EMAILS -----
     const baseNotes = `
