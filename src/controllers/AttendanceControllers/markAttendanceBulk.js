@@ -5,6 +5,10 @@ const moment = require('moment');
 
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require('@/config/structure.config');
 const { activityTracker } = require('@/utils/activityTracker');
+const { getFullName } = require('@/utils/commonFunctions');
+const { attendanceTemplate } = require('@/config/emailTemplates/attendanceTemplates');
+const { generateMasterTemplate } = require('@/emailTemplate/masterTemplate');
+const { sendEmail } = require('@/utils/emailSender');
 const { BULK_ATTENDANCE_CREATED } = require('@/config/activity.enums');
 
 const markAttendanceBulk = async (req, res) => {
@@ -105,9 +109,39 @@ const markAttendanceBulk = async (req, res) => {
           actionDone: ACTIONS.create,
           oldData: null,
           newData: attendance.toObject(),
+          description: `Bulk attendance created for employee ${getFullName(user.employeeInfo)} (${user.employeeCode}) on ${date.format('YYYY-MM-DD')} by ${getFullName(req.admin.employeeInfo)}`
         });
 
         success.push({ employeeCode, date: date.format('YYYY-MM-DD') });
+
+        // ---- EMAIL INTEGRATION FOR INDIVIDUAL RECORD ----
+        const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+        const attendanceLink = `${baseUrl}attendance/my-attendance`;
+        const uploadDate = new Date().toLocaleString();
+
+        if (user?.email) {
+          const attendanceDetails = `
+            Date: ${date.format('YYYY-MM-DD')}<br/>
+            In Time: ${inTimeStr}<br/>
+            Out Time: ${outTimeStr}<br/>
+            Status: ${status}<br/>
+            Processed By: ${getFullName(req.admin.employeeInfo) || req.admin.name || 'Admin'}
+          `;
+
+          const emailHtml = generateMasterTemplate({
+            user_name: getFullName(user.employeeInfo),
+            event_name: attendanceTemplate.bulkAttendanceCreated.event_name,
+            action: attendanceTemplate.bulkAttendanceCreated.action,
+            status: 'Processed',
+            message_intro: `Your attendance has been processed through bulk upload`,
+            notes: `${attendanceDetails}<br/>Processed On: ${uploadDate}`,
+            actionbutton_text: attendanceTemplate.bulkAttendanceCreated.actionbutton_text,
+            actionlink: attendanceLink,
+            fallback_note: attendanceTemplate.bulkAttendanceCreated.fallback_note,
+            action_link: attendanceLink
+          });
+          sendEmail(user.email, attendanceTemplate.bulkAttendanceCreated.subject, emailHtml);
+        }
 
       } catch (err) {
         failed.push({ ...row, reason: err.message });
@@ -115,6 +149,48 @@ const markAttendanceBulk = async (req, res) => {
     }
 
     fs.unlinkSync(file.path); // Clean up uploaded file
+
+    // ---- BULK EMAIL INTEGRATION ----
+    if (success.length > 0) {
+      const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+      const attendanceLink = `${baseUrl}attendance/my-attendance`;
+      const uploadDate = new Date().toLocaleString();
+
+      // Group successful entries by employee
+      const employeeGroups = {};
+      for (const entry of success) {
+        if (!employeeGroups[entry.employeeCode]) {
+          employeeGroups[entry.employeeCode] = [];
+        }
+        employeeGroups[entry.employeeCode].push(entry.date);
+      }
+
+      // Send email to each affected employee
+      for (const [employeeCode, dates] of Object.entries(employeeGroups)) {
+        const user = userMap[employeeCode];
+        if (user?.email) {
+          const attendanceDetails = `
+            Dates Processed: ${dates.join(', ')}<br/>
+            Total Entries: ${dates.length}<br/>
+            Processed By: ${getFullName(req.admin.employeeInfo) || req.admin.name || 'Admin'}
+          `;
+
+          const emailHtml = generateMasterTemplate({
+            user_name: getFullName(user.employeeInfo),
+            event_name: attendanceTemplate.bulkAttendanceCreated.event_name,
+            action: attendanceTemplate.bulkAttendanceCreated.action,
+            status: 'Processed',
+            message_intro: `Your attendance has been processed through bulk upload`,
+            notes: `${attendanceDetails}<br/>Processed On: ${uploadDate}`,
+            actionbutton_text: attendanceTemplate.bulkAttendanceCreated.actionbutton_text,
+            actionlink: attendanceLink,
+            fallback_note: attendanceTemplate.bulkAttendanceCreated.fallback_note,
+            action_link: attendanceLink
+          });
+          sendEmail(user.email, attendanceTemplate.bulkAttendanceCreated.subject, emailHtml);
+        }
+      }
+    }
 
     return res.status(200).json({
       success: true,

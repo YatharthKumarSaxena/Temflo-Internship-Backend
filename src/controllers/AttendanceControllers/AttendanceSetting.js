@@ -8,6 +8,10 @@ const mongoose = require('mongoose')
 const moment = require('moment');
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
+const { attendanceTemplate } = require("@/config/emailTemplates/attendanceTemplates");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { sendEmail } = require("@/utils/emailSender");
 const { ATTENDANCE_SETTINGS_UPDATED, ATTENDANCE_SETTINGS_CREATED, HOLIDAY_ADDED, HOLIDAY_DELETED, ATTENDANCE_WEEKLY_OFF_UPDATED, ATTENDANCE_MARKED_BY_ADMIN, ATTENDANCE_WORKING_HOURS_UPDATED, ATTENDANCE_POLICY_CREATED, ATTENDANCE_POLICY_UPDATED, ATTENDANCE_POLICY_APPLIED_TO_ALL, ATTENDANCE_POLICY_APPLIED_TO_SELECTED, ATTENDANCE_REQUEST_STATUS_UPDATED } = require('@/config/activity.enums');
 
 // Create or update settings for plant
@@ -28,15 +32,21 @@ exports.setSettings = async (req, res) => {
       ...(typeof approvalRequiredIfLocationDisabled === 'boolean' && { approvalRequiredIfLocationDisabled }),
       ...(typeof allowMarking === 'boolean' && { allowMarking }),
       plant: plantId,
-      companyId: req.admin.compnayId, // add company from plant
+      companyId: req.admin.companyId, // add company from plant
     };
 
+
+    // Get existing settings for proper tracking
+    const existingSettings = await AttendanceSettings.findOne({ plantId, companyId: req.admin.companyId });
+    const oldData = existingSettings ? existingSettings.toObject() : null;
 
     const updated = await AttendanceSettings.findOneAndUpdate(
       { plantId,companyId: req.admin.companyId },
       updateFields,
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
+
+    const newData = updated.toObject();
 
     // Activity Tracker
     activityTracker({
@@ -49,8 +59,9 @@ exports.setSettings = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_attendanceSetting],
       eventType: oldData ? ATTENDANCE_SETTINGS_UPDATED : ATTENDANCE_SETTINGS_CREATED,
       actionDone: oldData ? ACTIONS.update : ACTIONS.create,
-      oldData: oldData ? oldData : null,
+      oldData: oldData,
       newData: newData,
+      description: `Attendance settings ${oldData ? 'updated' : 'created'} for plant ${plantId} by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({ success: true, settings: updated });
@@ -113,8 +124,46 @@ exports.addHoliday = async (req, res) => {
       eventType: HOLIDAY_ADDED,
       actionDone: ACTIONS.create,
       oldData: oldData,
-      newData: newData
+      newData: newData,
+      description: `Holiday '${occasion}' added for date ${date} by ${getFullName(req.admin.employeeInfo)}`
     });
+
+    // ---- EMAIL INTEGRATION ----
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const holidayLink = `${baseUrl}attendance/holidays`;
+
+    // Email to all employees in the plant
+    const employees = await User.find({
+      companyId: req.admin.companyId,
+      plantId: plantId,
+      role: { $in: ['admin', 'employee'] }
+    });
+
+    const holidayDetails = `
+      Holiday: ${occasion}<br/>
+      Date: ${date}<br/>
+      Type: ${type}<br/>
+      Added By: ${getFullName(req.admin.employeeInfo)}
+    `;
+    const addDate = new Date().toLocaleString();
+
+    for (const employee of employees) {
+      if (employee?.email) {
+        const emailHtml = generateMasterTemplate({
+          user_name: getFullName(employee.employeeInfo),
+          event_name: attendanceTemplate.holidayAdded.event_name,
+          action: attendanceTemplate.holidayAdded.action,
+          status: 'Added',
+          message_intro: `A new holiday has been added to your organization's calendar`,
+          notes: `${holidayDetails}<br/>Added On: ${addDate}`,
+          actionbutton_text: attendanceTemplate.holidayAdded.actionbutton_text,
+          actionlink: holidayLink,
+          fallback_note: attendanceTemplate.holidayAdded.fallback_note,
+          action_link: holidayLink
+        });
+        sendEmail(employee.email, attendanceTemplate.holidayAdded.subject, emailHtml);
+      }
+    }
 
     return res.status(200).json({ success: true, settings });
   } catch (err) {
@@ -161,7 +210,8 @@ exports.deleteHoliday = async (req, res) => {
       eventType: HOLIDAY_DELETED,
       actionDone: ACTIONS.delete,
       oldData: { holidays: [holidayToDelete.toObject()] },
-      newData: null
+      newData: null,
+      description: `Holiday '${holidayToDelete.occasion}' deleted for date ${holidayToDelete.date} by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({ success: true, message: 'Holiday deleted', settings });
@@ -202,7 +252,8 @@ exports.setWeeklyOff = async (req, res) => {
       eventType: ATTENDANCE_WEEKLY_OFF_UPDATED,
       actionDone: existingSettings ? ACTIONS.update : ACTIONS.create,
       oldData: oldData,
-      newData: { weeklyOffs }
+      newData: { weeklyOffs },
+      description: `Weekly offs ${existingSettings ? 'updated' : 'set'} for plant ${plantId} by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({ success: true, settings });
@@ -232,11 +283,7 @@ exports.markAttendance = async (req, res) => {
       }
     });
 
-    const oldData = existingAttendance ? {
-      inTime: existingAttendance.inTime,
-      outTime: existingAttendance.outTime,
-      status: existingAttendance.status
-    } : null;
+    const oldData = existingAttendance ? existingAttendance.toObject() : null;
 
     const attendance = await Attendance.findOneAndUpdate(
       {
@@ -260,6 +307,8 @@ exports.markAttendance = async (req, res) => {
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
+    const newData = attendance.toObject();
+
     // Activity Tracker
     activityTracker({
       userId: req.admin._id,
@@ -272,8 +321,59 @@ exports.markAttendance = async (req, res) => {
       eventType: ATTENDANCE_MARKED_BY_ADMIN,
       actionDone: existingAttendance ? ACTIONS.update : ACTIONS.create,
       oldData: oldData,
-      newData: { inTime, outTime, status }
+      newData: newData,
+      description: `Attendance ${existingAttendance ? 'updated' : 'marked'} by admin ${getFullName(req.admin.employeeInfo)} for employee ${getFullName(employee.employeeInfo)} (${employee.employeeCode}) on ${date}`
     });
+
+    // ---- EMAIL INTEGRATION ----
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const attendanceLink = `${baseUrl}attendance/my-attendance`;
+
+    const attendanceDetails = `
+      Date: ${date}<br/>
+      In Time: ${inTime || 'Not marked'}<br/>
+      Out Time: ${outTime || 'Not marked'}<br/>
+      Status: ${status}<br/>
+      Marked By: ${getFullName(req.admin.employeeInfo)}
+    `;
+    const markDate = new Date().toLocaleString();
+
+    // Email to Employee
+    if (employee?.email) {
+      const emailHtmlToEmployee = generateMasterTemplate({
+        user_name: getFullName(employee.employeeInfo),
+        event_name: attendanceTemplate.attendanceMarkedByAdmin.event_name,
+        action: attendanceTemplate.attendanceMarkedByAdmin.action,
+        status: existingAttendance ? 'Updated' : 'Marked',
+        message_intro: `Your attendance has been ${existingAttendance ? 'updated' : 'marked'} by admin`,
+        notes: `${attendanceDetails}<br/>Processed On: ${markDate}`,
+        actionbutton_text: attendanceTemplate.attendanceMarkedByAdmin.actionbutton_text,
+        actionlink: attendanceLink,
+        fallback_note: attendanceTemplate.attendanceMarkedByAdmin.fallback_note,
+        action_link: attendanceLink
+      });
+      sendEmail(employee.email, attendanceTemplate.attendanceMarkedByAdmin.subject, emailHtmlToEmployee);
+    }
+
+    // Email to Supervisor if exists
+    if (employee.supervisor) {
+      const supervisor = await User.findById(employee.supervisor);
+      if (supervisor?.email) {
+        const emailHtmlToSupervisor = generateMasterTemplate({
+          user_name: getFullName(supervisor.employeeInfo),
+          event_name: attendanceTemplate.attendanceMarkedByAdmin.event_name,
+          action: attendanceTemplate.attendanceMarkedByAdmin.action,
+          status: existingAttendance ? 'Updated' : 'Marked',
+          message_intro: `Attendance ${existingAttendance ? 'updated' : 'marked'} for employee whose employee code: ${(employee.employeeCode)} by admin`,
+          notes: `${attendanceDetails}<br/>Processed On: ${markDate}`,
+          actionbutton_text: 'View Attendance Records',
+          actionlink: `${baseUrl}attendance/requests`,
+          fallback_note: attendanceTemplate.attendanceMarkedByAdmin.fallback_note,
+          action_link: `${baseUrl}attendance/requests`
+        });
+        sendEmail(supervisor.email, attendanceTemplate.attendanceMarkedByAdmin.subject, emailHtmlToSupervisor);
+      }
+    }
 
     return res.status(200).json({
       success: true,
@@ -318,8 +418,46 @@ exports.setWorkingHours = async (req, res) => {
       eventType: ATTENDANCE_WORKING_HOURS_UPDATED,
       actionDone: existingSettings ? ACTIONS.update : ACTIONS.create,
       oldData: oldData,
-      newData: { workingHours: { start, end, minHoursRequired } }
+      newData: { workingHours: { start, end, minHoursRequired } },
+      description: `Working hours ${existingSettings ? 'updated' : 'set'} for plant ${plantId} (${start} - ${end}, ${minHoursRequired}h required) by ${getFullName(req.admin.employeeInfo)}`
     });
+
+    // ---- EMAIL INTEGRATION ----
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const scheduleLink = `${baseUrl}attendance/schedule`;
+
+    // Email to all employees in the plant
+    const employees = await User.find({
+      companyId: req.admin.companyId,
+      plantId: plantId,
+      role: { $in: ['admin', 'employee'] }
+    });
+
+    const workingHoursDetails = `
+      Start Time: ${start}<br/>
+      End Time: ${end}<br/>
+      Minimum Hours Required: ${minHoursRequired} hours<br/>
+      Updated By: ${getFullName(req.admin.employeeInfo)}
+    `;
+    const updateDate = new Date().toLocaleString();
+
+    for (const employee of employees) {
+      if (employee?.email) {
+        const emailHtml = generateMasterTemplate({
+          user_name: getFullName(employee.employeeInfo),
+          event_name: attendanceTemplate.workingHoursUpdated.event_name,
+          action: attendanceTemplate.workingHoursUpdated.action,
+          status: existingSettings ? 'Updated' : 'Set',
+          message_intro: `Working hours for your plant have been ${existingSettings ? 'updated' : 'set'}`,
+          notes: `${workingHoursDetails}<br/>Updated On: ${updateDate}`,
+          actionbutton_text: attendanceTemplate.workingHoursUpdated.actionbutton_text,
+          actionlink: scheduleLink,
+          fallback_note: attendanceTemplate.workingHoursUpdated.fallback_note,
+          action_link: scheduleLink
+        });
+        sendEmail(employee.email, attendanceTemplate.workingHoursUpdated.subject, emailHtml);
+      }
+    }
 
     return res.status(200).json({ success: true, message: 'Working hours updated successfully', settings });
   } catch (err) {
@@ -395,8 +533,47 @@ exports.createAttendancePolicy = async (req,res) => {
       eventType: ATTENDANCE_POLICY_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: policy.toObject()
+      newData: policy.toObject(),
+      description: `Attendance policy '${name}' created for plant ${plantId} by ${getFullName(req.admin.employeeInfo)}`
     });
+
+    // ---- EMAIL INTEGRATION ----
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const policyLink = `${baseUrl}attendance/policies`;
+
+    // Email to Admins about new policy
+    const adminUsers = await User.find({
+      companyId: req.admin.companyId,
+      role: { $in: ['admin', 'owner'] }
+    });
+
+    const policyDetails = `
+      Policy Name: ${name}<br/>
+      Plant: ${plantId}<br/>
+      Location Based: ${isLocationBased ? 'Yes' : 'No'}<br/>
+      Approval Required: ${isApprovalRequired ? 'Yes' : 'No'}<br/>
+      Created By: ${getFullName(req.admin.employeeInfo)}
+    `;
+    const createDate = new Date().toLocaleString();
+
+    for (const adminUser of adminUsers) {
+      if (adminUser?.email) {
+        const emailHtml = generateMasterTemplate({
+          user_name: getFullName(adminUser.employeeInfo),
+          event_name: attendanceTemplate.attendancePolicyCreated.event_name,
+          action: attendanceTemplate.attendancePolicyCreated.action,
+          status: 'Created',
+          message_intro: `A new attendance policy has been created`,
+          notes: `${policyDetails}<br/>Created On: ${createDate}`,
+          actionbutton_text: attendanceTemplate.attendancePolicyCreated.actionbutton_text,
+          actionlink: policyLink,
+          fallback_note: attendanceTemplate.attendancePolicyCreated.fallback_note,
+          action_link: policyLink
+        });
+        sendEmail(adminUser.email, attendanceTemplate.attendancePolicyCreated.subject, emailHtml);
+      }
+    }
+
           return res.status(200).json({
             success: true,
             message: `Attendance policy created successfully`,
@@ -404,9 +581,10 @@ exports.createAttendancePolicy = async (req,res) => {
           });
       
         } catch (error) {
-          console.error('Error creating Attendance Policy:', err);
-          return res.status(500).json({ success: false, message: err.message });
-        }
+  console.error('Error creating Attendance Policy:', error); // ✅ Fixed
+  return res.status(500).json({ success: false, message: error.message }); // ✅ Fixed
+}
+
 
 }
 
@@ -483,15 +661,16 @@ exports.updateAttendancePolicy = async (req,res) => {
       eventType: ATTENDANCE_POLICY_UPDATED,
       actionDone: ACTIONS.update,
       oldData: existingPolicy.toObject(),
-      newData: changedFields
+      newData: policy.toObject(),
+      description: `Attendance policy '${name}' updated for plant ${plantId} by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({ success: true, policy });
 
   } catch (error) {
-    console.error('Error creating Attendance Policy:', err);
-    return res.status(500).json({ success: false, message: err.message });
-  } 
+  console.error('Error updating Attendance Policy:', error); // ✅ Fixed
+  return res.status(500).json({ success: false, message: error.message }); // ✅ Fixed
+}
 
 
 }
@@ -567,7 +746,36 @@ exports.applyAttendancePolicy = async (req, res) => {
         actionDone: ACTIONS.update,
         oldData: oldSetting ? oldSetting.toObject() : null,
         newData: updatedData,
+        description: `Attendance policy '${policy.name}' applied to employee ${getFullName(employee.employeeInfo)} (${employee.employeeCode}) by ${getFullName(req.admin.employeeInfo)}`
       });
+
+      // ---- EMAIL INTEGRATION ----
+      const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+      const settingsLink = `${baseUrl}attendance/my-settings`;
+
+      const policyDetails = `
+        Policy: ${policy.name}<br/>
+        Location Based: ${policy.isLocationBased ? 'Yes' : 'No'}<br/>
+        Approval Required: ${policy.isApprovalRequired ? 'Yes' : 'No'}<br/>
+        Applied By: ${getFullName(req.admin.employeeInfo)}
+      `;
+      const applyDate = new Date().toLocaleString();
+
+      if (employee?.email) {
+        const emailHtml = generateMasterTemplate({
+          user_name: getFullName(employee.employeeInfo),
+          event_name: attendanceTemplate.attendancePolicyApplied.event_name,
+          action: attendanceTemplate.attendancePolicyApplied.action,
+          status: 'Applied',
+          message_intro: `A new attendance policy has been applied to your account`,
+          notes: `${policyDetails}<br/>Applied On: ${applyDate}`,
+          actionbutton_text: attendanceTemplate.attendancePolicyApplied.actionbutton_text,
+          actionlink: settingsLink,
+          fallback_note: attendanceTemplate.attendancePolicyApplied.fallback_note,
+          action_link: settingsLink
+        });
+        sendEmail(employee.email, attendanceTemplate.attendancePolicyApplied.subject, emailHtml);
+      }
 
       createdCount++;
     }
@@ -632,7 +840,37 @@ exports.applyAttendancePolicyToSelectedEmployees = async (req, res) => {
         actionDone: ACTIONS.update,
         oldData: oldSetting ? oldSetting.toObject() : null,
         newData: updatedData,
+        description: `Attendance policy '${policy.name}' applied to selected employee ${user.name} (${user.employeeCode}) by ${getFullName(req.admin.employeeInfo)}`
       });
+
+      // ---- EMAIL INTEGRATION ----
+      const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+      const settingsLink = `${baseUrl}attendance/my-settings`;
+
+      const userDetails = await User.findById(user._id).select('email name employeeInfo');
+      if (userDetails?.email) {
+        const policyDetails = `
+          Policy: ${policy.name}<br/>
+          Location Based: ${policy.isLocationBased ? 'Yes' : 'No'}<br/>
+          Approval Required: ${policy.isApprovalRequired ? 'Yes' : 'No'}<br/>
+          Applied By: ${getFullName(req.admin.employeeInfo)}
+        `;
+        const applyDate = new Date().toLocaleString();
+
+        const emailHtml = generateMasterTemplate({
+          user_name: getFullName(userDetails.employeeInfo),
+          event_name: attendanceTemplate.attendancePolicyApplied.event_name,
+          action: attendanceTemplate.attendancePolicyApplied.action,
+          status: 'Applied',
+          message_intro: `A new attendance policy has been applied to your account`,
+          notes: `${policyDetails}<br/>Applied On: ${applyDate}`,
+          actionbutton_text: attendanceTemplate.attendancePolicyApplied.actionbutton_text,
+          actionlink: settingsLink,
+          fallback_note: attendanceTemplate.attendancePolicyApplied.fallback_note,
+          action_link: settingsLink
+        });
+        sendEmail(userDetails.email, attendanceTemplate.attendancePolicyApplied.subject, emailHtml);
+      }
     }
 
     await session.commitTransaction();
@@ -900,6 +1138,9 @@ exports.updateAttendanceRequestStatus = async (req, res) => {
     request.status = status;
     await request.save();
 
+    // Get employee info for description
+    const employee = await User.findById(request.userId).select('employeeCode employeeInfo email name');
+
     // Activity tracker
     activityTracker({
       userId: userId,
@@ -913,7 +1154,36 @@ exports.updateAttendanceRequestStatus = async (req, res) => {
       actionDone: ACTIONS.update,
       oldData: oldData,
       newData: request.toObject(),
+      description: `Attendance request status updated to '${status}' for employee ${getFullName(employee?.employeeInfo)} (${employee?.employeeCode}) by ${getFullName(req.admin.employeeInfo)}`
     });
+
+    // ---- EMAIL INTEGRATION ----
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const requestLink = `${baseUrl}attendance/requests`;
+
+    const requestDetails = `
+      Date: ${request.date}<br/>
+      Status: ${status}<br/>
+      Approved By: ${getFullName(req.admin.employeeInfo)}
+    `;
+    const processDate = new Date().toLocaleString();
+
+    // Email to Employee
+    if (employee?.email) {
+      const emailHtmlToEmployee = generateMasterTemplate({
+        user_name: getFullName(employee.employeeInfo),
+        event_name: attendanceTemplate.attendanceRequestStatusUpdated.event_name,
+        action: attendanceTemplate.attendanceRequestStatusUpdated.action,
+        status,
+        message_intro: `Your attendance request has been ${status.toLowerCase()}`,
+        notes: `${requestDetails}<br/>Processed On: ${processDate}`,
+        actionbutton_text: attendanceTemplate.attendanceRequestStatusUpdated.actionbutton_text,
+        actionlink: requestLink,
+        fallback_note: attendanceTemplate.attendanceRequestStatusUpdated.fallback_note,
+        action_link: requestLink
+      });
+      sendEmail(employee.email, attendanceTemplate.attendanceRequestStatusUpdated.subject, emailHtmlToEmployee);
+    }
 
     let message = '';
     if (status === 'present') message = 'Attendance approved successfully';

@@ -7,6 +7,7 @@ const { useAppSettings } = require('@/settings');
 const { RESET_TOKEN_EXPIRY } = require('@/config/token.config'); // in milliseconds
 const { employeeTemplate } = require("@/config/emailTemplates/employeeTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const forgetPassword = async (req, res, { userModel }) => {
   try {
@@ -83,7 +84,7 @@ if (now.getTime() < tokenExpiryTime) {
     // Use master template
     const config = {
       ...employeeTemplate.resetPassword, // predefined config
-      user_name: user.name || "User",
+      user_name: getFullName(user.employeeInfo),
       actionlink: resetLink,
       action_link: resetLink,
     };

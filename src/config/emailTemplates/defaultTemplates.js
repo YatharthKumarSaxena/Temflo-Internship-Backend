@@ -1,5 +1,5 @@
 const defaultConfig = {
-    user_name: "Temflo System Private Company",
+    user_name: "User",
     company_name: "ERPICA",
     currentyear: new Date().getFullYear(),
     notes: "",

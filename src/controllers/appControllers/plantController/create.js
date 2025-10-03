@@ -1,6 +1,6 @@
 const { OK } = require("@/config/httpStatus.config");
 const { PLANT_CREATED } = require("@/config/activity.enums");
-const { errorMessage, throwInternalServerError, throwConflictError } = require("@/config/error-handler.config");
+const { errorMessage, throwInternalServerError} = require("@/config/error-handler.config");
 const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
@@ -65,14 +65,23 @@ const create = async (Model, req, res) => {
     const User = mongoose.model('User')
     const owner = await User.findOne({ companyId, role: "owner", removed: false });
 
+    const plantDetails = `
+    Plant Code: ${result.plantCode || "N/A"}
+    Name      : ${result.name || "N/A"}
+    Address   : ${result.address || "N/A"}, ${result.city || "N/A"}, ${result.state || "N/A"} - ${result.postalCode || "N/A"}, ${result.country || "N/A"}
+    Phone     : ${result.phone || "N/A"}
+    Email     : ${result.email || "N/A"}`;
+
+
     if (owner) {
       sendEmail(
         owner.email,
         appTemplate.plantCreation.subject,
         generateMasterTemplate({
           ...appTemplate.plantCreation,
-          user_name: getFullName(owner.name)
-
+          user_name: getFullName(owner.employeeInfo),
+          message_intro: `A new plant with code '${result.plantCode}' has been created in your company ${req.admin.name}`,
+          notes: plantDetails
         })
       );
     }
@@ -83,8 +92,9 @@ const create = async (Model, req, res) => {
         appTemplate.plantCreation.subject,
         generateMasterTemplate({
           ...appTemplate.plantCreation,
-          user_name: req.body.name,
-          message_intro: `A new plant has been created using your Email ID for the company ${req.admin.name}`
+          user_name: "User",
+          message_intro: `A new plant has been created using your Email ID for the company ${req.admin.name}`,
+          notes: plantDetails
         })
       );
     }

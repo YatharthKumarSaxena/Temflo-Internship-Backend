@@ -99,7 +99,7 @@ const signUp = async (req, res, { userModel }) => {
 
     const emailHtml = emailVerfication({
       title: 'Verify your email',
-      name: name,
+      name: getFullName(adminResult.employeeInfo),
       link: verificationLink,
       emailToken: emailToken.token,
     });
@@ -117,12 +117,11 @@ const signUp = async (req, res, { userModel }) => {
       modelAffected: [MODEL_AFFECTED.model_user, MODEL_AFFECTED.model_userPassword],
       eventType: USER_REGISTERED,
       actionDone: ACTIONS.create,
-      description: `New account registered: ${getFullName(adminResult)} (${adminResult.email}, Code: ${adminResult.code})`,
+      description: `New account registered: ${getFullName(adminResult.employeeInfo)} (${adminResult.email}, Code: ${adminResult.code})`,
       oldData: null,
       newData: adminResult.toObject(),
     });
 
-    console.log("Lets See");
     // ✅ Case 1: Email send failed but account created
     if (!emailSent) {
       return res.status(CREATED).json({

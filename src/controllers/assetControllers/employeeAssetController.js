@@ -156,7 +156,7 @@ exports.requestAssetTransfer = async (req, res) => {
       status: 'Pending',
       message_intro: `Your request has been submitted successfully and is pending admin approval.`,
       notes: `${assetDetails}
-              Requested To: ${toEmployee._id}
+              Requested To Employee whose Employee Code: ${toEmployee.employeeCode}
               Reason: ${transferRequest.reason}
               Date: ${requestDate}`,
       actionlink: assetLink,
@@ -174,7 +174,7 @@ exports.requestAssetTransfer = async (req, res) => {
       status: 'Pending',
       message_intro: `A new asset transfer request has been made for you. The request is pending admin approval.`,
       notes: `${assetDetails}
-              Requested By: ${fromEmployee._id}
+              Requested By Employee whose Employee Code: ${fromEmployee.employeeCode}
               Reason: ${transferRequest.reason}
               Date: ${requestDate}`,
       actionlink: assetLink,
@@ -192,8 +192,8 @@ exports.requestAssetTransfer = async (req, res) => {
       status: 'Pending',
       message_intro: `A new asset transfer request has been submitted and is pending your approval.`,
       notes: `${assetDetails}
-              Requested By: ${fromEmployee._id}
-              Requested To: ${toEmployee._id}
+              Requested By Employee whose Employee Code: ${fromEmployee.employeeCode}
+              Requested To Employee whose Employee Code: ${toEmployee.employeeCode}
               Reason: ${transferRequest.reason}
               Date: ${requestDate}`,
       actionlink: assetLink,
