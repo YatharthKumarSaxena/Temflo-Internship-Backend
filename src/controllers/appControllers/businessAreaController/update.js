@@ -1,27 +1,31 @@
 const { BUSINESS_AREA_UPDATED } = require("@/config/activity.enums");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
+const { throwDBResourceNotFoundError, errorMessage, throwInternalServerError } = require("@/config/error-handler.config");
+const { logWithTime } = require("@/utils/time-stamps");
+const { OK } = require("@/config/httpStatus.config");
 
 const update = async (Model, req, res) => {
   try {
     const companyId = req.admin.companyId;
 
-    const { description } = req.body;
-
     // single query: update + return old document
     const oldBusinessArea = await Model.findOneAndUpdate(
       { _id: req.params.id, companyId: companyId },
-      { description },
-      { new: false }  // return pre-update doc
+      { description: req.body.description },
+      { new: false }  // old doc
     );
 
     if (!oldBusinessArea) {
       return throwDBResourceNotFoundError(res, "Business Area");
     }
 
+    const updatedBusinessArea = await Model.findById(req.params.id).lean(); // full new snapshot
+
     logWithTime(`✅ 🎯 Business Area Updated Successfully 🚀`);
 
-    // Activity Tracker logging
+    // Activity Tracker logging with complete snapshots
     activityTracker({
       userId: req.admin._id,
       companyId: companyId,
@@ -32,13 +36,14 @@ const update = async (Model, req, res) => {
       modelAffected: [MODEL_AFFECTED.model_company],
       eventType: BUSINESS_AREA_UPDATED,
       actionDone: ACTIONS.update,
-      oldData: { _id: req.params.id, description: oldBusinessArea.description },
-      newData: { description },
+      oldData: oldBusinessArea.toObject(),
+      newData: updatedBusinessArea,
+      description: `Business Area '${oldBusinessArea.name}' updated by ${getFullName(req.admin.employeeInfo)} for Company ID: ${companyId}`
     });
 
     return res.status(OK).json({
       success: true,
-      result: { ...oldBusinessArea.toObject(), description }, // updated version
+      result: updatedBusinessArea,
       message: "Business Area updated successfully",
     });
 

@@ -7,12 +7,10 @@ const { USER_PASSWORD_UPDATED_BY_ID } = require("@/config/activity.enums");
 const { employeeTemplate } = require("@/config/emailTemplates/employeeTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const updatePassword = async (userModel, req, res) => {
   const UserPassword = mongoose.model(userModel + 'Password');
-
-  const reqUserName = userModel.toLowerCase();
-  const userProfile = req[reqUserName];
 
   let { password } = req.body;
 
@@ -77,6 +75,7 @@ const updatePassword = async (userModel, req, res) => {
       modelAffected: [MODEL_AFFECTED.model_userPassword],
       eventType: USER_PASSWORD_UPDATED_BY_ID,
       actionDone: ACTIONS.update,
+      description: `Password updated by ${getFullName(req.admin.employeeInfo)} for ${getFullName(targetUser.employeeInfo)} whose user Id: ${targetUser._id}`,
       oldData: { _id: req.params.id, passwordChanged: false },
       newData: { passwordChanged: true }
     });

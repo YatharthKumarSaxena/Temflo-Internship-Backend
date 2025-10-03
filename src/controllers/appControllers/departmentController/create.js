@@ -1,4 +1,9 @@
-const User = require('../../../models/userModels/User');
+const { OK } = require("@/config/httpStatus.config");
+const { DEPARTMENT_CREATED } = require("@/config/activity.enums");
+const { logWithTime } = require("@/utils/time-stamps");
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const create = async (Model, req, res) => {
   try {
@@ -43,7 +48,26 @@ const create = async (Model, req, res) => {
       companyId,
     }).save();
 
-    return res.status(200).json({
+    logWithTime(`✅ 🎯 Department Created Successfully 🚀`);
+
+    // Activity Tracker logging
+    activityTracker({
+      userId: req.admin._id, // admin ka Mongo ID as userId
+      companyId: companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.app,
+      subModuleAffected: SUBMODULE.department,
+      fileAffected: FILE.file_department_create,
+      modelAffected: [MODEL_AFFECTED.model_department],
+      eventType: DEPARTMENT_CREATED,
+      actionDone: ACTIONS.create,
+      description: `Department created by ${getFullName(req.admin.employeeInfo)} for Company ID: ${req.admin.companyId}`,
+      oldData: null,  
+      newData: result
+    });
+
+    // Returning successfull response
+    return res.status(OK).json({
       success: true,
       result,
       message: 'Successfully Added Department',

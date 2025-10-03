@@ -4,6 +4,7 @@ const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/s
 const { activityTracker } = require("@/utils/activityTracker");
 const { USER_PASSWORD_UPDATED_BY_SELF } = require("@/config/activity.enums");
 const { generate: uniqueId } = require('shortid');
+const { getFullName } = require("@/utils/commonFunctions");
 
 const updateProfilePassword = async (userModel, req, res) => {
   const UserPassword = mongoose.model(userModel + 'Password');
@@ -61,6 +62,7 @@ const updateProfilePassword = async (userModel, req, res) => {
       modelAffected: [MODEL_AFFECTED.model_userPassword],
       eventType: USER_PASSWORD_UPDATED_BY_SELF,
       actionDone: ACTIONS.update,
+      description: `Password updated by ${getFullName(req.admin.employeeInfo)} for ${getFullName(userProfile.employeeInfo)} whose user Id: ${userProfile._id}`,
       oldData: { _id: userProfile._id, passwordChanged: false },
       newData: { passwordChanged: true }
     });

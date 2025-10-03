@@ -1,8 +1,6 @@
 const mongoose = require('mongoose');
 const {sendEmail} = require('@/utils/emailSender');
 const { emailVerfication } = require('@/emailTemplate/emailVerfication');
-const checkAndCorrectURL = require('./checkAndCorrectURL');
-const { useAppSettings } = require('@/settings');
 const { CREATED } = require('@/config/httpStatus.config');
 const { USER_REGISTERED } = require('@/config/activity.enums');
 const {
@@ -11,13 +9,12 @@ const {
   throwMissingFieldsError,
   throwConflictError,
 } = require('@/config/error-handler.config');
-const { logWithTime } = require('@/utils/time-stamps');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require('@/config/structure.config');
 const { activityTracker } = require('@/utils/activityTracker');
-const { generateHash } = require('@/utils/auth');
 const { generateNanoId } = require('@/utils/idGenerator');
 const { generate: uniqueId } = require('shortid');
 const { ROLE_TYPES } = require('@/config/user.config');
+const { getFullName } = require("@/utils/commonFunctions");
 
 const signUp = async (req, res, { userModel }) => {
   try {
@@ -120,6 +117,7 @@ const signUp = async (req, res, { userModel }) => {
       modelAffected: [MODEL_AFFECTED.model_user, MODEL_AFFECTED.model_userPassword],
       eventType: USER_REGISTERED,
       actionDone: ACTIONS.create,
+      description: `New account registered: ${getFullName(adminResult)} (${adminResult.email}, Code: ${adminResult.code})`,
       oldData: null,
       newData: adminResult.toObject(),
     });

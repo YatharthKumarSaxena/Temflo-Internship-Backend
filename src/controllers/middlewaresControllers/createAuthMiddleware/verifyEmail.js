@@ -14,7 +14,7 @@ const {
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require('@/config/structure.config');
 const { activityTracker } = require('@/utils/activityTracker');
 const authService = require('@/services/authService'); // ✅ use centralized session service
-const { ROLE_TYPES } = require('@/config/user.config');
+const { getFullName } = require("@/utils/commonFunctions");
 
 const verifyEmail = async (req, res, { userModel }) => {
   try {
@@ -91,7 +91,7 @@ const verifyEmail = async (req, res, { userModel }) => {
     );
 
     // Activity tracker for verification
-    await activityTracker({
+    activityTracker({
       userId: user._id,
       companyId: user.companyId,
       plantId: user.plantId || null,
@@ -101,6 +101,7 @@ const verifyEmail = async (req, res, { userModel }) => {
       modelAffected: [MODEL_AFFECTED.model_userPassword],
       eventType: VERIFY_EMAIL,
       actionDone: ACTIONS.update,
+      description: `${getFullName(user.employeeInfo)} verified email (${user.email}) successfully`,
       oldData: { emailToken: 'An Email Token', emailVerified: false },
       newData: { emailToken: null, emailVerified: true },
     });
@@ -130,7 +131,7 @@ const verifyEmail = async (req, res, { userModel }) => {
       });
 
     // Activity tracker for login
-    await activityTracker({
+    activityTracker({
       userId: user._id,
       companyId: user.companyId,
       plantId: user.plantId || null,
@@ -139,6 +140,7 @@ const verifyEmail = async (req, res, { userModel }) => {
       fileAffected: FILE.file_createAuth_verifyEmail,
       modelAffected: [MODEL_AFFECTED.model_userPassword],
       eventType: USER_LOGGED_IN,
+      description: `${getFullName(user.employeeInfo)} logged in after email verification`,
       actionDone: ACTIONS.update,
       oldData: { jwtTokenIssuedAt: databasePassword.lastActivity || null },
       newData: { jwtTokenIssuedAt: new Date() },
