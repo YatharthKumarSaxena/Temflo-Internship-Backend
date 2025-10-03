@@ -14,36 +14,36 @@ const create = async (Model, req, res) => {
   try {
     const companyId = req.admin.companyId; // Company ID from admin token
 
-  const existing = await Model.findOne({
-    plantCode: req.body.plantCode,
-    companyId: req.admin.companyId,
-    removed: false,
-  });
-
-  if (existing) {
-    return res.status(400).json({
-      success: false,
-      message: 'Plant with this code already exists for your company.',
+    const existing = await Model.findOne({
+      plantCode: req.body.plantCode,
+      companyId: req.admin.companyId,
+      removed: false,
     });
-  }
 
-  // If country is not provided, attempt to default it from the Company master
-  try {
-    if (!req.body.country && req.admin?.companyId) {
-      const Company = mongoose.model('Company');
-      const companyDoc = await Company.findById(req.admin.companyId).lean();
-      if (companyDoc?.country) {
-        req.body.country = companyDoc.country;
-      }
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: 'Plant with this code already exists for your company.',
+      });
     }
-  } catch (e) {
-    // Non-blocking: if company not found, proceed without defaulting
-  }
 
-  const result = await new Model({
-    ...req.body,
-    companyId: req.admin.companyId,
-  }).save();
+    // If country is not provided, attempt to default it from the Company master
+    try {
+      if (!req.body.country && req.admin?.companyId) {
+        const Company = mongoose.model('Company');
+        const companyDoc = await Company.findById(req.admin.companyId).lean();
+        if (companyDoc?.country) {
+          req.body.country = companyDoc.country;
+        }
+      }
+    } catch (e) {
+      // Non-blocking: if company not found, proceed without defaulting
+    }
+
+    const result = await new Model({
+      ...req.body,
+      companyId: req.admin.companyId,
+    }).save();
 
     logWithTime(`✅ 🎯 Plant Created Successfully 🚀`);
     // Activity Tracker logging
@@ -71,12 +71,11 @@ const create = async (Model, req, res) => {
         appTemplate.plantCreation.subject,
         generateMasterTemplate({
           ...appTemplate.plantCreation,
-          user_name: getFullName(owner.employeeInfo)
+          user_name: getFullName(owner.name)
+
         })
       );
     }
-
-    const emailPerson = await User.findOne({ email: req.body.email, removed: false });
 
     if (req.body.email) {
       sendEmail(
@@ -84,7 +83,7 @@ const create = async (Model, req, res) => {
         appTemplate.plantCreation.subject,
         generateMasterTemplate({
           ...appTemplate.plantCreation,
-          user_name: getFullName(emailPerson.employeeInfo),
+          user_name: req.body.name,
           message_intro: `A new plant has been created using your Email ID for the company ${req.admin.name}`
         })
       );
