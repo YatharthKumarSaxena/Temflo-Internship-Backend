@@ -122,8 +122,7 @@ const EmployeeMarkAttendance = async (req, res) => {
       // Email to Employee (confirmation)
       if (employee?.email) {
         const emailHtmlToEmployee = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: employee.name,
+          user_name: getFullName(employee.employeeInfo),
           event_name: attendanceTemplate.attendanceRequestCreated.event_name,
           action: attendanceTemplate.attendanceRequestCreated.action,
           status: 'Submitted',
@@ -142,12 +141,11 @@ const EmployeeMarkAttendance = async (req, res) => {
         const supervisor = await User.findById(approver);
         if (supervisor?.email) {
           const emailHtmlToSupervisor = generateMasterTemplate({
-            company_name: req.admin.companyName,
-            user_name: supervisor.name,
+            user_name: getFullName(supervisor.employeeInfo),
             event_name: attendanceTemplate.attendanceRequestCreated.event_name,
             action: attendanceTemplate.attendanceRequestCreated.action,
             status: 'Pending Approval',
-            message_intro: `An attendance request has been submitted by ${getFullName(req.admin.employeeInfo)} and requires your approval`,
+            message_intro: `An attendance request has been submitted by Employee whose Employee Code: ${(req.admin.employeeCode)} and requires your approval`,
             notes: `${requestDetails}<br/>Submitted On: ${requestDate}`,
             actionbutton_text: 'Review Request',
             actionlink: requestLink,
@@ -260,8 +258,7 @@ const EmployeeMarkAttendance = async (req, res) => {
     if (employee?.email) {
       const templateToUse = oldData ? attendanceTemplate.attendanceUpdatedByEmployee : attendanceTemplate.attendanceMarkedByEmployee;
       const emailHtmlToEmployee = generateMasterTemplate({
-        company_name: req.admin.companyName,
-        user_name: employee.name,
+        user_name: getFullName(employee.employeeInfo),
         event_name: templateToUse.event_name,
         action: templateToUse.action,
         status: settings.isApprovalRequired ? 'Pending Approval' : 'Confirmed',
@@ -280,12 +277,11 @@ const EmployeeMarkAttendance = async (req, res) => {
       const supervisor = await User.findById(attendance.approver);
       if (supervisor?.email) {
         const emailHtmlToSupervisor = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: supervisor.name,
+          user_name: getFullName(supervisor.employeeInfo),
           event_name: oldData ? attendanceTemplate.attendanceUpdatedByEmployee.event_name : attendanceTemplate.attendanceMarkedByEmployee.event_name,
           action: oldData ? attendanceTemplate.attendanceUpdatedByEmployee.action : attendanceTemplate.attendanceMarkedByEmployee.action,
           status: 'Pending Your Approval',
-          message_intro: `${getFullName(req.admin.employeeInfo)} has ${oldData ? 'updated' : 'marked'} attendance and requires your approval`,
+          message_intro: `${getFullName(req.admin.employeeInfo)} whose Employee Code: ${req.admin.employeeCode} has ${oldData ? 'updated' : 'marked'} attendance and requires your approval`,
           notes: `${attendanceDetails}<br/>${oldData ? 'Updated' : 'Marked'} On: ${markDate}`,
           actionbutton_text: 'Review Attendance',
           actionlink: `${baseUrl}attendance/requests`,

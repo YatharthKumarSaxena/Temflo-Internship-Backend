@@ -80,13 +80,12 @@ const EmpAttendanceSetting = async (req,res) => {
         Location Based: ${isLocationBased ? 'Yes' : 'No'}<br/>
         Approval Required: ${isApprovalRequired ? 'Yes' : 'No'}<br/>
         Marking Enabled: ${isMarkingEnabled ? 'Yes' : 'No'}<br/>
-        ${oldData ? 'Updated' : 'Created'} By: ${getFullName(req.admin.employeeInfo) || req.admin.name || 'Admin'}
+        ${oldData ? 'Updated' : 'Created'} By: ${getFullName(req.admin.employeeInfo)}
       `;
       const settingDate = new Date().toLocaleString();
 
       const emailHtml = generateMasterTemplate({
-        company_name: req.admin.companyName,
-        user_name: employee.name,
+        user_name: getFullName(employee.employeeInfo),
         event_name: attendanceTemplate.employeeAttendanceSettingUpdated.event_name,
         action: attendanceTemplate.employeeAttendanceSettingUpdated.action,
         status: oldData ? 'Updated' : 'Created',

@@ -192,8 +192,7 @@ exports.applyForLeave = async (req, res) => {
     const applyDate = new Date().toLocaleString();
 
     const emailHtml = generateMasterTemplate({
-      company_name: req.admin.companyName,
-      user_name: user.name,
+      user_name: getFullName(user.employeeInfo),
       event_name: leaveTemplate.leaveRequestCreatedByEmployee.event_name,
       action: leaveTemplate.leaveRequestCreatedByEmployee.action,
       message_intro: "You have successfully submitted a leave request. Your Request has been sent to Leave Approver",
@@ -210,11 +209,10 @@ exports.applyForLeave = async (req, res) => {
     // Mail to Approver/Admin
     if (approver) {
       const emailHtmlAdmin = generateMasterTemplate({
-        company_name: req.admin.companyName,
-        user_name: approver.name,
+        user_name: getFullName(approver.employeeInfo),
         event_name: leaveTemplate.leaveRequestCreated.event_name,
         action: leaveTemplate.leaveRequestCreated.action,
-        message_intro: `Employee ${getFullName(req.admin.employeeInfo)} has applied for leave request.`,
+        message_intro: `Employee whose Employee Code: ${req.admin.employeeCode} has applied for leave request.`,
         notes: `${leaveDetails}<br/>Applied On: ${applyDate}`,
         actionbutton_text: leaveTemplate.leaveRequestCreated.actionbutton_text,
         actionlink: leaveLink,
@@ -342,8 +340,7 @@ exports.cancelLeaveRequest = async (req, res) => {
     const cancelDate = new Date().toLocaleString();
 
     const emailHtml = generateMasterTemplate({
-      company_name: req.admin.companyName,
-      user_name: employee.name,
+      user_name: getFullName(employee.employeeInfo),
       event_name: leaveTemplate.leaveRequestDeletedByEmployee.event_name,
       action: leaveTemplate.leaveRequestDeletedByEmployee.action,
       message_intro: "Your leave request has been deleted.",
@@ -360,11 +357,10 @@ exports.cancelLeaveRequest = async (req, res) => {
     // Mail to Approver/Admin
     if (approver) {
       const emailHtmlAdmin = generateMasterTemplate({
-        company_name: req.admin.companyName,
-        user_name: approver.name,
+        user_name: getFullName(approver.employeeInfo),
         event_name: leaveTemplate.leaveRequestDeletedByEmployee.event_name,
         action: leaveTemplate.leaveRequestDeletedByEmployee.action,
-        message_intro: `Employee whose Id: ${req.admin._id} has cancelled his/her leave request.`,
+        message_intro: `Employee whose Employee Code: ${req.admin.employeeCode} has cancelled his/her leave request.`,
         notes: `${leaveDetails}<br/>Cancelled On: ${cancelDate}`,
         actionbutton_text: "View Leave Requests",
         actionlink: `${baseUrl}/leave/requests`,
@@ -619,8 +615,7 @@ exports.updateLeaveRequestStatus = async (req, res) => {
     const requestDate = new Date().toLocaleString();
 
     const emailHtmlToEmployee = generateMasterTemplate({
-      company_name: adminUser.companyName,
-      user_name: employee.name,
+      user_name: getFullName(employee.employeeInfo),
       event_name: leaveTemplate.leaveRequestStatusUpdated.event_name,
       action: leaveTemplate.leaveRequestStatusUpdated.action,
       status,
@@ -636,12 +631,11 @@ exports.updateLeaveRequestStatus = async (req, res) => {
     }
 
     const emailHtmlToAdmin = generateMasterTemplate({
-      company_name: adminUser.companyName,
-      user_name: adminUser.name,
+      user_name: getFullName(adminUser.employeeInfo),
       event_name: leaveTemplate.leaveRequestStatusUpdated.event_name,
       action: leaveTemplate.leaveRequestStatusUpdated.action,
       status,
-      message_intro: `You have ${status.toLowerCase()} the leave request for Employee Id: ${employee._id}.`,
+      message_intro: `You have ${status.toLowerCase()} the leave request for Employee whose Employee Code: ${employee.employeeCode}.`,
       notes: `${leaveDetails}<br/>Processed On: ${requestDate}`,
       actionbutton_text: leaveTemplate.leaveRequestStatusUpdated.actionbutton_text,
       actionlink: leaveLink,

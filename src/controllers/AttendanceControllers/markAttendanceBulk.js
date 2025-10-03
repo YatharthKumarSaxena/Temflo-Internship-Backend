@@ -129,8 +129,7 @@ const markAttendanceBulk = async (req, res) => {
           `;
 
           const emailHtml = generateMasterTemplate({
-            company_name: req.admin.companyName,
-            user_name: user.name,
+            user_name: getFullName(user.employeeInfo),
             event_name: attendanceTemplate.bulkAttendanceCreated.event_name,
             action: attendanceTemplate.bulkAttendanceCreated.action,
             status: 'Processed',
@@ -177,8 +176,7 @@ const markAttendanceBulk = async (req, res) => {
           `;
 
           const emailHtml = generateMasterTemplate({
-            company_name: req.admin.companyName,
-            user_name: user.name,
+            user_name: getFullName(user.employeeInfo),
             event_name: attendanceTemplate.bulkAttendanceCreated.event_name,
             action: attendanceTemplate.bulkAttendanceCreated.action,
             status: 'Processed',

@@ -131,8 +131,7 @@ exports.createLeavePolicy = async (req, res) => {
 
     for (const adminUser of adminUsers) {
       const emailHtml = generateMasterTemplate({
-        company_name: req.admin.companyName,
-        user_name: adminUser.name,
+        user_name: getFullName(adminUser.employeeInfo),
         event_name: normalizedType === 'wfh' ? leaveTemplate.wfhPolicyCreated.event_name : leaveTemplate.leavePolicyCreated.event_name,
         action: normalizedType === 'wfh' ? leaveTemplate.wfhPolicyCreated.action : leaveTemplate.leavePolicyCreated.action,
         status: 'Created',
@@ -260,8 +259,7 @@ exports.updateLeavePolicy = async (req, res) => {
 
     for (const adminUser of adminUsers) {
       const emailHtml = generateMasterTemplate({
-        company_name: req.admin.companyName,
-        user_name: adminUser.name,
+        user_name: getFullName(adminUser.employeeInfo),
         event_name: leaveTemplate.leavePolicyUpdated.event_name,
         action: leaveTemplate.leavePolicyUpdated.action,
         status: 'Updated',
@@ -499,8 +497,7 @@ exports.applyLeavePolicyToSelectedEmployees = async (req, res) => {
         const applyDate = new Date().toLocaleString();
 
         const emailHtml = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: userDetails.name,
+          user_name: getFullName(userDetails.employeeInfo),
           event_name: policy.type === 'wfh' ? leaveTemplate.wfhPolicyApplied.event_name : leaveTemplate.leavePolicyApplied.event_name,
           action: policy.type === 'wfh' ? leaveTemplate.wfhPolicyApplied.action : leaveTemplate.leavePolicyApplied.action,
           status: 'Applied',
@@ -648,7 +645,7 @@ exports.activatePolicy = async (req, res) => {
     const { isActive } = req.body;
 
     // 1. Pehle policy find karo
-    const policy = await LeaveBalance.findOne({
+    const policy = await LeavePolicy.findOne({   // ✅ Correct model
       _id: policyId,
       companyId: req.admin.companyId,
     });
@@ -837,8 +834,7 @@ exports.markLeave = async (req, res) => {
 
     // Email to Employee
     const emailHtmlToEmployee = generateMasterTemplate({
-      company_name: adminUser.companyName,
-      user_name: employee.name,
+      user_name: getFullName(employee.employeeInfo),
       event_name: leaveTemplate.leaveRequestCreated.event_name,
       action: leaveTemplate.leaveRequestCreated.action,
       status: 'Approved',
@@ -853,12 +849,11 @@ exports.markLeave = async (req, res) => {
 
     // Email to Admin
     const emailHtmlToAdmin = generateMasterTemplate({
-      company_name: adminUser.companyName,
-      user_name: adminUser.name,
+      user_name: getFullName(adminUser.employeeInfo),
       event_name: leaveTemplate.leaveRequestCreated.event_name,
       action: leaveTemplate.leaveRequestCreated.action,
       status: 'Approved',
-      message_intro: `A leave has been applied by You and approved for Employee Id: ${employee._id}.`,
+      message_intro: `A leave has been applied by You and approved for Employee whose Employee Code: ${employee.employeeCode}.`,
       notes: `${leaveDetails}<br/>Requested On: ${requestDate}`,
       actionbutton_text: leaveTemplate.leaveRequestCreated.actionbutton_text,
       actionlink: leaveLink,
@@ -1115,8 +1110,7 @@ exports.updateLeaveRequestStatus = async (req, res) => {
 
     // Email to Employee
     const emailHtmlToEmployee = generateMasterTemplate({
-      company_name: adminUser.companyName,
-      user_name: employee.name,
+      user_name: getFullName(employee.employeeInfo),
       event_name: leaveTemplate.leaveRequestStatusUpdated.event_name,
       action: leaveTemplate.leaveRequestStatusUpdated.action,
       status,
@@ -1131,12 +1125,11 @@ exports.updateLeaveRequestStatus = async (req, res) => {
 
     // Email to Admin
     const emailHtmlToAdmin = generateMasterTemplate({
-      company_name: adminUser.companyName,
-      user_name: adminUser.name,
+      user_name: getFullName(adminUser.employeeInfo),
       event_name: leaveTemplate.leaveRequestStatusUpdated.event_name,
       action: leaveTemplate.leaveRequestStatusUpdated.action,
       status,
-      message_intro: `You have ${status.toLowerCase()} the leave request for Employee Id: ${employee._id}.`,
+      message_intro: `You have ${status.toLowerCase()} the leave request for Employee whose Employee Code: ${employee.employeeCode}.`,
       notes: `${leaveDetails}<br/>Processed On: ${requestDate}`,
       actionbutton_text: leaveTemplate.leaveRequestStatusUpdated.actionbutton_text,
       actionlink: leaveLink,
@@ -1202,8 +1195,7 @@ exports.createLeaveBalance = async (req, res) => {
 
         // Email to employee about balance creation
         const emailHtml = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: employee.name,
+          user_name: getFullName(employee.employeeInfo),
           event_name: leaveTemplate.leaveBalanceCreated.event_name,
           action: leaveTemplate.leaveBalanceCreated.action,
           status: 'Created',
@@ -1293,8 +1285,7 @@ exports.resetLeaveBalance = async (req, res) => {
 
         // Email to employee about balance reset
         const emailHtml = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: employee.name,
+          user_name: getFullName(employee.employeeInfo),
           event_name: leaveTemplate.leaveBalanceReset.event_name,
           action: leaveTemplate.leaveBalanceReset.action,
           status: 'Reset',

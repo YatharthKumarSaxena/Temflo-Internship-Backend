@@ -143,15 +143,14 @@ exports.addHoliday = async (req, res) => {
       Holiday: ${occasion}<br/>
       Date: ${date}<br/>
       Type: ${type}<br/>
-      Added By: ${getFullName(req.admin.employeeInfo) || req.admin.name || 'Admin'}
+      Added By: ${getFullName(req.admin.employeeInfo)}
     `;
     const addDate = new Date().toLocaleString();
 
     for (const employee of employees) {
       if (employee?.email) {
         const emailHtml = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: employee.name,
+          user_name: getFullName(employee.employeeInfo),
           event_name: attendanceTemplate.holidayAdded.event_name,
           action: attendanceTemplate.holidayAdded.action,
           status: 'Added',
@@ -335,15 +334,14 @@ exports.markAttendance = async (req, res) => {
       In Time: ${inTime || 'Not marked'}<br/>
       Out Time: ${outTime || 'Not marked'}<br/>
       Status: ${status}<br/>
-      Marked By: ${getFullName(req.admin.employeeInfo) || req.admin.name || 'Admin'}
+      Marked By: ${getFullName(req.admin.employeeInfo)}
     `;
     const markDate = new Date().toLocaleString();
 
     // Email to Employee
     if (employee?.email) {
       const emailHtmlToEmployee = generateMasterTemplate({
-        company_name: req.admin.companyName,
-        user_name: employee.name,
+        user_name: getFullName(employee.employeeInfo),
         event_name: attendanceTemplate.attendanceMarkedByAdmin.event_name,
         action: attendanceTemplate.attendanceMarkedByAdmin.action,
         status: existingAttendance ? 'Updated' : 'Marked',
@@ -362,12 +360,11 @@ exports.markAttendance = async (req, res) => {
       const supervisor = await User.findById(employee.supervisor);
       if (supervisor?.email) {
         const emailHtmlToSupervisor = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: supervisor.name,
+          user_name: getFullName(supervisor.employeeInfo),
           event_name: attendanceTemplate.attendanceMarkedByAdmin.event_name,
           action: attendanceTemplate.attendanceMarkedByAdmin.action,
           status: existingAttendance ? 'Updated' : 'Marked',
-          message_intro: `Attendance ${existingAttendance ? 'updated' : 'marked'} for employee ${getFullName(employee.employeeInfo)} by admin`,
+          message_intro: `Attendance ${existingAttendance ? 'updated' : 'marked'} for employee whose employee code: ${(employee.employeeCode)} by admin`,
           notes: `${attendanceDetails}<br/>Processed On: ${markDate}`,
           actionbutton_text: 'View Attendance Records',
           actionlink: `${baseUrl}attendance/requests`,
@@ -440,15 +437,14 @@ exports.setWorkingHours = async (req, res) => {
       Start Time: ${start}<br/>
       End Time: ${end}<br/>
       Minimum Hours Required: ${minHoursRequired} hours<br/>
-      Updated By: ${getFullName(req.admin.employeeInfo) || req.admin.name || 'Admin'}
+      Updated By: ${getFullName(req.admin.employeeInfo)}
     `;
     const updateDate = new Date().toLocaleString();
 
     for (const employee of employees) {
       if (employee?.email) {
         const emailHtml = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: employee.name,
+          user_name: getFullName(employee.employeeInfo),
           event_name: attendanceTemplate.workingHoursUpdated.event_name,
           action: attendanceTemplate.workingHoursUpdated.action,
           status: existingSettings ? 'Updated' : 'Set',
@@ -556,15 +552,14 @@ exports.createAttendancePolicy = async (req,res) => {
       Plant: ${plantId}<br/>
       Location Based: ${isLocationBased ? 'Yes' : 'No'}<br/>
       Approval Required: ${isApprovalRequired ? 'Yes' : 'No'}<br/>
-      Created By: ${getFullName(req.admin.employeeInfo) || req.admin.name || 'Admin'}
+      Created By: ${getFullName(req.admin.employeeInfo)}
     `;
     const createDate = new Date().toLocaleString();
 
     for (const adminUser of adminUsers) {
       if (adminUser?.email) {
         const emailHtml = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: adminUser.name,
+          user_name: getFullName(adminUser.employeeInfo),
           event_name: attendanceTemplate.attendancePolicyCreated.event_name,
           action: attendanceTemplate.attendancePolicyCreated.action,
           status: 'Created',
@@ -762,14 +757,13 @@ exports.applyAttendancePolicy = async (req, res) => {
         Policy: ${policy.name}<br/>
         Location Based: ${policy.isLocationBased ? 'Yes' : 'No'}<br/>
         Approval Required: ${policy.isApprovalRequired ? 'Yes' : 'No'}<br/>
-        Applied By: ${getFullName(req.admin.employeeInfo) || req.admin.name || 'Admin'}
+        Applied By: ${getFullName(req.admin.employeeInfo)}
       `;
       const applyDate = new Date().toLocaleString();
 
       if (employee?.email) {
         const emailHtml = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: employee.name,
+          user_name: getFullName(employee.employeeInfo),
           event_name: attendanceTemplate.attendancePolicyApplied.event_name,
           action: attendanceTemplate.attendancePolicyApplied.action,
           status: 'Applied',
@@ -853,19 +847,18 @@ exports.applyAttendancePolicyToSelectedEmployees = async (req, res) => {
       const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
       const settingsLink = `${baseUrl}attendance/my-settings`;
 
-      const userDetails = await User.findById(user._id).select('email name');
+      const userDetails = await User.findById(user._id).select('email name employeeInfo');
       if (userDetails?.email) {
         const policyDetails = `
           Policy: ${policy.name}<br/>
           Location Based: ${policy.isLocationBased ? 'Yes' : 'No'}<br/>
           Approval Required: ${policy.isApprovalRequired ? 'Yes' : 'No'}<br/>
-          Applied By: ${getFullName(req.admin.employeeInfo) || req.admin.name || 'Admin'}
+          Applied By: ${getFullName(req.admin.employeeInfo)}
         `;
         const applyDate = new Date().toLocaleString();
 
         const emailHtml = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: userDetails.name,
+          user_name: getFullName(userDetails.employeeInfo),
           event_name: attendanceTemplate.attendancePolicyApplied.event_name,
           action: attendanceTemplate.attendancePolicyApplied.action,
           status: 'Applied',
@@ -1171,15 +1164,14 @@ exports.updateAttendanceRequestStatus = async (req, res) => {
     const requestDetails = `
       Date: ${request.date}<br/>
       Status: ${status}<br/>
-      Approved By: ${getFullName(req.admin.employeeInfo) || req.admin.name || 'Admin'}
+      Approved By: ${getFullName(req.admin.employeeInfo)}
     `;
     const processDate = new Date().toLocaleString();
 
     // Email to Employee
     if (employee?.email) {
       const emailHtmlToEmployee = generateMasterTemplate({
-        company_name: req.admin.companyName,
-        user_name: employee.name,
+        user_name: getFullName(employee.employeeInfo),
         event_name: attendanceTemplate.attendanceRequestStatusUpdated.event_name,
         action: attendanceTemplate.attendanceRequestStatusUpdated.action,
         status,

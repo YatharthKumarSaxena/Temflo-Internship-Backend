@@ -83,13 +83,13 @@ class UpdateController {
       });
 
       // Now use this for email
-      const empDetails = `Employee Id: ${_id}
+      const empDetails = `Employee Code: ${oldUser.employeeCode}
 Employee Name: ${getFullName(effectiveEmployeeInfo)}`;
 
       const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       const empLink = `${baseUrl}/employee/${_id}`;
 
-      if (supervisor && String(supervisor) !== String(oldUser.supervisor)) {
+      if (supervisor && String(supervisor) !== String(oldUser.supervisor || '')) {
         const supervisorPerson = await UserModel.findOne({ _id: supervisor, companyId: req.admin.companyId });
         if (supervisorPerson) {
           const emailConfig = {
@@ -594,7 +594,7 @@ Employee Name: ${getFullName(effectiveEmployeeInfo)}`;
     // Inject dynamic values into template
     const emailConfig = {
       ...employeeTemplate.userPasswordChanged,
-      user_name: targetUser.name || "User",
+      user_name: getFullName(targetUser.employeeInfo),
     };
 
     const html = generateMasterTemplate(emailConfig);
