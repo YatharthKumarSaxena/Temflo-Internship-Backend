@@ -27384,3 +27384,7 @@
 2025-10-02T07:49:49.282Z [INFO] All security headers present - IP: ::1 - URL: /api/employee/update-info/68da3542dbbb3505330447af - User-Agent: unknown
 2025-10-02T07:53:00.562Z [INFO] All security headers present - IP: ::1 - URL: /api/employee/update-info/68da3542dbbb3505330447af - User-Agent: unknown
 2025-10-02T07:53:08.138Z [INFO] All security headers present - IP: ::1 - URL: /api/employee/update-info/68da3542dbbb3505330447af - User-Agent: unknown
+2025-10-03T09:37:08.835Z [INFO] All security headers present - IP: ::1 - URL: /api/signup - User-Agent: unknown
+2025-10-03T09:38:24.008Z [INFO] All security headers present - IP: ::1 - URL: /api/verify-email - User-Agent: unknown
+2025-10-03T09:50:58.221Z [INFO] All security headers present - IP: ::1 - URL: /api/resend-verification - User-Agent: unknown
+2025-10-03T09:51:42.320Z [INFO] All security headers present - IP: ::1 - URL: /api/verify-email - User-Agent: unknown

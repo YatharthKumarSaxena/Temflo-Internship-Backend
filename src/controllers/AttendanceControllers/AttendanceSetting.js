@@ -32,7 +32,7 @@ exports.setSettings = async (req, res) => {
       ...(typeof approvalRequiredIfLocationDisabled === 'boolean' && { approvalRequiredIfLocationDisabled }),
       ...(typeof allowMarking === 'boolean' && { allowMarking }),
       plant: plantId,
-      companyId: req.admin.compnayId, // add company from plant
+      companyId: req.admin.companyId, // add company from plant
     };
 
 
@@ -586,9 +586,10 @@ exports.createAttendancePolicy = async (req,res) => {
           });
       
         } catch (error) {
-          console.error('Error creating Attendance Policy:', err);
-          return res.status(500).json({ success: false, message: err.message });
-        }
+  console.error('Error creating Attendance Policy:', error); // ✅ Fixed
+  return res.status(500).json({ success: false, message: error.message }); // ✅ Fixed
+}
+
 
 }
 
@@ -672,9 +673,9 @@ exports.updateAttendancePolicy = async (req,res) => {
     return res.status(200).json({ success: true, policy });
 
   } catch (error) {
-    console.error('Error creating Attendance Policy:', err);
-    return res.status(500).json({ success: false, message: err.message });
-  } 
+  console.error('Error updating Attendance Policy:', error); // ✅ Fixed
+  return res.status(500).json({ success: false, message: error.message }); // ✅ Fixed
+}
 
 
 }

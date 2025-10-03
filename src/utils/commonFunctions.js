@@ -1,5 +1,5 @@
 const getFullName = (employeeInfo) => {
-    if (!employeeInfo) return "User";
+    if (!employeeInfo || typeof employeeInfo !== "object") return "User";
 
     return [employeeInfo.firstName, employeeInfo.middleName, employeeInfo.lastName]
         .filter(Boolean)   // remove undefined, null, empty string

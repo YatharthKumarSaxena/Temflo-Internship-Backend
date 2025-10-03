@@ -15,6 +15,9 @@ const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require('@/config/s
 const { activityTracker } = require('@/utils/activityTracker');
 const authService = require('@/services/authService'); // ✅ use centralized session service
 const { getFullName } = require("@/utils/commonFunctions");
+const { employeeTemplate } = require("@/config/emailTemplates/employeeTemplate");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { sendEmail } = require('@/utils/emailSender');
 
 const verifyEmail = async (req, res, { userModel }) => {
   try {
@@ -105,6 +108,20 @@ const verifyEmail = async (req, res, { userModel }) => {
       oldData: { emailToken: 'An Email Token', emailVerified: false },
       newData: { emailToken: null, emailVerified: true },
     });
+
+    // ✅ Send confirmation email using employee template
+    const config = {
+      ...employeeTemplate.emailVerified, // predefined config
+      user_name: getFullName(user.employeeInfo)
+    };
+    const html = generateMasterTemplate(config);
+
+    // Send email
+    sendEmail(
+      user.email,
+      config.subject || "Email Verified",
+      html
+    );
 
     // ✅ Now create full session like authUser
     const tokens = await authService.createSession(user, databasePassword, req);
