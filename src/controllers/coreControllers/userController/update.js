@@ -1,5 +1,5 @@
 const UserModel = require('../../../models/userModels/User')
-const { USER_BANK_DETAIL_UPDATED, USER_AADHAR_UPDATED, USER_ADDRESS_UPDATED, USER_EMERGENCY_CONTACT_UPDATED, USER_PAN_UPDATED, USER_EXPERIENCE_ADDED, USER_DEGREE_ADDED, USER_INFO_UPDATED } = require("@/config/activity.enums");
+const { USER_BANK_DETAIL_UPDATED, USER_AADHAR_UPDATED, USER_ADDRESS_UPDATED, USER_EMERGENCY_CONTACT_UPDATED, USER_PAN_UPDATED, USER_EXPERIENCE_ADDED, USER_DEGREE_ADDED, USER_INFO_UPDATED, USER_PASSWORD_UPDATED_BY_ID } = require("@/config/activity.enums");
 const { errorMessage, throwInternalServerError, throwDBResourceNotFoundError, throwMissingFieldsError } = require("@/config/error-handler.config");
 const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
@@ -586,22 +586,22 @@ Employee Name: ${getFullName(effectiveEmployeeInfo)}`;
       });
     }
 
-  // Fetch user for email
-  const User = mongoose.model("User");
-  const targetUser = await User.findById(req.params.id).lean();
+    // Fetch user for email
+    const User = mongoose.model("User");
+    const targetUser = await User.findById(req.params.id).lean();
 
-  if (targetUser?.email) {
-    // Inject dynamic values into template
-    const emailConfig = {
-      ...employeeTemplate.userPasswordChanged,
-      user_name: targetUser.name || "User",
-    };
+    if (targetUser?.email) {
+      // Inject dynamic values into template
+      const emailConfig = {
+        ...employeeTemplate.userPasswordChanged,
+        user_name: targetUser.name || "User",
+      };
 
-    const html = generateMasterTemplate(emailConfig);
+      const html = generateMasterTemplate(emailConfig);
 
-    // Fire & Forget (async, don’t block API response)
-    sendEmail(targetUser.email, emailConfig.subject, html);
-  }
+      // Fire & Forget (async, don’t block API response)
+      sendEmail(targetUser.email, emailConfig.subject, html);
+    }
     // Activity Tracker logging
     activityTracker({
       userId: req.admin._id, // admin ka Mongo ID as userId
