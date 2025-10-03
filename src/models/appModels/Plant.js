@@ -9,18 +9,19 @@ const schema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
-  companyId:{
-        type: String,
-        required: true,
-        immutable: true }, 
-
-  plantCode:{
+  companyId: {
     type: String,
     required: true,
-    match: /^\d{4}$/, // 4 digit code
-    immutable: true   // Not editable
+    immutable: true
   },
-  businessArea:{
+
+  plantCode: {
+    type: String,
+    required: true,
+    match: /^[A-Za-z0-9]{1,4}$/,
+    immutable: true,
+  },
+  businessArea: {
     type: mongoose.Schema.ObjectId, ref: 'BusinessArea',
     immutable: true,
     // required: true,
@@ -50,11 +51,11 @@ const schema = new mongoose.Schema({
     type: String,
     trim: true,
   },
-  email:{
-    type:String
+  email: {
+    type: String
   },
-  normalSEZ:{
-    type:String,
+  normalSEZ: {
+    type: String,
   },
 
   created: {

@@ -1,10 +1,24 @@
 const { OK } = require("@/config/httpStatus.config");
 const { PLANT_UPDATED } = require("@/config/activity.enums");
-const { errorMessage, throwInternalServerError, throwDBResourceNotFoundError } = require("@/config/error-handler.config");
+const {
+  errorMessage,
+  throwInternalServerError,
+  throwDBResourceNotFoundError,
+} = require("@/config/error-handler.config");
 const { logWithTime } = require("@/utils/time-stamps");
-const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const {
+  MODEL_AFFECTED,
+  MODULE,
+  SUBMODULE,
+  ACTIONS,
+  FILE,
+} = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { getFullName } = require("@/utils/commonFunctions");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { appTemplate } = require("@/config/emailTemplates/appTemplates");
+const { sendEmail } = require("@/utils/emailSender");
+const mongoose = require("mongoose");
 
 const update = async (Model, req, res) => {
   try {
@@ -34,7 +48,50 @@ const update = async (Model, req, res) => {
 
     logWithTime(`✅ 🎯 Plant Updated Successfully 🚀`);
 
-    // Activity Tracker logging
+    // 📧 Check if email has changed
+    const oldEmail = oldPlant.email;
+    const newEmail = updateData.email;
+
+    if (oldEmail && newEmail && oldEmail !== newEmail) {
+      try {
+        const User = mongoose.model("User");
+        const owner = await User.findOne({
+          companyId,
+          role: "owner",
+          removed: false,
+        });
+
+        // Send email to new email
+        if (newEmail) {
+          sendEmail(
+            newEmail,
+            appTemplate.plantCreation.subject,
+            generateMasterTemplate({
+              ...appTemplate.plantCreation,
+              user_name: updateData.name,
+              message_intro: `A plant has been updated using your Email ID for the company ${req.admin.name}`,
+            })
+          );
+        }
+
+        // Send email to owner
+        if (owner) {
+          sendEmail(
+            owner.email,
+            appTemplate.plantCreation.subject,
+            generateMasterTemplate({
+              ...appTemplate.plantCreation,
+              user_name: getFullName(owner.name),
+              message_intro: `A plant with email '${oldEmail}' was updated to '${newEmail}' for company ${req.admin.name}`,
+            })
+          );
+        }
+      } catch (e) {
+        logWithTime("⚠️ Email send failed during plant update:", e.message);
+      }
+    }
+
+    // 📜 Activity Tracker logging
     activityTracker({
       userId: req.admin._id,
       companyId: companyId,
@@ -45,15 +102,17 @@ const update = async (Model, req, res) => {
       modelAffected: [MODEL_AFFECTED.model_plant],
       eventType: PLANT_UPDATED,
       actionDone: ACTIONS.update,
-      description: `Plant with code '${oldPlant.plantCode}' was updated by ${getFullName(req.admin.employeeInfo)}.`,
-      oldData: oldPlant.toObject(),   // complete old snapshot
-      newData: { ...oldPlant.toObject(), ...updateData } // complete new snapshot
+      description: `Plant with code '${oldPlant.plantCode}' was updated by ${getFullName(
+        req.admin.employeeInfo
+      )}.`,
+      oldData: oldPlant.toObject(),
+      newData: { ...oldPlant.toObject(), ...updateData },
     });
 
     return res.status(OK).json({
       success: true,
       result: { ...oldPlant.toObject(), ...updateData },
-      message: 'Plant updated successfully',
+      message: "Plant updated successfully",
     });
   } catch (error) {
     logWithTime("❌ Internal Error: Failed to update Plant 🗑️");

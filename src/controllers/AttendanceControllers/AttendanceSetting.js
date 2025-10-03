@@ -1123,13 +1123,14 @@ exports.updateAttendanceRequestStatus = async (req, res) => {
     const { status } = req.body;
     const userId = req.admin._id;
 
+
     const request = await Attendance.findById(req.params.id);
 
     if (!request) {
       return res.status(404).json({ success: false, message: 'Attendance request not found' });
     }
 
-    if (request.approver != userId) {
+    if (!request.approver.equals(userId)) {
       return res.status(403).json({ success: false, message: `You do not have right to approve attendance.` });
     }
 
