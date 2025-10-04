@@ -13,7 +13,8 @@ module.exports = {
     taskManager: 'TaskManagerController',
     expense: 'ExpenseController',
     permission: 'perController',
-    payroll: 'payrollController'
+    payroll: 'payrollController',
+    material: 'MaterialControllers'
   }),
 
   SUBMODULE: Object.freeze({
@@ -59,6 +60,16 @@ module.exports = {
     file_gstinNumber_create: 'create',
     file_gstinNumber_remove: 'remove',
     file_gstinNumber_update: 'update',
+
+    // Material
+    file_generalLedger: 'generalLedgerController',
+    file_hsn: 'hsnController',
+    file_material: 'materialController',
+    file_purchaseOrderBooking: 'purchaseOrderBookingController',
+    file_purchaseOrder: 'purchaseOrderController',
+    file_supplier: 'supplierController',
+    file_supplierVerification: 'supplierVerificationController',
+    file_verificationConfig: 'verificationConfigController',
 
     file_plant_create: 'create',
     file_plant_remove: 'remove',
@@ -196,7 +207,7 @@ module.exports = {
     model_business: 'Business Area',
     model_businessSegment: 'Business Segment',
     model_costProfitCenter: 'Cost Profit Center',
-    model_departmentAssignment: 'Department Assignment',
+    model_departmentAssignment: 'DepartmentAssignment',
     model_client: 'Client',
     model_company: 'Company',
     model_department: 'Department',
@@ -219,6 +230,15 @@ module.exports = {
     model_shipment: 'Shipment',
     model_taxes: 'Taxes',
     model_notification: 'Notification',
+
+    // Material
+    model_GeneralLedger: 'GeneralLedger',
+    model_Hsn: 'Hsn',
+    model_Material: 'Material',
+    model_PurchaseOrderBooking: 'PurchaseOrderBooking',
+    model_PurchaseOrder: 'PurchaseOrder',
+    model_Supplier: 'Supplier',
+    model_VerificationConfig: 'VerificationConfig',
 
     // attendance
     model_attendance: 'Attendance',

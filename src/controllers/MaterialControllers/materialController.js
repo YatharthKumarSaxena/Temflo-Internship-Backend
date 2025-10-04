@@ -1,6 +1,10 @@
 const Material = require('../../models/MaterialModels/MaterialModel');
 const HSNCode = require('../../models/MaterialModels/HSNCodeModel');
 const GeneralLedger = require('../../models/MaterialModels/GeneralLedgerModel');
+const { MATERIAL_CREATED, MATERIAL_DELETED, MATERIAL_UPDATED } = require("@/config/activity.enums");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 class MaterialController {
   // Create new material
@@ -9,7 +13,7 @@ class MaterialController {
       const materialData = {
         ...req.body,
         companyId: req.admin.companyId,
-        createdBy: req.user.id,
+        createdBy: req.admin._id,
       };
 
       // Enforce manual materialCode presence and format (6 alphanumeric)
@@ -37,6 +41,22 @@ class MaterialController {
             .populate('supplier', 'supplierCode supplierName')
             .populate('reconGL', 'accountCode accountName')
             .populate('createdBy', 'name email');
+
+          // ---- ACTIVITY TRACKER ----
+          activityTracker({
+            userId: req.admin._id,
+            companyId: req.admin.companyId,
+            plantId: req.admin.plantId || null,
+            module: MODULE.material,
+            subModuleAffected: null,
+            fileAffected: FILE.file_material,
+            modelAffected: [MODEL_AFFECTED.model_Material],
+            eventType: MATERIAL_CREATED,
+            actionDone: ACTIONS.create,
+            oldData: null, // ✅ Correct for creation
+            newData: material.toObject(), // ✅ Complete snapshot
+            description: `Material '${material.materialCode}' created by ${getFullName(req.admin.employeeInfo)}`
+          });
 
           return res.status(201).json({
             success: true,
@@ -158,31 +178,54 @@ class MaterialController {
   // Update material
   async updateMaterial(req, res) {
     try {
-      const updateData = {
-        ...req.body,
-        updatedBy: req.user.id,
-      };
+      // Get old data before update
+      const existingRecord = await Material.findById(req.params.id);
 
-      const material = await Material.findByIdAndUpdate(req.params.id, updateData, {
-        new: true,
-        runValidators: true,
-      })
-        .populate('hsnCode', 'hsnCode description gstRate')
-        .populate('supplier', 'supplierCode supplierName')
-        .populate('createdBy', 'name email')
-        .populate('updatedBy', 'name email');
-
-      if (!material) {
+      if (!existingRecord) {
         return res.status(404).json({
           success: false,
           message: 'Material not found',
         });
       }
 
+      // Store original data before modification
+      const originalData = existingRecord.toObject();
+
+      const updateData = {
+        ...req.body,
+        updatedBy: req.admin._id,
+      };
+
+      // Update using save method to avoid extra DB calls
+      Object.assign(existingRecord, updateData);
+      await existingRecord.save();
+
+      const populatedMaterial = await Material.findById(existingRecord._id)
+        .populate('hsnCode', 'hsnCode description gstRate')
+        .populate('supplier', 'supplierCode supplierName')
+        .populate('createdBy', 'name email')
+        .populate('updatedBy', 'name email');
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_material,
+        modelAffected: [MODEL_AFFECTED.model_Material],
+        eventType: MATERIAL_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData: originalData, // ✅ Original data before update
+        newData: existingRecord.toObject(), // ✅ Complete snapshot after update
+        description: `Material '${existingRecord.materialCode}' updated by ${getFullName(req.admin.employeeInfo)}`
+      });
+
       res.json({
         success: true,
         message: 'Material updated successfully',
-        data: material,
+        data: populatedMaterial,
       });
     } catch (error) {
       if (error.code === 11000) {
@@ -198,7 +241,7 @@ class MaterialController {
   // Delete material
   async deleteMaterial(req, res) {
     try {
-      const material = await Material.findByIdAndDelete(req.params.id);
+      const material = await Material.findById(req.params.id);
 
       if (!material) {
         return res.status(404).json({
@@ -206,6 +249,28 @@ class MaterialController {
           message: 'Material not found',
         });
       }
+
+      // Get old data before delete
+      const oldData = material.toObject();
+
+      // Hard delete (not soft delete)
+      await Material.findByIdAndDelete(req.params.id);
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_material,
+        modelAffected: [MODEL_AFFECTED.model_Material],
+        eventType: MATERIAL_DELETED,
+        actionDone: ACTIONS.delete,
+        oldData: oldData, // ✅ Complete snapshot before delete
+        newData: null, // ✅ Hard delete - null as per requirement
+        description: `Material '${oldData.materialCode}' deleted by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,

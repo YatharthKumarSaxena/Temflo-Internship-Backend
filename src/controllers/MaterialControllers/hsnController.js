@@ -1,4 +1,8 @@
 const HSNCode = require('../../models/MaterialModels/HSNCodeModel');
+const { HSN_CREATED, HSN_DELETED, HSN_UPDATED, HSN_BULK_CREATED } = require("@/config/activity.enums");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 class HSNController {
   // Create new HSN code
@@ -7,7 +11,7 @@ class HSNController {
       const hsnData = {
         ...req.body,
         companyId: req.admin.companyId,
-        createdBy: req.user.id,
+        createdBy: req.admin._id,
       };
 
       // Ensure default toDate if not provided
@@ -19,6 +23,22 @@ class HSNController {
       await hsnCode.save();
 
       const populatedHSN = await HSNCode.findById(hsnCode._id).populate('createdBy', 'name email');
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_hsn,
+        modelAffected: [MODEL_AFFECTED.model_Hsn],
+        eventType: HSN_CREATED,
+        actionDone: ACTIONS.create,
+        oldData: null, // ✅ Correct for creation
+        newData: hsnCode.toObject(), // ✅ Complete snapshot
+        description: `HSN Code '${hsnCode.hsnCode}' created by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.status(201).json({
         success: true,
@@ -118,9 +138,22 @@ class HSNController {
   // Update HSN code
   async updateHSNCode(req, res) {
     try {
+      // Get old data before update
+      const existingRecord = await HSNCode.findById(req.params.id);
+
+      if (!existingRecord) {
+        return res.status(404).json({
+          success: false,
+          message: 'HSN Code not found',
+        });
+      }
+
+      // Store original data before modification
+      const originalData = existingRecord.toObject();
+
       const updateData = {
         ...req.body,
-        updatedBy: req.user.id,
+        updatedBy: req.admin._id,
       };
 
       // Normalize toDate default if explicitly cleared
@@ -128,24 +161,34 @@ class HSNController {
         updateData.toDate = new Date('9999-12-31T00:00:00.000Z');
       }
 
-      const hsnCode = await HSNCode.findByIdAndUpdate(req.params.id, updateData, {
-        new: true,
-        runValidators: true,
-      })
+      // Update using save method to avoid extra DB calls
+      Object.assign(existingRecord, updateData);
+      await existingRecord.save();
+
+      const populatedHSN = await HSNCode.findById(existingRecord._id)
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email');
 
-      if (!hsnCode) {
-        return res.status(404).json({
-          success: false,
-          message: 'HSN Code not found',
-        });
-      }
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_hsn,
+        modelAffected: [MODEL_AFFECTED.model_Hsn],
+        eventType: HSN_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData: originalData, // ✅ Original data before update
+        newData: existingRecord.toObject(), // ✅ Complete snapshot after update
+        description: `HSN Code '${existingRecord.hsnCode}' updated by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
         message: 'HSN Code updated successfully',
-        data: hsnCode,
+        data: populatedHSN,
       });
     } catch (error) {
       if (error.code === 11000) {
@@ -167,7 +210,7 @@ class HSNController {
   // Delete HSN code
   async deleteHSNCode(req, res) {
     try {
-      const hsnCode = await HSNCode.findByIdAndDelete(req.params.id);
+      const hsnCode = await HSNCode.findById(req.params.id);
 
       if (!hsnCode) {
         return res.status(404).json({
@@ -175,6 +218,28 @@ class HSNController {
           message: 'HSN Code not found',
         });
       }
+
+      // Get old data before delete
+      const oldData = hsnCode.toObject();
+
+      // Hard delete (not soft delete)
+      await HSNCode.findByIdAndDelete(req.params.id);
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_hsn,
+        modelAffected: [MODEL_AFFECTED.model_Hsn],
+        eventType: HSN_DELETED,
+        actionDone: ACTIONS.delete,
+        oldData: oldData, // ✅ Complete snapshot before delete
+        newData: null,
+        description: `HSN Code '${oldData.hsnCode}' deleted by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
@@ -295,9 +360,26 @@ class HSNController {
           const hsnCode = new HSNCode({
             ...hsnData,
             companyId: req.admin.companyId,
-            createdBy: req.user.id,
+            createdBy: req.admin._id,
           });
           await hsnCode.save();
+
+          // ---- ACTIVITY TRACKER ----
+          activityTracker({
+            userId: req.admin._id,
+            companyId: req.admin.companyId,
+            plantId: req.admin.plantId || null,
+            module: MODULE.material,
+            subModuleAffected: null,
+            fileAffected: FILE.file_hsn,
+            modelAffected: [MODEL_AFFECTED.model_Hsn],
+            eventType: HSN_BULK_CREATED,
+            actionDone: ACTIONS.create,
+            oldData: null, // ✅ Correct for creation
+            newData: hsnCode.toObject(), // ✅ Complete snapshot
+            description: `HSN Code '${hsnCode.hsnCode}' created by ${getFullName(req.admin.employeeInfo)} during bulk import`
+          });
+
           results.push(hsnCode);
         } catch (error) {
           errors.push({
