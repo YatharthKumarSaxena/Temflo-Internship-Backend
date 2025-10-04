@@ -9,23 +9,28 @@ const { OK } = require("@/config/httpStatus.config");
 const update = async (Model, req, res) => {
   try {
     const companyId = req.admin.companyId;
+    const { description } = req.body;
 
-    // single query: update + return old document
-    const oldBusinessArea = await Model.findOneAndUpdate(
-      { _id: req.params.id, companyId: companyId },
-      { description: req.body.description },
-      { new: false }  // old doc
-    );
+    // Fetch existing document
+    const existingBusinessArea = await Model.findOne({
+      _id: req.params.id,
+      companyId: companyId
+    });
 
-    if (!oldBusinessArea) {
+    if (!existingBusinessArea) {
       return throwDBResourceNotFoundError(res, "Business Area");
     }
 
-    const updatedBusinessArea = await Model.findById(req.params.id).lean(); // full new snapshot
+    // Take snapshot before update
+    const oldData = existingBusinessArea.toObject();
+
+    // Update using .save()
+    existingBusinessArea.description = description;
+    const updatedBusinessArea = await existingBusinessArea.save();
 
     logWithTime(`✅ 🎯 Business Area Updated Successfully 🚀`);
 
-    // Activity Tracker logging with complete snapshots
+    // Activity Tracker
     activityTracker({
       userId: req.admin._id,
       companyId: companyId,
@@ -36,15 +41,15 @@ const update = async (Model, req, res) => {
       modelAffected: [MODEL_AFFECTED.model_company],
       eventType: BUSINESS_AREA_UPDATED,
       actionDone: ACTIONS.update,
-      oldData: oldBusinessArea.toObject(),
-      newData: updatedBusinessArea,
-      description: `Business Area '${oldBusinessArea.name}' updated by ${getFullName(req.admin.employeeInfo)} for Company ID: ${companyId}`
+      oldData: oldData,                     // ✅ snapshot before
+      newData: updatedBusinessArea.toObject(), // ✅ snapshot after
+      description: `Business Area '${existingBusinessArea.name}' updated by ${getFullName(req.admin.employeeInfo)} for Company ID: ${companyId}`
     });
 
     return res.status(OK).json({
       success: true,
       result: updatedBusinessArea,
-      message: "Business Area updated successfully",
+      message: "Business Area description updated successfully",
     });
 
   } catch (error) {

@@ -1,4 +1,7 @@
-const User = require('../../../models/userModels/User');
+const { BUSINESS_SEGMENT_CREATED } = require("@/config/activity.enums");
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const create = async (Model, req, res) => {
   try {
@@ -29,7 +32,23 @@ const create = async (Model, req, res) => {
       companyId,
     }).save();
 
-    return res.status(200).json({
+    // ---- ACTIVITY TRACKER ----
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.app,
+      subModuleAffected: SUBMODULE.business_segment,
+      fileAffected: FILE.file_businessSegment_create,
+      modelAffected: [MODEL_AFFECTED.model_businessSegment],
+      eventType: BUSINESS_SEGMENT_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null, // ✅ Correct for creation
+      newData: result.toObject(), // ✅ Complete snapshot
+      description: `Business segment '${segmentCode}' created by ${getFullName(req.admin.employeeInfo)}`
+    });
+
+    return res.status(201).json({
       success: true,
       result,
       message: 'Successfully Added Business Segment',

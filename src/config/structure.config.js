@@ -22,6 +22,8 @@ module.exports = {
     department: 'departmentController',
     gstinNumber: 'gstinNumberController',
     plant: 'plantController',
+    business_segment: 'businessSegmentController',
+    cost_profit_center: 'costProfitController',
 
     // core
     profile: 'profileController',
@@ -61,6 +63,16 @@ module.exports = {
     file_plant_create: 'create',
     file_plant_remove: 'remove',
     file_plant_update: 'update',
+
+    file_businessSegment_create: 'create',
+    file_businessSegment_remove: 'remove',
+    file_businessSegment_update: 'update',
+
+    file_costProfitCenter_create: 'create',
+    file_costProfitCenter_remove: 'remove',
+    file_costProfitCenter_update: 'update',
+
+    file_assignment: "assignmentController",
 
     // attendance
     file_attendance_attendanceSetting: 'AttendanceSetting',
@@ -181,7 +193,10 @@ module.exports = {
 
   MODEL_AFFECTED: Object.freeze({
     // app
-    model_business: 'businessArea',
+    model_business: 'Business Area',
+    model_businessSegment: 'Business Segment',
+    model_costProfitCenter: 'Cost Profit Center',
+    model_departmentAssignment: 'Department Assignment',
     model_client: 'Client',
     model_company: 'Company',
     model_department: 'Department',
