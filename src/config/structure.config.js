@@ -14,7 +14,9 @@ module.exports = {
     expense: 'ExpenseController',
     permission: 'perController',
     payroll: 'payrollController',
-    material: 'MaterialControllers'
+    material: 'MaterialControllers',
+    sales: 'SalesControllers',
+    purchase: 'PurchaseControllers'
   }),
 
   SUBMODULE: Object.freeze({
@@ -114,6 +116,14 @@ module.exports = {
     file_createUser_updateProfile: 'updateProfile',
     file_createUser_updateProfilePassword: 'updateProfilePassword',
 
+    // Sales
+    file_customer: 'CustomerController',
+    file_salesOrder: 'SalesOrderController',
+    file_salesVerification: 'SalesVerificationConfigController',
+
+    // Purchase
+    file_supplier: 'SupplierController',
+
     // core
     file_profile_deleteInfo: 'deleteInfo',
     file_profile_update: 'update',
@@ -142,7 +152,7 @@ module.exports = {
     file_policy_update: 'update',
 
     // Asset
-    file_admin_asset : 'adminAssetController',
+    file_admin_asset: 'adminAssetController',
     file_employee_asset: 'employeeAssetController',
 
     // Employee Subtask
@@ -216,6 +226,7 @@ module.exports = {
     model_expenseCategory: 'ExpensePolicy',
     model_gstinNumber: 'GstinNumber',
     model_invoice: 'Invoice',
+    model_customer: 'Customer',
     model_lead: 'Lead',
     model_offer: 'Offer',
     model_order: 'Order',
@@ -227,6 +238,7 @@ module.exports = {
     model_productCategory: 'ProductCategory',
     model_purchase: 'Purchase',
     model_quote: 'Quote',
+    model_salesOrder: 'SalesOrder',
     model_shipment: 'Shipment',
     model_taxes: 'Taxes',
     model_notification: 'Notification',
@@ -288,7 +300,7 @@ module.exports = {
     model_loanRepayment: 'LoanRepayment',
     model_payPeriod: 'PayPeriod',
     model_payslip: 'Payslip',
-    model_payslipSettings:'PayslipSettings',
+    model_payslipSettings: 'PayslipSettings',
     model_roundingSetting: 'RoundingSetting',
     model_salaryTemplate: 'SalaryTemplate',
     model_salaryTemplateDeduction: 'SalaryTemplateDeduction',

@@ -1,5 +1,9 @@
 const Supplier = require('../../models/PurchaseModels/Supplier');
 const { validatePANandGSTIN } = require('../../utils/validation');
+const { PUCRCHASE_CREATE_SUPPLIER } = require("@/config/activity.enums");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 exports.createSupplier = async (req, res) => {
   try {
@@ -72,6 +76,23 @@ exports.createSupplier = async (req, res) => {
     });
 
     await supplier.save();
+
+    // ---- ACTIVITY TRACKER ----
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.purchase,
+      subModuleAffected: null,
+      fileAffected: FILE.file_supplier,
+      modelAffected: [MODEL_AFFECTED.model_Supplier],
+      eventType: PUCRCHASE_CREATE_SUPPLIER,
+      actionDone: ACTIONS.create,
+      oldData: null,
+      newData: supplier.toObject(),
+      description: `Supplier '${supplier.supplierCode}' created by ${getFullName(req.admin.employeeInfo)}`
+    });
+
     res.status(201).json({ message: 'Supplier created successfully', supplier });
   } catch (err) {
     console.error(err);
