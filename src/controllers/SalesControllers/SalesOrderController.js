@@ -473,7 +473,7 @@ class SalesOrderController {
         eventType: SALES_ORDER_DELETED,
         actionDone: ACTIONS.delete,
         oldData: originalData,
-        newData: { deletionIndicator: true, status: 'inactive', lastChangeDate: salesOrder.lastChangeDate }, // Soft delete pattern
+        newData: { deletionIndicator: true, status: 'inactive', lastChangeDate: salesOrder.lastChangeDate, notes: "Note: Soft deletion is done all other fields are same as Old Data" }, // Soft delete pattern
         description: `Sales order '${originalData.orderNumber}' deleted by ${getFullName(req.admin.employeeInfo)}`
       });
 

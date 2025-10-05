@@ -536,7 +536,7 @@ class CustomerController {
         eventType: CUSTOMER_DELETED,
         actionDone: ACTIONS.delete,
         oldData: originalData,
-        newData: { status: 'inactive', lastChangeDate: customer.lastChangeDate, notes: "Note: Soft deletion is done all fields are same as Old Data" }, // Soft delete pattern
+        newData: { status: 'inactive', lastChangeDate: customer.lastChangeDate, notes: "Note: Soft deletion is done all other fields are same as Old Data" }, // Soft delete pattern
         description: `Customer '${originalData.customerCode}' deleted by ${getFullName(req.admin.employeeInfo)}`
       });
 
