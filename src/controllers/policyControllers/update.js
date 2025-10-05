@@ -1,7 +1,8 @@
 const Policy = require('../../models/coreModels/Policy')
-const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { POLICY_UPDATED, POLICY_CREATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 class UpdateController{
 
@@ -46,7 +47,8 @@ class UpdateController{
         newData: {
           newEntry: newPolicyEntry,
           note: "Rest data is same as old data"
-        }
+        },
+        description: `New policy entry added by ${getFullName(req.admin.employeeInfo)}`
       });
 
       return res.status(200).json({
@@ -75,7 +77,8 @@ class UpdateController{
         eventType: POLICY_CREATED,
         actionDone: ACTIONS.update,
         oldData: null,
-        newData: newPolicyEntry
+        newData: newPolicyEntry,
+        description: `New policy entry created by ${getFullName(req.admin.employeeInfo)}`
       });
 
       return res.status(201).json({

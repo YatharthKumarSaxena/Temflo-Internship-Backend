@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
-const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { POLICY_REMOVED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const remove = async (req, res) => {
   try {
@@ -37,7 +38,8 @@ const remove = async (req, res) => {
         deletedPolicyId: req.params.policyId,
         note: "All fields same as Old Data, Soft deletion is Done",
         removed: true
-      }
+      },
+      description: `Policy entry with ID '${req.params.policyId}' removed by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({
