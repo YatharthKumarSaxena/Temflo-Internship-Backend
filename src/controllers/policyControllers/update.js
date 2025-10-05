@@ -32,6 +32,8 @@ class UpdateController{
       policy.policies.push(newPolicyEntry);
       await policy.save();
 
+      const newData = JSON.parse(JSON.stringify(policy.policies));
+
       // 🔹 Activity Tracker logging
       activityTracker({
         userId: req.admin._id,
@@ -44,10 +46,7 @@ class UpdateController{
         eventType: POLICY_UPDATED,
         actionDone: ACTIONS.update,
         oldData: oldData,
-        newData: {
-          newEntry: newPolicyEntry,
-          note: "Rest data is same as old data"
-        },
+        newData: newData,
         description: `New policy entry added by ${getFullName(req.admin.employeeInfo)}`
       });
 
@@ -75,9 +74,9 @@ class UpdateController{
         fileAffected: FILE.file_policy_update,
         modelAffected: [MODEL_AFFECTED.model_policy],
         eventType: POLICY_CREATED,
-        actionDone: ACTIONS.update,
+        actionDone: ACTIONS.create,
         oldData: null,
-        newData: newPolicyEntry,
+        newData: policy.toObject(),
         description: `New policy entry created by ${getFullName(req.admin.employeeInfo)}`
       });
 
