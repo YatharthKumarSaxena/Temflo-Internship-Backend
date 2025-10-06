@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { NOTICE_REMOVED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const remove = async (req, res) => {
   try {
@@ -19,7 +20,7 @@ const remove = async (req, res) => {
     }
     
     // 2. Extract oldData
-    const oldData = noticeDoc.notices.find(n => n._id.toString() === noticeId);
+    const oldData = noticeDoc.toObject();
 
     const updatedNotice = await Notice.findOneAndUpdate(
       { companyId: companyId },
@@ -46,11 +47,8 @@ const remove = async (req, res) => {
       eventType: NOTICE_REMOVED,
       actionDone: ACTIONS.delete,
       oldData: oldData,
-      newData: {
-        deletedNoticeId: req.params.noticeId,
-        note: "All fields same as Old Data, Soft deletion is Done",
-        removed: true
-      }
+      newData: updatedNotice.toObject(),
+      description: `Notice entry with ID '${req.params.noticeId}' removed by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({

@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
-const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { POLICY_REMOVED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const remove = async (req, res) => {
   try {
@@ -9,17 +10,17 @@ const remove = async (req, res) => {
     const companyId = req.admin.companyId;
     const policyId = req.params.policyId;      // ID of the parent Policy document
 
-    const updatedPolicy = await Policy.findOneAndUpdate(
-      { companyId: companyId },
-      { $pull: { policies: { _id: policyId } } }
-    );
-
-    if (!updatedPolicy) {
+    const oldPolicy = await Policy.findOne({ companyId: companyId });
+    if (!oldPolicy) {
       return res.status(404).json({
         success: false,
-        message: 'Policy not found or you do not have access to delete this entry.',
+        message: 'No policy document found for this company.',
       });
     }
+    const updatedPolicy = await Policy.findOneAndUpdate(
+      { companyId: companyId },
+      { $pull: { policies: { _id: policyId } } }, { new: true }
+    );
 
     // --- Activity Tracker 
     activityTracker({
@@ -32,12 +33,9 @@ const remove = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_policy],
       eventType: POLICY_REMOVED,
       actionDone: ACTIONS.delete,
-      oldData: updatedPolicy.toObject(),
-      newData: {
-        deletedPolicyId: req.params.policyId,
-        note: "All fields same as Old Data, Soft deletion is Done",
-        removed: true
-      }
+      oldData: oldPolicy.toObject(),
+      newData: updatedPolicy.toObject(),
+      description: `Policy entry with ID '${req.params.policyId}' removed by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({

@@ -12,10 +12,10 @@ const expenseTemplate = {
             "This is to inform you that your ERPICA wallet has been debited successfully. Please find the transaction details below.",
         actionbutton_text: "View Transaction",
         actionlink:
-            "http://localhost:3000/wallet/transactions/TXN-ERPICA-0925-001",
+            "WALLET_LINK",
         fallback_note: "Have trouble with the button?",
         action_link:
-            "http://localhost:3000/wallet/transactions/TXN-ERPICA-0925-001"
+            "WALLET_LINK"
     },
 
     walletDebited: {
@@ -182,9 +182,9 @@ const expenseTemplate = {
         action: "Create",
         message_intro: "A new comment has been added to your expense claim.",
         actionbutton_text: "View Expense",
-        actionlink: "http://localhost:3000/expense/<EXPENSE_ID>", // controller se replace hoga
+        actionlink: "<EXPENSE_LINK>", // controller se replace hoga
         fallback_note: "Having trouble with the button?",
-        action_link: "http://localhost:3000/expense/<EXPENSE_ID>",
+        action_link: "<EXPENSE_LINK>",
     }
 }
 

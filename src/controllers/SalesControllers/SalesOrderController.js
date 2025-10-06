@@ -3,6 +3,10 @@ const Customer = require('../../models/SalesModels/CustomerModel');
 const Material = require('../../models/MaterialModels/MaterialModel');
 const Plant = require('../../models/appModels/Plant');
 const BusinessSegment = require('../../models/appModels/BusinessSegment');
+const { SALES_ORDER_CREATED, SALES_ORDER_DELETED, SALES_ORDER_APPROVED, SALES_ORDER_REJECTED, SALES_ORDER_UPDATED } = require("@/config/activity.enums");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 class SalesOrderController {
   // Create new sales order
@@ -43,12 +47,28 @@ class SalesOrderController {
       const salesOrderData = {
         ...req.body,
         companyId: req.admin.companyId,
-        enteredBy: req.user.id,
+        enteredBy: req.admin._id,
         status: 'pending_approval',
       };
 
       const salesOrder = new SalesOrder(salesOrderData);
       await salesOrder.save();
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.sales,
+        subModuleAffected: null,
+        fileAffected: FILE.file_salesOrder,
+        modelAffected: [MODEL_AFFECTED.model_salesOrder],
+        eventType: SALES_ORDER_CREATED,
+        actionDone: ACTIONS.create,
+        oldData: null,
+        newData: salesOrder.toObject(),
+        description: `Sales order '${salesOrder.orderNumber}' created by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       const populatedSO = await SalesOrder.findById(salesOrder._id)
         .populate('plant', 'plantName plantCode')
@@ -227,33 +247,53 @@ class SalesOrderController {
         }
       }
 
-      const salesOrderData = {
+      // Find existing order for activity tracking
+      const existingSalesOrder = await SalesOrder.findById(req.params.id);
+      if (!existingSalesOrder) {
+        return res.status(404).json({
+          success: false,
+          message: 'Sales order not found',
+        });
+      }
+
+      // Store original data before update
+      const originalData = existingSalesOrder.toObject();
+
+      const updateData = {
         ...req.body,
-        lastChangeBy: req.user.id,
+        lastChangeBy: req.admin._id,
         lastChangeDate: new Date(),
       };
 
       // Remove fields that shouldn't be updated
-      delete salesOrderData.salesOrderNumber;
-      delete salesOrderData.companyId;
-      delete salesOrderData.enteredBy;
-      delete salesOrderData.entryDate;
+      delete updateData.companyId;
+      delete updateData.enteredBy;
+      delete updateData.entryDate;
 
-      const salesOrder = await SalesOrder.findByIdAndUpdate(req.params.id, salesOrderData, {
+      const salesOrder = await SalesOrder.findByIdAndUpdate(req.params.id, updateData, {
         new: true,
         runValidators: true,
       });
 
-      if (!salesOrder) {
-        return res.status(404).json({
-          success: false,
-          message: 'Sales Order not found',
-        });
-      }
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.sales,
+        subModuleAffected: null,
+        fileAffected: FILE.file_salesOrder,
+        modelAffected: [MODEL_AFFECTED.model_salesOrder],
+        eventType: SALES_ORDER_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData: originalData,
+        newData: salesOrder.toObject(),
+        description: `Sales order '${salesOrder.orderNumber}' updated by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
-        message: 'Sales Order updated successfully',
+        message: 'Sales order updated successfully',
         data: salesOrder,
       });
     } catch (error) {
@@ -268,26 +308,47 @@ class SalesOrderController {
   // Approve sales order
   async approveSalesOrder(req, res) {
     try {
+      // Find existing order for activity tracking
+      const existingSalesOrder = await SalesOrder.findById(req.params.id);
+      if (!existingSalesOrder) {
+        return res.status(404).json({
+          success: false,
+          message: 'Sales order not found',
+        });
+      }
+
+      // Store original data before approval
+      const originalData = existingSalesOrder.toObject();
+
       const salesOrder = await SalesOrder.findByIdAndUpdate(
         req.params.id,
         {
           status: 'approved',
-          lastChangeBy: req.user.id,
+          lastChangeBy: req.admin._id,
           lastChangeDate: new Date(),
         },
         { new: true }
       );
 
-      if (!salesOrder) {
-        return res.status(404).json({
-          success: false,
-          message: 'Sales Order not found',
-        });
-      }
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.sales,
+        subModuleAffected: null,
+        fileAffected: FILE.file_salesOrder,
+        modelAffected: [MODEL_AFFECTED.model_salesOrder],
+        eventType: SALES_ORDER_APPROVED,
+        actionDone: ACTIONS.update,
+        oldData: originalData,
+        newData: salesOrder.toObject(),
+        description: `Sales order '${salesOrder.orderNumber}' approved by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
-        message: 'Sales Order approved successfully',
+        message: 'Sales order approved successfully',
         data: salesOrder,
       });
     } catch (error) {
@@ -302,26 +363,48 @@ class SalesOrderController {
   // Reject sales order
   async rejectSalesOrder(req, res) {
     try {
+      // Find existing order for activity tracking
+      const existingSalesOrder = await SalesOrder.findById(req.params.id);
+      if (!existingSalesOrder) {
+        return res.status(404).json({
+          success: false,
+          message: 'Sales order not found',
+        });
+      }
+
+      // Store original data before rejection
+      const originalData = existingSalesOrder.toObject();
+
       const salesOrder = await SalesOrder.findByIdAndUpdate(
         req.params.id,
         {
           status: 'rejected',
-          lastChangeBy: req.user.id,
+          rejectionReason: req.body.rejectionReason,
+          lastChangeBy: req.admin._id,
           lastChangeDate: new Date(),
         },
         { new: true }
       );
 
-      if (!salesOrder) {
-        return res.status(404).json({
-          success: false,
-          message: 'Sales Order not found',
-        });
-      }
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.sales,
+        subModuleAffected: null,
+        fileAffected: FILE.file_salesOrder,
+        modelAffected: [MODEL_AFFECTED.model_salesOrder],
+        eventType: SALES_ORDER_REJECTED,
+        actionDone: ACTIONS.update,
+        oldData: originalData,
+        newData: salesOrder.toObject(),
+        description: `Sales order '${salesOrder.orderNumber}' rejected by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
-        message: 'Sales Order rejected successfully',
+        message: 'Sales order rejected successfully',
         data: salesOrder,
       });
     } catch (error) {
@@ -363,17 +446,36 @@ class SalesOrderController {
         });
       }
 
+      // Store original data before deletion
+      const originalData = existingSalesOrder.toObject();
+
       // Perform soft delete
       const salesOrder = await SalesOrder.findByIdAndUpdate(
         req.params.id,
         {
           deletionIndicator: true,
           status: 'inactive',
-          lastChangeBy: req.user.id,
+          lastChangeBy: req.admin._id,
           lastChangeDate: new Date(),
         },
         { new: true }
       );
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.sales,
+        subModuleAffected: null,
+        fileAffected: FILE.file_salesOrder,
+        modelAffected: [MODEL_AFFECTED.model_salesOrder],
+        eventType: SALES_ORDER_DELETED,
+        actionDone: ACTIONS.delete,
+        oldData: originalData,
+        newData: { deletionIndicator: true, status: 'inactive', lastChangeDate: salesOrder.lastChangeDate, notes: "Note: Soft deletion is done all other fields are same as Old Data" }, // Soft delete pattern
+        description: `Sales order '${originalData.orderNumber}' deleted by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,

@@ -2,12 +2,17 @@ const User = require('../../models/userModels/User');
 const WalletTransaction = require('../../models/expenseModels/walletTransaction');
 const ErrorHandler = require('../../utils/errorHandler');
 const mongoose = require('mongoose');
-const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { WALLET_CREDITED, WALLET_ADDED, WALLET_STATUS_UPDATED, WALLET_REQUEST_CREATED, WALLET_REQUEST_APPROVED, WALLET_REQUEST_REJECTED } = require("@/config/activity.enums");
 const { expenseTemplate } = require("@/config/emailTemplates/expenseTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
+
+const { getFullName } = require("@/utils/commonFunctions");
+
+// Get base URL from environment
+const baseUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:3000';
 
 // Add balance to employee wallet (Admin/Owner only)
 exports.addWalletBalance = async (req, res, next) => {
@@ -37,11 +42,10 @@ exports.addWalletBalance = async (req, res, next) => {
       });
     }
 
-    // ❌ Removed populate of personalInfo & companyInfo (not in schema)
     const employee = await User.findOne({
       _id: employeeId,
       companyId,
-    }).exec();
+    }).select('name email employeeCode walletBalance walletStatus employeeInfo').exec();
 
     if (!employee) {
       return res.status(404).json({
@@ -57,19 +61,19 @@ exports.addWalletBalance = async (req, res, next) => {
     employee.lastWalletUpdate = new Date();
     await employee.save();
 
-const transaction = new WalletTransaction({
-  employeeId,
-  amount: parseFloat(amount),
-  balanceBefore: currentBalance, // required field
-  balanceAfter: newBalance, // already included
-  transactionType: 'credit', // required field
-  description,
-  companyId,
-  plantId,
-  createdBy: req.admin._id,
-  processedBy: req.admin._id, // required field
-  createdAt: new Date(),
-});
+    const transaction = new WalletTransaction({
+      employeeId,
+      amount: parseFloat(amount),
+      balanceBefore: currentBalance, // required field
+      balanceAfter: newBalance, // already included
+      transactionType: 'credit', // required field
+      description,
+      companyId,
+      plantId,
+      createdBy: req.admin._id,
+      processedBy: req.admin._id, // required field
+      createdAt: new Date(),
+    });
 
     await transaction.save();
 
@@ -86,6 +90,7 @@ const transaction = new WalletTransaction({
       actionDone: ACTIONS.update,
       oldData: { plantId, balance: currentBalance },
       newData: { balance: newBalance, added: parseFloat(amount) },
+      description: `Wallet credited ₹${amount} to ${employee.name || employee.employeeCode} by ${getFullName(req.admin.employeeInfo)}`
     });
 
     activityTracker({
@@ -100,7 +105,11 @@ const transaction = new WalletTransaction({
       actionDone: ACTIONS.create,
       oldData: null,
       newData: transaction.toObject(),
+      description: `Wallet transaction ₹${amount} created for ${employee.name || employee.employeeCode} by ${getFullName(req.admin.employeeInfo)}`
     });
+
+    // Define wallet link for reuse
+    const walletLink = `${baseUrl}/dashboard/wallet`;
 
     // ------------------- EMAIL INTEGRATION -------------------
     if (employee.email) {
@@ -117,47 +126,41 @@ const transaction = new WalletTransaction({
           RequestID: transaction._id
         },
         actionbutton_text: expenseTemplate.walletRequestApproved.actionbutton_text,
-        actionlink: expenseTemplate.walletRequestApproved.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+        actionlink: walletLink,
         fallback_note: expenseTemplate.walletRequestApproved.fallback_note,
-        action_link: expenseTemplate.walletRequestApproved.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+        action_link: walletLink,
       });
       sendEmail(employee.email, expenseTemplate.walletRequestApproved.subject, emailHtml);
     }
 
-// Email to Admin (notification)
-if (req.admin.email) {
-  const emailHtmlAdmin = generateMasterTemplate({
-    company_name: req.admin.companyName,
-    user_name: req.admin.name || req.admin.employeeCode,
-    event_name: expenseTemplate.walletBalanceAdded.event_name,
-    action: expenseTemplate.walletBalanceAdded.action,
-    status: expenseTemplate.walletBalanceAdded.status,
-    message_intro: `You have successfully added funds to ${employee.name || employee.employeeCode}'s wallet.`,
-    details: {
-      Amount: amount,
-      Date: new Date().toLocaleString(),
-      TransactionID: transaction._id,
-      EmployeeID: employee._id,
-      EmployeeEmail: employee.email
-    },
-    actionbutton_text: expenseTemplate.walletBalanceAdded.actionbutton_text 
-                      || 'View Wallet Balance',
-    actionlink: expenseTemplate.walletBalanceAdded.actionlink
-                      ? expenseTemplate.walletBalanceAdded.actionlink.replace('<BALANCE_LINK>', '#')
-                      : '#', // fallback link
-    fallback_note: expenseTemplate.walletBalanceAdded.fallback_note 
-                   || 'Login to ERPICA dashboard to view details.',
-    action_link: expenseTemplate.walletBalanceAdded.action_link
-                      ? expenseTemplate.walletBalanceAdded.action_link.replace('<BALANCE_LINK>', '#')
-                      : '#',
-  });
-  sendEmail(
-    req.admin.email, 
-    expenseTemplate.walletBalanceAdded.subject 
-      || `Wallet Balance Added for Employee whose Id: ${employee._id || employee.employeeCode}`, 
-    emailHtmlAdmin
-  );
-}
+    // Email to Admin (notification)
+    if (req.admin.email) {
+      const emailHtmlAdmin = generateMasterTemplate({
+        company_name: req.admin.companyName,
+        user_name: req.admin.name || req.admin.employeeCode,
+        event_name: expenseTemplate.walletBalanceAdded.event_name,
+        action: expenseTemplate.walletBalanceAdded.action,
+        status: expenseTemplate.walletBalanceAdded.status,
+        message_intro: `You have successfully added funds to ${employee.name || employee.employeeCode}'s wallet.`,
+        details: {
+          Amount: amount,
+          Date: new Date().toLocaleString(),
+          TransactionID: transaction._id,
+          EmployeeID: employee._id,
+          EmployeeEmail: employee.email
+        },
+        actionbutton_text: expenseTemplate.walletBalanceAdded.actionbutton_text || 'View Wallet Balance',
+        actionlink: walletLink,
+        fallback_note: expenseTemplate.walletBalanceAdded.fallback_note || 'Login to ERPICA dashboard to view details.',
+        action_link: walletLink,
+      });
+      sendEmail(
+        req.admin.email,
+        expenseTemplate.walletBalanceAdded.subject
+        || `Wallet Balance Added for Employee whose Id: ${employee._id || employee.employeeCode}`,
+        emailHtmlAdmin
+      );
+    }
     return res.status(200).json({
       success: true,
       message: 'Wallet balance added successfully',
@@ -236,7 +239,7 @@ exports.requestWalletBalance = async (req, res, next) => {
     }
 
     const employee = await User.findById(employeeId)
-      .select('plantId walletBalance walletStatus name email companyId')
+      .select('plantId walletBalance walletStatus name email companyId employeeInfo')
       .exec();
 
     if (!employee || !employee.plantId) {
@@ -283,12 +286,14 @@ exports.requestWalletBalance = async (req, res, next) => {
       companyId,
       plantId,
       module: MODULE.expense,
+      subModuleAffected: null,
       fileAffected: FILE.file_wallet,
       modelAffected: [MODEL_AFFECTED.model_wallet],
       eventType: WALLET_STATUS_UPDATED,
       actionDone: ACTIONS.update,
       oldData: { walletStatus: oldWalletStatus },
       newData: { walletStatus: 'pending_request' },
+      description: `Wallet status updated to pending request by ${getFullName(employee.employeeInfo)}`
     });
 
     activityTracker({
@@ -297,75 +302,80 @@ exports.requestWalletBalance = async (req, res, next) => {
       plantId,
       module: MODULE.expense,
       fileAffected: FILE.file_wallet,
+      subModuleAffected: null,
       modelAffected: [MODEL_AFFECTED.model_wallet],
       eventType: WALLET_REQUEST_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
       newData: transaction.toObject(),
+      description: `Wallet balance request ₹${amount} created by ${getFullName(employee.employeeInfo)}`
     });
-// ------------------- EMAIL TO EMPLOYEE -------------------
-if (employee && employee.email) {
-  const emailHtmlEmployee = generateMasterTemplate({
-    company_name: req.admin.companyName,
-    user_name: employee.name || employee.employeeCode,
-    event_name: expenseTemplate.walletRequestCreated.event_name,
-    action: "Your wallet balance request has been submitted",
-    status: "Pending",
-    message_intro: `Your wallet balance request of ₹${amount} has been submitted successfully and is pending supervisor approval.`,
-    details: {
-      Amount: amount,
-      Date: new Date().toLocaleString(),
-      RequestID: transaction._id,
-      Status: "Pending",
-    },
-    actionbutton_text: "View Request",
-    actionlink: expenseTemplate.walletRequestCreated.actionlink.replace('<REQUEST_LINK>', '#'),
-    fallback_note: expenseTemplate.walletRequestCreated.fallback_note,
-    action_link: expenseTemplate.walletRequestCreated.action_link.replace('<REQUEST_LINK>', '#'),
-  });
+    // Define wallet link for reuse
+    const walletLink = `${baseUrl}/dashboard/wallet`;
 
-  await sendEmail(
-    employee.email,
-    `Your Wallet Balance Request is Pending`,
-    emailHtmlEmployee
-  );
-}
+    // ------------------- EMAIL TO EMPLOYEE -------------------
+    if (employee && employee.email) {
+      const emailHtmlEmployee = generateMasterTemplate({
+        company_name: req.admin.companyName,
+        user_name: employee.name || employee.employeeCode,
+        event_name: expenseTemplate.walletRequestCreated.event_name,
+        action: "Your wallet balance request has been submitted",
+        status: "Pending",
+        message_intro: `Your wallet balance request of ₹${amount} has been submitted successfully and is pending supervisor approval.`,
+        details: {
+          Amount: amount,
+          Date: new Date().toLocaleString(),
+          RequestID: transaction._id,
+          Status: "Pending",
+        },
+        actionbutton_text: "View Request",
+        actionlink: walletLink,
+        fallback_note: expenseTemplate.walletRequestCreated.fallback_note,
+        action_link: walletLink,
+      });
 
-// ------------------- EMAIL TO SUPERVISOR -------------------
-const supervisor = await User.findOne({
-  companyId,
-  role: { $in: ['admin', 'owner'] },
-  plantId,
-}).select('name email').exec();
+      sendEmail(
+        employee.email,
+        `Your Wallet Balance Request is Pending`,
+        emailHtmlEmployee
+      );
+    }
 
-if (supervisor && supervisor.email) {
-  const emailHtml = generateMasterTemplate({
-    company_name: req.admin.companyName,
-    user_name: supervisor.name || supervisor.employeeCode,
-    event_name: expenseTemplate.walletRequestCreated.event_name,
-    action: expenseTemplate.walletRequestCreated.action,
-    status: expenseTemplate.walletRequestCreated.status,
-    message_intro: `Employee ${employee.name || employee.employeeCode} has submitted a wallet balance request.`,
-    details: {
-      Amount: amount,
-      Date: new Date().toLocaleString(),
-      RequestID: transaction._id,
-      EmployeeID: employee._id,
-      EmployeeEmail: employee.email,
-      RequestMessage: requestMessage,
-    },
-    actionbutton_text: expenseTemplate.walletRequestCreated.actionbutton_text || 'View Wallet Request',
-    actionlink: expenseTemplate.walletRequestCreated.actionlink.replace('<REQUEST_LINK>', '#'),
-    fallback_note: expenseTemplate.walletRequestCreated.fallback_note,
-    action_link: expenseTemplate.walletRequestCreated.action_link.replace('<REQUEST_LINK>', '#'),
-  });
+    // ------------------- EMAIL TO SUPERVISOR -------------------
+    const supervisor = await User.findOne({
+      companyId,
+      role: { $in: ['admin', 'owner'] },
+      plantId,
+    }).select('name email').exec();
 
-  sendEmail(
-    supervisor.email,
-    `Wallet Request Submitted by ${employee.name || employee.employeeCode}`,
-    emailHtml
-  );
-}
+    if (supervisor && supervisor.email) {
+      const emailHtml = generateMasterTemplate({
+        company_name: req.admin.companyName,
+        user_name: supervisor.name || supervisor.employeeCode,
+        event_name: expenseTemplate.walletRequestCreated.event_name,
+        action: expenseTemplate.walletRequestCreated.action,
+        status: expenseTemplate.walletRequestCreated.status,
+        message_intro: `Employee ${employee.name || employee.employeeCode} has submitted a wallet balance request.`,
+        details: {
+          Amount: amount,
+          Date: new Date().toLocaleString(),
+          RequestID: transaction._id,
+          EmployeeID: employee._id,
+          EmployeeEmail: employee.email,
+          RequestMessage: requestMessage,
+        },
+        actionbutton_text: expenseTemplate.walletRequestCreated.actionbutton_text || 'View Wallet Request',
+        actionlink: walletLink,
+        fallback_note: expenseTemplate.walletRequestCreated.fallback_note,
+        action_link: walletLink,
+      });
+
+      sendEmail(
+        supervisor.email,
+        `Wallet Request Submitted by ${employee.name || employee.employeeCode}`,
+        emailHtml
+      );
+    }
 
     return res.status(200).json({
       success: true,
@@ -527,12 +537,14 @@ exports.processBalanceRequest = async (req, res, next) => {
         companyId,
         plantId: req.admin.plantId || null,
         module: MODULE.expense,
+        subModuleAffected: null,
         fileAffected: FILE.file_wallet,
         modelAffected: [MODEL_AFFECTED.model_wallet],
         eventType: WALLET_CREDITED,
         actionDone: ACTIONS.update,
         oldData: { balance: oldWalletBalance, walletStatus: oldWalletStatus },
         newData: { balance: balanceAfter, walletStatus: 'active' },
+        description: `Wallet request approved and ₹${transaction.amount} credited to ${getFullName(employee.employeeInfo) || employee.name || employee.employeeCode} by ${getFullName(req.admin.employeeInfo)}`
       });
 
       activityTracker({
@@ -540,12 +552,14 @@ exports.processBalanceRequest = async (req, res, next) => {
         companyId,
         plantId: req.admin.plantId || null,
         module: MODULE.expense,
+        subModuleAffected: null,
         fileAffected: FILE.file_wallet,
         modelAffected: [MODEL_AFFECTED.model_wallet],
         eventType: WALLET_REQUEST_APPROVED,
         actionDone: ACTIONS.update,
         oldData: oldTransactionData,
-        newData: newTransactionData
+        newData: newTransactionData,
+        description: `Wallet request of ₹${transaction.amount} approved for ${getFullName(employee.employeeInfo)} by ${getFullName(req.admin.employeeInfo)}`
       });
 
       // Select Email Template
@@ -570,12 +584,14 @@ exports.processBalanceRequest = async (req, res, next) => {
         companyId,
         plantId: req.admin.plantId || null,
         module: MODULE.expense,
+        subModuleAffected: null,
         fileAffected: FILE.file_wallet,
         modelAffected: [MODEL_AFFECTED.model_wallet],
         eventType: WALLET_STATUS_UPDATED,
         actionDone: ACTIONS.update,
         oldData: { walletStatus: oldWalletStatus },
         newData: { walletStatus: 'active' },
+        description: `Wallet status updated to active after request rejection for ${getFullName(employee.employeeInfo) || employee.name || employee.employeeCode} by ${getFullName(req.admin.employeeInfo)}`
       });
 
       activityTracker({
@@ -583,12 +599,14 @@ exports.processBalanceRequest = async (req, res, next) => {
         companyId,
         plantId: req.admin.plantId || null,
         module: MODULE.expense,
+        subModuleAffected: null,
         fileAffected: FILE.file_wallet,
         modelAffected: [MODEL_AFFECTED.model_wallet],
         eventType: WALLET_REQUEST_REJECTED,
         actionDone: ACTIONS.update,
         oldData: oldTransactionData,
-        newData: newTransactionData
+        newData: newTransactionData,
+        description: `Wallet request of ₹${transaction.amount} rejected for ${getFullName(employee.employeeInfo) || employee.name || employee.employeeCode} by ${getFullName(req.admin.employeeInfo)}`
       });
 
       // Select Email Template
@@ -596,7 +614,7 @@ exports.processBalanceRequest = async (req, res, next) => {
     }
 
     // ------------------- EMAIL INTEGRATION -------------------
-    const txnLink = `${process.env.WALLET_URL}/transactions/${transaction._id}`;
+    const walletLink = `${baseUrl}/dashboard/wallet`;
 
     // Email to Employee
     if (employee.email) {
@@ -614,9 +632,9 @@ exports.processBalanceRequest = async (req, res, next) => {
           AdminNotes: adminNotes || "No notes provided"
         },
         actionbutton_text: emailTemplate.actionbutton_text || (action === 'approve' ? 'View Approved Request' : 'View Rejected Request'),
-        actionlink: emailTemplate.actionlink.replace(/<.*_REQUEST_LINK>/, txnLink),
+        actionlink: walletLink,
         fallback_note: emailTemplate.fallback_note,
-        action_link: emailTemplate.action_link.replace(/<.*_REQUEST_LINK>/, txnLink),
+        action_link: walletLink,
       });
       sendEmail(employee.email, emailTemplate.subject, emailDataEmployee);
     }
@@ -639,9 +657,9 @@ exports.processBalanceRequest = async (req, res, next) => {
           AdminNotes: adminNotes || "No notes provided"
         },
         actionbutton_text: emailTemplate.actionbutton_text || (action === 'approve' ? 'View Approved Request' : 'View Rejected Request'),
-        actionlink: emailTemplate.actionlink.replace(/<.*_REQUEST_LINK>/, txnLink),
+        actionlink: walletLink,
         fallback_note: emailTemplate.fallback_note,
-        action_link: emailTemplate.action_link.replace(/<.*_REQUEST_LINK>/, txnLink),
+        action_link: walletLink,
       });
       sendEmail(req.admin.email, `Wallet Request ${action.charAt(0).toUpperCase() + action.slice(1)} for ${employee.name || employee.employeeCode}`, emailDataAdmin);
     }

@@ -1,7 +1,8 @@
 const Notice = require('../../models/coreModels/Notice')
-const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { NOTICE_UPDATED, NOTICE_CREATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 class UpdateController{
 
@@ -29,7 +30,7 @@ class UpdateController{
       const oldData = JSON.parse(JSON.stringify(notice.notices));
       notice.notices.push(newNoticeEntry);
       await notice.save();
-
+      const newData = JSON.parse(JSON.stringify(notice.notices));
       // 5️⃣ Activity Tracker logging
       activityTracker({
         userId: req.admin._id,
@@ -42,7 +43,8 @@ class UpdateController{
         eventType: NOTICE_UPDATED,
         actionDone: ACTIONS.update,
         oldData: oldData,
-        newData: newNoticeEntry
+        newData: newData,
+        description: `New notice entry added by ${getFullName(req.admin.employeeInfo)}`
       });
 
       return res.status(200).json({
@@ -71,7 +73,8 @@ class UpdateController{
         eventType: NOTICE_CREATED,
         actionDone: ACTIONS.create,
         oldData: null,
-        newData: newNoticeEntry
+        newData: notice.toObject(),
+        description: `New notice entry created by ${getFullName(req.admin.employeeInfo)}`
       });
 
       return res.status(201).json({

@@ -1,6 +1,10 @@
 const DepartmentAssignment = require('../../models/appModels/DepartmentAssignment');
 const Department = require('../../models/appModels/Department');
 const Plant = require('../../models/appModels/Plant');
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { DEPARTMENT_ASSIGNMENT_CREATED, DEPARTMENT_ASSIGNMENT_UPDATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 class AssignmentController {
   // Create new department assignment
@@ -72,6 +76,22 @@ class AssignmentController {
       const populatedAssignment = await DepartmentAssignment.findById(assignment._id)
         .populate('plantId', 'name plantCode')
         .populate('mainId', 'departmentCode description');
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.app,
+        subModuleAffected: null, // As per requirement
+        fileAffected: FILE.file_assignment,
+        modelAffected: [MODEL_AFFECTED.model_departmentAssignment],
+        eventType: DEPARTMENT_ASSIGNMENT_CREATED,
+        actionDone: ACTIONS.create,
+        oldData: null, // ✅ Correct for creation
+        newData: assignment.toObject(), // ✅ Complete snapshot
+        description: `Department '${department.departmentCode}' assigned to Plant '${plant.plantCode}' by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.status(201).json({
         success: true,
@@ -211,18 +231,35 @@ class AssignmentController {
         });
       }
 
-      // Update assignment
-      const updatedAssignment = await DepartmentAssignment.findByIdAndUpdate(
-        assignmentId,
-        {
-          plantId,
-          mainId,
-          updated: new Date(),
-        },
-        { new: true }
-      )
+      // Get old data before update
+      const oldData = existingAssignment.toObject();
+
+      // Update assignment using save method to avoid extra DB calls
+      existingAssignment.plantId = plantId;
+      existingAssignment.mainId = mainId;
+      existingAssignment.updated = new Date();
+      await existingAssignment.save();
+
+      // Populate the updated assignment
+      const updatedAssignment = await DepartmentAssignment.findById(assignmentId)
         .populate('plantId', 'name plantCode')
         .populate('mainId', 'departmentCode description');
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.app,
+        subModuleAffected: null, 
+        fileAffected: FILE.file_assignment,
+        modelAffected: [MODEL_AFFECTED.model_departmentAssignment],
+        eventType: DEPARTMENT_ASSIGNMENT_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData: oldData, // ✅ Complete snapshot before update
+        newData: existingAssignment.toObject(), // ✅ Complete snapshot after update
+        description: `Department assignment updated by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.status(200).json({
         success: true,
@@ -254,8 +291,7 @@ class AssignmentController {
         success: false,
         message: 'You Can Not delete the Assigned Department',
       });
-  
-     
+
     } catch (error) {
       console.error('Update Admin Error:', error);
       return res.status(500).json({

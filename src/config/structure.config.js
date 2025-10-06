@@ -13,7 +13,10 @@ module.exports = {
     taskManager: 'TaskManagerController',
     expense: 'ExpenseController',
     permission: 'perController',
-    payroll: 'payrollController'
+    payroll: 'payrollController',
+    material: 'MaterialControllers',
+    sales: 'SalesControllers',
+    purchase: 'PurchaseControllers'
   }),
 
   SUBMODULE: Object.freeze({
@@ -22,6 +25,8 @@ module.exports = {
     department: 'departmentController',
     gstinNumber: 'gstinNumberController',
     plant: 'plantController',
+    business_segment: 'businessSegmentController',
+    cost_profit_center: 'costProfitController',
 
     // core
     profile: 'profileController',
@@ -58,9 +63,29 @@ module.exports = {
     file_gstinNumber_remove: 'remove',
     file_gstinNumber_update: 'update',
 
+    // Material
+    file_generalLedger: 'generalLedgerController',
+    file_hsn: 'hsnController',
+    file_material: 'materialController',
+    file_purchaseOrderBooking: 'purchaseOrderBookingController',
+    file_purchaseOrder: 'purchaseOrderController',
+    file_supplier: 'supplierController',
+    file_supplierVerification: 'supplierVerificationController',
+    file_verificationConfig: 'verificationConfigController',
+
     file_plant_create: 'create',
     file_plant_remove: 'remove',
     file_plant_update: 'update',
+
+    file_businessSegment_create: 'create',
+    file_businessSegment_remove: 'remove',
+    file_businessSegment_update: 'update',
+
+    file_costProfitCenter_create: 'create',
+    file_costProfitCenter_remove: 'remove',
+    file_costProfitCenter_update: 'update',
+
+    file_assignment: "assignmentController",
 
     // attendance
     file_attendance_attendanceSetting: 'AttendanceSetting',
@@ -91,6 +116,14 @@ module.exports = {
     file_createUser_updateProfile: 'updateProfile',
     file_createUser_updateProfilePassword: 'updateProfilePassword',
 
+    // Sales
+    file_customer: 'CustomerController',
+    file_salesOrder: 'SalesOrderController',
+    file_salesVerification: 'SalesVerificationConfigController',
+
+    // Purchase
+    file_supplier: 'SupplierController',
+
     // core
     file_profile_deleteInfo: 'deleteInfo',
     file_profile_update: 'update',
@@ -119,7 +152,7 @@ module.exports = {
     file_policy_update: 'update',
 
     // Asset
-    file_admin_asset : 'adminAssetController',
+    file_admin_asset: 'adminAssetController',
     file_employee_asset: 'employeeAssetController',
 
     // Employee Subtask
@@ -181,7 +214,10 @@ module.exports = {
 
   MODEL_AFFECTED: Object.freeze({
     // app
-    model_business: 'businessArea',
+    model_business: 'Business Area',
+    model_businessSegment: 'Business Segment',
+    model_costProfitCenter: 'Cost Profit Center',
+    model_departmentAssignment: 'DepartmentAssignment',
     model_client: 'Client',
     model_company: 'Company',
     model_department: 'Department',
@@ -190,6 +226,7 @@ module.exports = {
     model_expenseCategory: 'ExpensePolicy',
     model_gstinNumber: 'GstinNumber',
     model_invoice: 'Invoice',
+    model_customer: 'Customer',
     model_lead: 'Lead',
     model_offer: 'Offer',
     model_order: 'Order',
@@ -201,9 +238,19 @@ module.exports = {
     model_productCategory: 'ProductCategory',
     model_purchase: 'Purchase',
     model_quote: 'Quote',
+    model_salesOrder: 'SalesOrder',
     model_shipment: 'Shipment',
     model_taxes: 'Taxes',
     model_notification: 'Notification',
+
+    // Material
+    model_GeneralLedger: 'GeneralLedger',
+    model_Hsn: 'Hsn',
+    model_Material: 'Material',
+    model_PurchaseOrderBooking: 'PurchaseOrderBooking',
+    model_PurchaseOrder: 'PurchaseOrder',
+    model_Supplier: 'Supplier',
+    model_VerificationConfig: 'VerificationConfig',
 
     // attendance
     model_attendance: 'Attendance',
@@ -253,7 +300,7 @@ module.exports = {
     model_loanRepayment: 'LoanRepayment',
     model_payPeriod: 'PayPeriod',
     model_payslip: 'Payslip',
-    model_payslipSettings:'PayslipSettings',
+    model_payslipSettings: 'PayslipSettings',
     model_roundingSetting: 'RoundingSetting',
     model_salaryTemplate: 'SalaryTemplate',
     model_salaryTemplateDeduction: 'SalaryTemplateDeduction',

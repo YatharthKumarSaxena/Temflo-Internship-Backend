@@ -1,5 +1,9 @@
 const PurchaseOrderBooking = require('../../models/MaterialModels/PurchaseOrderBookingModel');
 const PurchaseOrder = require('../../models/MaterialModels/PurchaseOrderModel');
+const { PO_BOOKING_CREATED, PO_BOOKING_CANCELLED, PO_BOOKING_DELETED } = require("@/config/activity.enums");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 class PurchaseOrderBookingController {
   // Create new booking for a purchase order line item
@@ -45,7 +49,7 @@ class PurchaseOrderBookingController {
         bookingAmount,
         bookingType,
         remarks,
-        createdBy: req.user.id,
+        createdBy: req.admin._id,
       };
 
       const booking = new PurchaseOrderBooking(bookingData);
@@ -54,6 +58,22 @@ class PurchaseOrderBookingController {
       const populatedBooking = await PurchaseOrderBooking.findById(booking._id)
         .populate('purchaseOrder', 'poCode')
         .populate('createdBy', 'name email');
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_purchaseOrderBooking,
+        modelAffected: [MODEL_AFFECTED.model_PurchaseOrderBooking],
+        eventType: PO_BOOKING_CREATED,
+        actionDone: ACTIONS.create,
+        oldData: null, // ✅ Correct for creation
+        newData: booking.toObject(), // ✅ Complete snapshot
+        description: `PO Booking created for amount ${bookingAmount} by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.status(201).json({
         success: true,
@@ -148,23 +168,43 @@ class PurchaseOrderBookingController {
     try {
       const { bookingId } = req.params;
 
-      const booking = await PurchaseOrderBooking.findByIdAndUpdate(
-        bookingId,
-        { status: 'cancelled' },
-        { new: true }
-      );
+      // Get old data before update
+      const existingRecord = await PurchaseOrderBooking.findById(bookingId);
 
-      if (!booking) {
+      if (!existingRecord) {
         return res.status(404).json({
           success: false,
           message: 'Booking not found',
         });
       }
 
+      // Store original data before modification
+      const originalData = existingRecord.toObject();
+
+      // Update using save method to avoid extra DB calls
+      existingRecord.status = 'cancelled';
+      await existingRecord.save();
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_purchaseOrderBooking,
+        modelAffected: [MODEL_AFFECTED.model_PurchaseOrderBooking],
+        eventType: PO_BOOKING_CANCELLED,
+        actionDone: ACTIONS.update,
+        oldData: originalData, // ✅ Original data before update
+        newData: existingRecord.toObject(), // ✅ Complete snapshot after update
+        description: `PO Booking cancelled by ${getFullName(req.admin.employeeInfo)}`
+      });
+
       res.json({
         success: true,
         message: 'Booking cancelled successfully',
-        data: booking,
+        data: existingRecord,
       });
     } catch (error) {
       throw error;
@@ -191,7 +231,27 @@ class PurchaseOrderBookingController {
         });
       }
 
+      // Get old data before delete
+      const oldData = booking.toObject();
+
+      // Hard delete (not soft delete)
       await PurchaseOrderBooking.findByIdAndDelete(bookingId);
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_purchaseOrderBooking,
+        modelAffected: [MODEL_AFFECTED.model_PurchaseOrderBooking],
+        eventType: PO_BOOKING_DELETED,
+        actionDone: ACTIONS.delete,
+        oldData: oldData, // ✅ Complete snapshot before delete
+        newData: null, // ✅ Hard delete - null as per requirement
+        description: `PO Booking deleted by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,

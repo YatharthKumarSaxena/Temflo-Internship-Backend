@@ -1,5 +1,9 @@
 const VerificationConfig = require('../../models/MaterialModels/VerificationConfigModel');
 const { catchErrors } = require('@/handlers/errorHandlers');
+const { SALES_VERIFICATION_CONFIG_CREATED, SALES_VERIFICATION_CONFIG_UPDATED, SALES_MAKER_CHECKER_CONFIG_CREATED, SALES_MAKER_CHECKER_CONFIG_UPDATED, SALES_NOTIFICATION_SETTINGS_CREATED, SALES_NOTIFICATION_SETTINGS_UPDATED } = require("@/config/activity.enums");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 class SalesVerificationConfigController {
   // Get full verification configuration
@@ -13,7 +17,7 @@ class SalesVerificationConfigController {
       if (!config) {
         return res.json({
           success: true,
-          data: this.getDefaultConfig(req.admin.companyId, req.user.id),
+          data: this.getDefaultConfig(req.admin.companyId, req.admin._id),
         });
       }
 
@@ -33,7 +37,7 @@ class SalesVerificationConfigController {
       if (!config) {
         return res.json({
           success: true,
-          data: this.getDefaultConfig(req.admin.companyId, req.user.id).makerCheckerConfig,
+          data: this.getDefaultConfig(req.admin.companyId, req.admin._id).makerCheckerConfig,
         });
       }
       res.json({ success: true, data: config.makerCheckerConfig });
@@ -44,12 +48,33 @@ class SalesVerificationConfigController {
 
   updateMakerCheckerConfig = async (req, res) => {
     try {
+      // Fetch original data before update
+      const originalConfig = await VerificationConfig.findOne({ companyId: req.admin.companyId });
+
       const makerCheckerConfig = req.body;
       const config = await VerificationConfig.findOneAndUpdate(
         { companyId: req.admin.companyId },
-        { makerCheckerConfig, updatedBy: req.user.id },
+        { makerCheckerConfig, updatedBy: req.admin._id },
         { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true }
       );
+
+      const isNewConfig = !originalConfig;
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.sales,
+        subModuleAffected: null,
+        fileAffected: FILE.file_salesVerification,
+        modelAffected: [MODEL_AFFECTED.model_VerificationConfig],
+        eventType: isNewConfig ? SALES_MAKER_CHECKER_CONFIG_CREATED : SALES_MAKER_CHECKER_CONFIG_UPDATED,
+        actionDone: isNewConfig ? ACTIONS.create : ACTIONS.update,
+        oldData: isNewConfig ? null : originalConfig.toObject(),
+        newData: config.toObject(),
+        description: `Sales maker-checker configuration ${isNewConfig ? 'created' : 'updated'} by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
@@ -71,7 +96,7 @@ class SalesVerificationConfigController {
       if (!config) {
         return res.json({
           success: true,
-          data: this.getDefaultConfig(req.admin.companyId, req.user.id).workflowSettings,
+          data: this.getDefaultConfig(req.admin.companyId, req.admin._id).workflowSettings,
         });
       }
       res.json({ success: true, data: config.workflowSettings });
@@ -82,12 +107,34 @@ class SalesVerificationConfigController {
 
   updateWorkflowSettings = async (req, res) => {
     try {
+      // Fetch original data before update
+      const originalConfig = await VerificationConfig.findOne({ companyId: req.admin.companyId });
+
       const workflowSettings = req.body;
       const config = await VerificationConfig.findOneAndUpdate(
         { companyId: req.admin.companyId },
-        { workflowSettings, updatedBy: req.user.id },
+        { workflowSettings, updatedBy: req.admin._id },
         { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true }
       );
+
+      const isNewConfig = !originalConfig;
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.sales,
+        subModuleAffected: null,
+        fileAffected: FILE.file_salesVerification,
+        modelAffected: [MODEL_AFFECTED.model_VerificationConfig],
+        eventType: isNewConfig ? SALES_VERIFICATION_CONFIG_CREATED : SALES_VERIFICATION_CONFIG_UPDATED,
+        actionDone: isNewConfig ? ACTIONS.create : ACTIONS.update,
+        oldData: isNewConfig ? null : originalConfig.toObject(),
+        newData: config.toObject(),
+        description: `Sales workflow settings ${isNewConfig ? 'created' : 'updated'} by ${getFullName(req.admin.employeeInfo)}`
+      });
+
       res.json({
         success: true,
         data: config.workflowSettings,
@@ -108,7 +155,7 @@ class SalesVerificationConfigController {
       if (!config) {
         return res.json({
           success: true,
-          data: this.getDefaultConfig(req.admin.companyId, req.user.id).notificationSettings,
+          data: this.getDefaultConfig(req.admin.companyId, req.admin._id).notificationSettings,
         });
       }
       res.json({ success: true, data: config.notificationSettings });
@@ -119,12 +166,34 @@ class SalesVerificationConfigController {
 
   updateNotificationSettings = async (req, res) => {
     try {
+      // Fetch original data before update
+      const originalConfig = await VerificationConfig.findOne({ companyId: req.admin.companyId });
+
       const notificationSettings = req.body;
       const config = await VerificationConfig.findOneAndUpdate(
         { companyId: req.admin.companyId },
-        { notificationSettings, updatedBy: req.user.id },
+        { notificationSettings, updatedBy: req.admin._id },
         { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true }
       );
+
+      const isNewConfig = !originalConfig;
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.sales,
+        subModuleAffected: null,
+        fileAffected: FILE.file_salesVerification,
+        modelAffected: [MODEL_AFFECTED.model_VerificationConfig],
+        eventType: isNewConfig ? SALES_NOTIFICATION_SETTINGS_CREATED : SALES_NOTIFICATION_SETTINGS_UPDATED,
+        actionDone: isNewConfig ? ACTIONS.create : ACTIONS.update,
+        oldData: isNewConfig ? null : originalConfig.toObject(),
+        newData: config.toObject(),
+        description: `Sales notification settings ${isNewConfig ? 'created' : 'updated'} by ${getFullName(req.admin.employeeInfo)}`
+      });
+
       res.json({
         success: true,
         data: config.notificationSettings,
@@ -143,7 +212,7 @@ class SalesVerificationConfigController {
       const checkers = await User.find({
         companyId: req.admin.companyId,
         status: 'active',
-        _id: { $ne: req.user.id },
+        _id: { $ne: req.admin._id },
       })
         .select('_id name email role department')
         .sort({ name: 1 });

@@ -1,6 +1,6 @@
 const { OK } = require("@/config/httpStatus.config");
 const { PLANT_CREATED } = require("@/config/activity.enums");
-const { errorMessage, throwInternalServerError} = require("@/config/error-handler.config");
+const { errorMessage, throwInternalServerError } = require("@/config/error-handler.config");
 const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
@@ -58,8 +58,8 @@ const create = async (Model, req, res) => {
       eventType: PLANT_CREATED,
       actionDone: ACTIONS.create,
       description: `Plant with Code '${result.plantCode}' created successfully by ${getFullName(req.admin.employeeInfo)}`,
-      oldData: null,
-      newData: result
+      oldData: null, // ✅ Correct for creation
+      newData: result.toObject() // ✅ Complete snapshot
     });
 
     const User = mongoose.model('User')

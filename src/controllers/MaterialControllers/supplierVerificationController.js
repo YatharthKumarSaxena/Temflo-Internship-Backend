@@ -3,6 +3,10 @@ const VerificationConfig = require('../../models/MaterialModels/VerificationConf
 const governmentVerificationService = require('../../services/governmentVerificationService');
 const { catchErrors } = require('@/handlers/errorHandlers');
 const DEBUG_VERIFICATION = process.env.DEBUG_VERIFICATION === 'true';
+const { SUPPLIER_CHECKER_ACTION_COMPLETED, SUPPLIER_CHECKER_ASSIGNED, SUPPLIER_VERIFICATION_FIELD_VERIFIED, SUPPLIER_VERIFICATION_MANUAL_OVERRIDE, SUPPLIER_VERIFICATION_BATCH_COMPLETED } = require("@/config/activity.enums");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 class SupplierVerificationController {
   /**
@@ -136,7 +140,7 @@ class SupplierVerificationController {
                   ...supplier.verificationDetails.pan,
                   status: result.isValid ? 'verified' : 'failed',
                   verifiedAt: new Date(),
-                  verifiedBy: req.user.id,
+                  verifiedBy: req.admin._id,
                   verificationData: result,
                   errorMessage: result.error || null,
                   isManualOverride: false,
@@ -151,7 +155,7 @@ class SupplierVerificationController {
                   ...supplier.verificationDetails.tan,
                   status: result.isValid ? 'verified' : 'failed',
                   verifiedAt: new Date(),
-                  verifiedBy: req.user.id,
+                  verifiedBy: req.admin._id,
                   verificationData: result,
                   errorMessage: result.error || null,
                   isManualOverride: false,
@@ -166,7 +170,7 @@ class SupplierVerificationController {
                   ...supplier.verificationDetails.gstin,
                   status: result.isValid ? 'verified' : 'failed',
                   verifiedAt: new Date(),
-                  verifiedBy: req.user.id,
+                  verifiedBy: req.admin._id,
                   verificationData: result,
                   errorMessage: result.error || null,
                   isManualOverride: false,
@@ -181,7 +185,7 @@ class SupplierVerificationController {
                   ...supplier.verificationDetails.msme,
                   status: result.isValid ? 'verified' : 'failed',
                   verifiedAt: new Date(),
-                  verifiedBy: req.user.id,
+                  verifiedBy: req.admin._id,
                   verificationData: result,
                   errorMessage: result.error || null,
                   isManualOverride: false,
@@ -211,7 +215,7 @@ class SupplierVerificationController {
 
                   bankVerification.status = result.isValid ? 'verified' : 'failed';
                   bankVerification.verifiedAt = new Date();
-                  bankVerification.verifiedBy = req.user.id;
+                  bankVerification.verifiedBy = req.admin._id;
                   bankVerification.verificationData = result;
                   bankVerification.errorMessage = result.error || null;
                   bankVerification.isManualOverride = false;
@@ -237,11 +241,27 @@ class SupplierVerificationController {
           $set: {
             verificationDetails: supplier.verificationDetails,
             verificationStatus: overallStatus,
-            updatedBy: req.user.id,
+            updatedBy: req.admin._id,
           },
         },
         { new: true, runValidators: true }
       ).populate('makerChecker.maker makerChecker.checker', 'name email');
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_supplierVerification,
+        modelAffected: [MODEL_AFFECTED.model_Supplier],
+        eventType: SUPPLIER_VERIFICATION_FIELD_VERIFIED,
+        actionDone: ACTIONS.update,
+        oldData: supplier.toObject(), // ✅ Original supplier data before verification
+        newData: updatedSupplier.toObject(), // ✅ Complete snapshot after verification
+        description: `Supplier '${updatedSupplier.supplierCode}' verification completed by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
@@ -291,11 +311,30 @@ class SupplierVerificationController {
       );
 
       // Update supplier verification details
-      supplier.verificationDetails = this.mapVerificationResults(verificationResults, req.user.id);
+      supplier.verificationDetails = this.mapVerificationResults(verificationResults, req.admin._id);
       supplier.verificationStatus = verificationResults.overallStatus;
-      supplier.updatedBy = req.user.id;
+      supplier.updatedBy = req.admin._id;
+
+      // Store original data before batch verification
+      const originalData = supplier.toObject();
 
       await supplier.save();
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_supplierVerification,
+        modelAffected: [MODEL_AFFECTED.model_Supplier],
+        eventType: SUPPLIER_VERIFICATION_BATCH_COMPLETED,
+        actionDone: ACTIONS.update,
+        oldData: originalData, // ✅ Original data before batch verification
+        newData: supplier.toObject(), // ✅ Complete snapshot after batch verification
+        description: `Supplier '${supplier.supplierCode}' batch verification completed by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
@@ -352,7 +391,7 @@ class SupplierVerificationController {
       if (supplier.verificationDetails[verificationType]) {
         supplier.verificationDetails[verificationType].status = status;
         supplier.verificationDetails[verificationType].verifiedAt = new Date();
-        supplier.verificationDetails[verificationType].verifiedBy = req.user.id;
+        supplier.verificationDetails[verificationType].verifiedBy = req.admin._id;
         supplier.verificationDetails[verificationType].isManualOverride = true;
         supplier.verificationDetails[verificationType].manualOverrideComments = comments;
       }
@@ -361,9 +400,28 @@ class SupplierVerificationController {
       supplier.verificationStatus = this.calculateOverallVerificationStatus(
         supplier.verificationDetails
       );
-      supplier.updatedBy = req.user.id;
+      supplier.updatedBy = req.admin._id;
+
+      // Store original data before manual override
+      const originalData = supplier.toObject();
 
       await supplier.save();
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_supplierVerification,
+        modelAffected: [MODEL_AFFECTED.model_Supplier],
+        eventType: SUPPLIER_VERIFICATION_MANUAL_OVERRIDE,
+        actionDone: ACTIONS.update,
+        oldData: originalData, // ✅ Original data before manual override
+        newData: supplier.toObject(), // ✅ Complete snapshot after manual override
+        description: `Supplier '${supplier.supplierCode}' manual verification override applied by ${getFullName(req.admin.employeeInfo)} for ${verificationType}`
+      });
 
       res.json({
         success: true,
@@ -407,7 +465,7 @@ class SupplierVerificationController {
       // Check if maker can select checker
       if (
         !config.makerCheckerConfig.allowMakerToSelectChecker &&
-        supplier.makerChecker.maker.toString() !== req.user.id.toString()
+        supplier.makerChecker.maker.toString() !== req.admin._id.toString()
       ) {
         return res.status(403).json({
           success: false,
@@ -427,13 +485,32 @@ class SupplierVerificationController {
         });
       }
 
+      // Store original data before checker assignment
+      const originalData = supplier.toObject();
+
       // Update checker assignment
       supplier.makerChecker.checker = checkerId;
-      supplier.makerChecker.checkerAssignedBy = req.user.id;
+      supplier.makerChecker.checkerAssignedBy = req.admin._id;
       supplier.makerChecker.checkerAssignedAt = new Date();
-      supplier.updatedBy = req.user.id;
+      supplier.updatedBy = req.admin._id;
 
       await supplier.save();
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_supplierVerification,
+        modelAffected: [MODEL_AFFECTED.model_Supplier],
+        eventType: SUPPLIER_CHECKER_ASSIGNED,
+        actionDone: ACTIONS.update,
+        oldData: originalData, // ✅ Original data before checker assignment
+        newData: supplier.toObject(), // ✅ Complete snapshot after checker assignment
+        description: `Checker assigned for supplier '${supplier.supplierCode}' by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
@@ -474,18 +551,21 @@ class SupplierVerificationController {
       }
 
       // Check if user is the assigned checker
-      if (supplier.makerChecker.checker.toString() !== req.user.id.toString()) {
+      if (supplier.makerChecker.checker.toString() !== req.admin._id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'You are not authorized to perform this action',
         });
       }
 
+      // Store original data before checker action
+      const originalData = supplier.toObject();
+
       // Update checker action
       supplier.makerChecker.checkerAction = action;
       supplier.makerChecker.checkerActionAt = new Date();
       supplier.makerChecker.checkerComments = comments;
-      supplier.updatedBy = req.user.id;
+      supplier.updatedBy = req.admin._id;
 
       // Update approval status based on checker action
       if (action === 'approved') {
@@ -495,6 +575,22 @@ class SupplierVerificationController {
       }
 
       await supplier.save();
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_supplierVerification,
+        modelAffected: [MODEL_AFFECTED.model_Supplier],
+        eventType: SUPPLIER_CHECKER_ACTION_COMPLETED,
+        actionDone: ACTIONS.update,
+        oldData: originalData, // ✅ Original data before checker action
+        newData: supplier.toObject(), // ✅ Complete snapshot after checker action
+        description: `Supplier '${supplier.supplierCode}' ${action} by checker ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
