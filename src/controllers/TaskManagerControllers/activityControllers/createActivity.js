@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { ACTIVITY_CREATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const createActivity = async (req, res) => {
   try {
@@ -36,7 +37,8 @@ const createActivity = async (req, res) => {
       eventType: ACTIVITY_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: activity.toObject()
+      newData: activity.toObject(),
+      description: `Activity created by ${getFullName(req.user.employeeInfo)}`
     });
 
     return res.status(200).json({

@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { WORKSPACE_UPDATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const update = async (req, res) => {
   try {
@@ -18,21 +19,18 @@ const update = async (req, res) => {
       });
     }
 
-    let newData = {};
-    let oldData = {};
+    const oldData = workspace.toObject();
 
     if (name){
-      oldData.name = workspace.name;
       workspace.name = name;
-      newData.name = name;
     } 
     if (description) {
-      oldData.description = workspace.description;
       workspace.description = description;
-      newData.description = description;
     }
 
     await workspace.save();
+
+    const newData = workspace.toObject();
 
     // 🔹 Activity Tracker logging
     activityTracker({
@@ -46,7 +44,8 @@ const update = async (req, res) => {
       eventType: WORKSPACE_UPDATED,
       actionDone: ACTIONS.update,
       oldData: oldData,
-      newData: newData
+      newData: newData,
+      description: `Workspace updated by ${getFullName(req.user.employeeInfo)}`
     });
 
     return res.status(200).json({

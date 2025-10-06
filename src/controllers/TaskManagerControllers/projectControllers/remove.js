@@ -12,6 +12,7 @@ const {
   TASK_REMOVED,
   SUBTASK_DELETED
 } = require('@/config/activity.enums');
+const { getFullName } = require("@/utils/commonFunctions");
 
 const remove = async (req, res) => {
   try {
@@ -68,6 +69,7 @@ const remove = async (req, res) => {
             removed: newRemovedStatus,
             note: "Soft delete toggled",
           },
+          description: `Subtask soft deletion toggled due to project ${removed ? 'deactivation' : 'activation'} by ${getFullName(req.user.employeeInfo)}`
         });
       }
 
@@ -89,6 +91,7 @@ const remove = async (req, res) => {
           removed: newRemovedStatus,
           note: "Soft delete toggled",
         },
+        description: `Task soft deletion toggled due to project ${removed ? 'deactivation' : 'activation'} by ${getFullName(req.user.employeeInfo)}`
       });
     }
 
@@ -111,6 +114,7 @@ const remove = async (req, res) => {
         removed: newRemovedStatus,
         note: "Soft delete toggled",
       },
+      description: `Project ${removed ? 'deactivated' : 'activated'} by ${getFullName(req.user.employeeInfo)}`
     });
 
     return res.status(200).json({

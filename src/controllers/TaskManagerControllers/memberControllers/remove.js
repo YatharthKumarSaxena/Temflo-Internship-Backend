@@ -5,6 +5,7 @@ const { MEMBER_DELETED } = require("@/config/activity.enums");
 const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const remove = async (req, res) => {
   try {
@@ -51,9 +52,10 @@ const remove = async (req, res) => {
       actionDone: ACTIONS.delete,
       oldData: memberOldData,
       newData: {
-        note: "Soft deletion done",
+        note: "Soft deletion done. Rest fields are same as old data.",
         removed: true
-      }
+      },
+      description: `Member removed from project by ${getFullName(req.admin.employeeInfo)}`
     });
 
     // ✅ Send Email to the removed member

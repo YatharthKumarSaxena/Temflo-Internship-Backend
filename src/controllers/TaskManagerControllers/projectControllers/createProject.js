@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { PROJECT_CREATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const createProject = async (req, res) => {
   try {
@@ -51,7 +52,8 @@ const createProject = async (req, res) => {
       eventType: PROJECT_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: project.toObject()
+      newData: project.toObject(),
+      description: `Project created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     

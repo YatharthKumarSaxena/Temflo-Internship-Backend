@@ -5,6 +5,7 @@ const path = require('path');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { PROJECT_ATTACHMENT_ADDED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const uploadAttachment = async (req, res) => {
   try {
@@ -54,28 +55,25 @@ const uploadAttachment = async (req, res) => {
           uploadedAt: new Date(),
         };
 
-        const oldAttachments = [...project.attachments];
-
-        // Add attachment to project
+        const oldSnapshot = project.toObject(); // full old project snapshot
         project.attachments.push(attachment);
         await project.save();
+        const newSnapshot = project.toObject(); // full new snapshot
 
         // 🔹 Activity Tracker logging
         activityTracker({
           userId: req.admin._id,
           companyId: req.admin.companyId,
-          plantId: req.admin.plantId || project.plantId || null,
+          plantId: req.admin.plantId || null,
           module: MODULE.taskManager,
           subModuleAffected: SUBMODULE.project,
           fileAffected: FILE.file_project_attachment_uploaded, // define in your FILE config
           modelAffected: [MODEL_AFFECTED.model_project],
           eventType: PROJECT_ATTACHMENT_ADDED,
           actionDone: ACTIONS.create,
-          oldData: { ...project.toObject(), attachments: oldAttachments },
-          newData: {
-            note: "Rest data same as old data",
-            newAddedAttachment: attachment
-          }
+          oldData: oldSnapshot,
+          newData: newSnapshot,
+          description: `New attachment added to project by ${getFullName(req.admin.employeeInfo)}`
         });
 
         return res.status(200).json({

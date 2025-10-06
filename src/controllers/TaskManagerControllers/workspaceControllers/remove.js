@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { WORKSPACE_DELETED, PROJECT_DELETED, TASK_REMOVED, SUBTASK_DELETED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const remove = async (req, res) => {
   try {
@@ -66,7 +67,8 @@ const remove = async (req, res) => {
             newData: {
               note: "Soft deletion toggled",
               removed: newRemovedStatus
-            }
+            },
+            description: `Subtask ${newRemovedStatus ? 'activated' : 'deactivated'} by ${getFullName(req.user.employeeInfo)} due to workspace ${newRemovedStatus ? 'activation' : 'deactivation'}`
           });
         }
 
@@ -88,7 +90,8 @@ const remove = async (req, res) => {
           newData: {
             note: "Soft deletion toggled",
             removed: newRemovedStatus
-          }
+          },
+          description: `Task ${newRemovedStatus ? 'activated' : 'deactivated'} by ${getFullName(req.user.employeeInfo)} due to workspace ${newRemovedStatus ? 'activation' : 'deactivation'}`
         });
       }
 
@@ -110,7 +113,8 @@ const remove = async (req, res) => {
         newData: {
           note: "Soft deletion toggled",
           removed: newRemovedStatus
-        }
+        },
+        description: `Project ${newRemovedStatus ? 'activated' : 'deactivated'} by ${getFullName(req.user.employeeInfo)} due to workspace ${newRemovedStatus ? 'activation' : 'deactivation'}`
       });
     }
 
@@ -133,7 +137,8 @@ const remove = async (req, res) => {
       newData: {
         note: "Soft deletion toggled",
         removed: newRemovedStatus
-      }
+      },
+      description: `Workspace ${newRemovedStatus ? 'activated' : 'deactivated'} by ${getFullName(req.user.employeeInfo)}`
     });
 
     return res.status(200).json({

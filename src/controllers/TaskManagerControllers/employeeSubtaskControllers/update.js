@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { SUBTASK_UPDATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const update = async (req, res) => {
   try {
@@ -16,31 +17,31 @@ const update = async (req, res) => {
     }
 
     const subtask = await Subtask.findOne({
-        _id: req.params.subtaskId,
-        companyId: req.admin.companyId,
-        removed: false,
+      _id: req.params.subtaskId,
+      companyId: req.admin.companyId,
+      removed: false,
+    });
+
+    if (!subtask) {
+      return res.status(404).json({
+        success: false,
+        message: 'No Subtask found To Update',
       });
+    }
 
-      if (!subtask) {
-        return res.status(404).json({
-          success: false,
-          message: 'No Subtask found To Update',
-        });
-      }
+    const response = await Member.findOne({
+      userId: req.admin.id,
+      projectId: subtask.projectId,
+      companyId: req.admin.companyId,
+      removed: false,
+    });
 
-      const response = await Member.findOne({
-        userId: req.admin.id,
-        projectId: subtask.projectId,
-        companyId: req.admin.companyId,
-        removed: false,
+    if (!response) {
+      return res.status(404).json({
+        success: false,
+        message: 'No Subtask found',
       });
-
-      if (!response) {
-        return res.status(404).json({
-          success: false,
-          message: 'No Subtask found',
-        });
-      }
+    }
 
     const {
       title,
@@ -78,32 +79,24 @@ const update = async (req, res) => {
 
     await subtask.save();
 
-const changedOldData = {};
-const changedNewData = {};
-const oldObj = subtaskOldData;
-const newObj = subtask.toObject();
+    const oldObj = subtaskOldData;
+    const newObj = subtask.toObject();
 
-for (let key in newObj) {
-  if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
-    changedOldData[key] = oldObj[key];
-    changedNewData[key] = newObj[key];
-  }
-}
-
-// Activity Tracker
-activityTracker({
-  userId: req.admin._id,
-  companyId: req.admin.companyId,
-  plantId: req.admin.plantId || null,
-  module: MODULE.taskManager,
-  subModuleAffected: SUBMODULE.employeeSubtask,
-  fileAffected: FILE.file_employee_subtask_update,
-  modelAffected: [MODEL_AFFECTED.model_subtask],
-  eventType: SUBTASK_UPDATED,
-  actionDone: ACTIONS.update,
-  oldData: changedOldData,
-  newData: changedNewData
-});
+    // Activity Tracker
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.taskManager,
+      subModuleAffected: SUBMODULE.employeeSubtask,
+      fileAffected: FILE.file_employee_subtask_update,
+      modelAffected: [MODEL_AFFECTED.model_subtask],
+      eventType: SUBTASK_UPDATED,
+      actionDone: ACTIONS.update,
+      oldData: oldObj,
+      newData: newObj,
+      description: `Subtask updated by ${getFullName(req.admin.employeeInfo)}`
+    });
 
 
     return res.status(200).json({

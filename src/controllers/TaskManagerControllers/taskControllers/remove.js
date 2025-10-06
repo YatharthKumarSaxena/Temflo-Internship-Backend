@@ -5,6 +5,7 @@ const { TASK_REMOVED,SUBTASK_DELETED } = require("@/config/activity.enums");
 const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const remove = async (req, res) => {
   try {
@@ -27,7 +28,7 @@ const remove = async (req, res) => {
     for (const subtask of subtasks) {
       subtask.removed = true;
           // ✅ Activity Tracker logging
-          await activityTracker({
+          activityTracker({
             userId: req.admin._id,
             companyId: req.admin.companyId,
             plantId: req.admin.plantId || null,
@@ -41,8 +42,9 @@ const remove = async (req, res) => {
             newData: {
               note: "Soft delete performed",
               removed: true
-            }
-          }),
+            },
+            description: `Subtask deleted due to task deletion by ${getFullName(req.admin.employeeInfo)}`
+          });
       await subtask.save();
     }
 
@@ -51,7 +53,7 @@ const remove = async (req, res) => {
     await task.save();
 
     // 🔹 Activity Tracker
-    await activityTracker({
+    activityTracker({
       userId: req.admin._id,
       companyId: req.admin.companyId,
       plantId: req.admin.plantId || null,
@@ -62,7 +64,8 @@ const remove = async (req, res) => {
       eventType: TASK_REMOVED,
       actionDone: ACTIONS.delete,
       oldData: task.toObject(),
-      newData: { note: "Soft deletion performed", removed: true }
+      newData: { note: "Soft deletion performed", removed: true },
+      description: `Task deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     // 🔹 Email to previously assigned user

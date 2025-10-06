@@ -4,6 +4,7 @@ const fs = require('fs');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { SUBTASK_ATTACHMENT_ADDED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const uploadAttachment = async (req, res) => {
   try {
@@ -23,8 +24,8 @@ const uploadAttachment = async (req, res) => {
       });
     }
 
-    // 🔹 Save snapshot of old attachments
-    const oldAttachments = [...subtask.attachments];
+    // 🔹 Save full snapshot of subtask before change
+    const oldSnapshot = subtask.toObject();
 
     // 🔹 Handle file upload via multer
     const uploadMiddleware = upload.single('subtaskAttachment');
@@ -59,7 +60,10 @@ const uploadAttachment = async (req, res) => {
         subtask.attachments.push(attachment);
         await subtask.save();
 
-        // 🔹 Activity Tracker logging with old attachments snapshot
+        // 🔹 Save full snapshot after change
+        const newSnapshot = subtask.toObject();
+
+        // 🔹 Activity Tracker logging with full snapshot
         activityTracker({
           userId: req.admin._id,
           companyId: req.admin.companyId,
@@ -70,8 +74,9 @@ const uploadAttachment = async (req, res) => {
           modelAffected: [MODEL_AFFECTED.model_subtask],
           eventType: SUBTASK_ATTACHMENT_ADDED,
           actionDone: ACTIONS.create,
-          oldData: { attachments: oldAttachments },
-          newData: { newAttachment: attachment },
+          oldData: oldSnapshot,
+          newData: newSnapshot,
+          description: `New attachment added to subtask by ${getFullName(req.admin.employeeInfo)}`
         });
 
         return res.status(200).json({

@@ -5,6 +5,7 @@ const { TASK_CREATED } = require("@/config/activity.enums");
 const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const createTask = async (req, res) => {
   try {
@@ -57,7 +58,7 @@ const createTask = async (req, res) => {
     await task.save();
 
     // 🔹 Activity Tracker logging
-    await activityTracker({
+    activityTracker({
       userId: req.admin._id,
       companyId: req.admin.companyId,
       plantId: plantId || null,
@@ -68,7 +69,8 @@ const createTask = async (req, res) => {
       eventType: TASK_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: task.toObject()
+      newData: task.toObject(),
+      description: `New task created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     // 🔹 Send Email to assigned user if assignedTo exists

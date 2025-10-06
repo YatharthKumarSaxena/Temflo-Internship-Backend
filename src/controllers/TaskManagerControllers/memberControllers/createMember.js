@@ -5,6 +5,7 @@ const { MEMBER_CREATED } = require("@/config/activity.enums");
 const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const createMember = async (req, res) => {
   try {
@@ -60,7 +61,8 @@ const createMember = async (req, res) => {
       eventType: MEMBER_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: member.toObject()
+      newData: member.toObject(),
+      description: `Member added to project by ${getFullName(req.admin.employeeInfo)}`
     });
 
     // 🔹 Email Notification (Employee Assigned to Project)

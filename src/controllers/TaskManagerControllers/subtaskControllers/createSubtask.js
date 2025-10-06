@@ -5,6 +5,7 @@ const { SUBTASK_CREATED } = require("@/config/activity.enums");
 const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const createSubtask = async (req, res) => {
   try {
@@ -64,7 +65,7 @@ const createSubtask = async (req, res) => {
     await subtask.save();
 
     // ✅ 4. Activity Tracker logging
-    await activityTracker({
+    activityTracker({
       userId: req.admin._id,
       companyId: req.admin.companyId,
       plantId: req.admin.plantId || null,
@@ -76,6 +77,7 @@ const createSubtask = async (req, res) => {
       actionDone: ACTIONS.create,
       oldData: null,
       newData: subtask.toObject(),
+      description: `New subtask created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     // 🔹 Email Notification (if assignedTo exists)

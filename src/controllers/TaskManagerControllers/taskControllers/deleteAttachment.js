@@ -4,6 +4,7 @@ const path = require('path');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { TASK_ATTACHMENT_DELETED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const deleteAttachment = async (req, res) => {
   try {
@@ -45,11 +46,11 @@ const deleteAttachment = async (req, res) => {
       }
     });
 
-    // Remove attachment from task
+    const oldSnapshot = task.toObject(); // full task before deletion
     task.attachments.splice(attachmentIndex, 1);
     await task.save();
+    const newSnapshot = task.toObject(); // full task after deletion
 
-    // 🔹 Activity Tracker logging
     activityTracker({
       userId: req.admin._id,
       companyId: req.admin.companyId,
@@ -60,10 +61,9 @@ const deleteAttachment = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_task],
       eventType: TASK_ATTACHMENT_DELETED,
       actionDone: ACTIONS.delete,
-      oldData: attachment,
-      newData: {
-        note: "This Attachment deleted successfully"
-      }
+      oldData: oldSnapshot,
+      newData: newSnapshot,
+      description: `Attachment deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({

@@ -5,6 +5,7 @@ const path = require('path');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { TASK_ATTACHMENT_ADDED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const uploadAttachment = async (req, res) => {
   try {
@@ -52,12 +53,10 @@ const uploadAttachment = async (req, res) => {
           uploadedAt: new Date(),
         };
 
-        // 🔹 Store old attachments
-        const oldAttachments = [...task.attachments];
-
-        // Add new attachment
+        const oldSnapshot = task.toObject();
         task.attachments.push(attachment);
         await task.save();
+        const newSnapshot = task.toObject();
 
         // 🔹 Activity Tracker logging
         activityTracker({
@@ -70,8 +69,9 @@ const uploadAttachment = async (req, res) => {
           modelAffected: [MODEL_AFFECTED.model_task],
           eventType: TASK_ATTACHMENT_ADDED,
           actionDone: ACTIONS.create,
-          oldData: { attachments: oldAttachments },
-          newData: { note: "New attachment added", newAttachment: attachment }
+          oldData: oldSnapshot,
+          newData: newSnapshot,
+          description: `Attachment uploaded by ${getFullName(req.admin.employeeInfo)}`
         });
 
         return res.status(200).json({

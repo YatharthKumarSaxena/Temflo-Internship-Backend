@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { WORKSPACE_CREATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const createWorkspace = async (req, res) => {
   try {
@@ -34,7 +35,8 @@ const createWorkspace = async (req, res) => {
       eventType: WORKSPACE_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: workspace.toObject()
+      newData: workspace.toObject(),
+      description: `New workspace created by ${getFullName(req.user.employeeInfo)}`
     });
 
     return res.status(200).json({
