@@ -2,6 +2,7 @@ const TDSConfig = require("../../models/parollModels/TDSConfig");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { TDS_CONFIG_UPDATED, TDS_CONFIG_CREATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const setNoCache = (res) => {
   res.set("Cache-Control", "no-store");
@@ -42,7 +43,8 @@ exports.updateTDSConfig = async (req, res) => {
         eventType: TDS_CONFIG_CREATED,
         actionDone: ACTIONS.create,
         oldData: null,
-        newData: cfg.toObject()
+        newData: cfg.toObject(),
+        description: `TDS Config created by ${getFullName(req.admin.employeeInfo)}`
       });
     } else {
       const oldObj = cfg.toObject();
@@ -52,16 +54,6 @@ exports.updateTDSConfig = async (req, res) => {
       await cfg.save();
 
       const newObj = cfg.toObject();
-
-      // 🔹 Extract only changed fields
-      const oldData = {};
-      const newData = {};
-      for (let key in newObj) {
-        if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
-          oldData[key] = oldObj[key];
-          newData[key] = newObj[key];
-        }
-      }
 
       // Activity Tracker for update
       activityTracker({
@@ -74,8 +66,9 @@ exports.updateTDSConfig = async (req, res) => {
         modelAffected: [MODEL_AFFECTED.model_TDSConfig],
         eventType: TDS_CONFIG_UPDATED,
         actionDone: ACTIONS.update,
-        oldData,
-        newData
+        oldData: oldObj,
+        newData: newObj,
+        description: `TDS Config updated by ${getFullName(req.admin.employeeInfo)}`
       });
     }
 

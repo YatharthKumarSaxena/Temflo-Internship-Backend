@@ -1,7 +1,8 @@
 const Deduction = require("../../models/parollModels/Deduction");
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
-const { DEDUCTION_CREATED, DEDUCTION_UPDATED, DEDUCTION_DELETED } = require("@/config/activity.enums");
+const { DEDUCTION_CREATED, DEDUCTION_UPDATED, DEDUCTION_DELETED, TOGGLE_ENABLED_DEDUCTION } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const setNoCache = (res) => {
   res.set("Cache-Control", "no-store");
@@ -57,7 +58,8 @@ exports.createDeduction = async (req, res) => {
       eventType: DEDUCTION_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: deduction.toObject()
+      newData: deduction.toObject(),
+      description: `Deduction created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     setNoCache(res);
@@ -75,19 +77,6 @@ exports.updateDeduction = async (req, res) => {
 
     const updated = await Deduction.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
-    // 🔹 Extract changed fields separately for oldData and newData
-    const oldData = {};
-    const newData = {};
-    const oldObj = existing.toObject();
-    const newObj = updated.toObject();
-
-    for (let key in newObj) {
-      if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
-        oldData[key] = oldObj[key];
-        newData[key] = newObj[key];
-      }
-    }
-
     // Activity Tracker
     activityTracker({
       userId: req.admin._id,
@@ -99,8 +88,9 @@ exports.updateDeduction = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_deduction],
       eventType: DEDUCTION_UPDATED,
       actionDone: ACTIONS.update,
-      oldData, // sirf changed fields ke old values
-      newData  // sirf changed fields ke new values
+      oldData: existing.toObject(),
+      newData: updated.toObject(),
+      description: `Deduction updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
     setNoCache(res);
@@ -129,7 +119,8 @@ exports.deleteDeduction = async (req, res) => {
       eventType: DEDUCTION_DELETED,
       actionDone: ACTIONS.delete,
       oldData: deleted.toObject(),
-      newData: null
+      newData: null,
+      description: `Deduction deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     setNoCache(res);
@@ -145,8 +136,25 @@ exports.toggleEnabled = async (req, res) => {
     const deduction = await Deduction.findById(req.params.id);
     if (!deduction) return res.status(404).json({ message: "Not found" });
 
+    const oldData = deduction.toObject();
+
     deduction.enabled = req.body.enabled;
     await deduction.save();
+
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.payroll,
+      subModuleAffected: null,
+      fileAffected: FILE.file_deduction,
+      modelAffected: [MODEL_AFFECTED.model_deduction],
+      eventType: TOGGLE_ENABLED_DEDUCTION,
+      actionDone: ACTIONS.update,
+      oldData: oldData,
+      newData: { notes: `Deduction is ${deduction.enabled ? "enabled" : "disabled"}. Rest fields are same as old data`, enabled: deduction.enabled },
+      description: `Deduction enabled status toggled by ${getFullName(req.admin.employeeInfo)}`
+    });
 
     res.json(deduction);
   } catch (err) {

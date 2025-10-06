@@ -2,6 +2,7 @@ const PayPeriod = require("../../models/parollModels/PayPeriod");
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { PAY_PERIOD_CREATED, PAY_PERIOD_UPDATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const setNoCache = (res) => {
   res.set("Cache-Control", "no-store");
@@ -48,7 +49,8 @@ exports.updatePayPeriod = async (req, res) => {
       eventType: oldData ? PAY_PERIOD_UPDATED : PAY_PERIOD_CREATED,
       actionDone: oldData ? ACTIONS.update : ACTIONS.create,
       oldData: oldData,
-      newData: settings.toObject()
+      newData: settings.toObject(),
+      description: `${oldData ? 'Pay period settings updated' : 'Pay period settings created'} by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.json(settings);

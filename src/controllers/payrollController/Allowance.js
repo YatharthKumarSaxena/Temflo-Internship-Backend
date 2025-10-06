@@ -2,6 +2,7 @@ const Allowance = require('../../models/parollModels/Allowance');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { ALLOWANCE_CREATED, ALLOWANCE_UPDATED, ALLOWANCE_DELETED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 // Middleware helper to set no-cache
 const setNoCache = (res) => {
@@ -26,7 +27,8 @@ const createAllowance = async (req, res) => {
       eventType: ALLOWANCE_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: allowance.toObject()
+      newData: allowance.toObject(),
+      description: `Allowance created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     setNoCache(res);
@@ -71,6 +73,9 @@ const getAllowanceById = async (req, res) => {
 const updateAllowance = async (req, res) => {
   try {
     const oldAllowance = await Allowance.findById(req.params.id);
+    if(!oldAllowance) {
+      return res.status(404).json({ success: false, message: 'Allowance not found' });
+    }
     const allowance = await Allowance.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
@@ -94,7 +99,8 @@ const updateAllowance = async (req, res) => {
       eventType: ALLOWANCE_UPDATED,
       actionDone: ACTIONS.update,
       oldData: oldAllowance ? oldAllowance.toObject() : null,
-      newData: allowance.toObject()
+      newData: allowance.toObject(),
+      description: `Allowance updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.status(200).json({
@@ -129,7 +135,8 @@ const deleteAllowance = async (req, res) => {
       eventType: ALLOWANCE_DELETED,
       actionDone: ACTIONS.delete,
       oldData: allowance.toObject(),
-      newData: null
+      newData: null,
+      description: `Allowance deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.status(200).json({

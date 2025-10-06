@@ -2,6 +2,7 @@ const SalaryTemplate = require("../../models/parollModels/SalaryTemplate");
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { SALARY_TEMPLATE_CREATED, SALARY_TEMPLATE_DELETED, SALARY_TEMPLATE_UPDATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 // GET all salary templates
 exports.getAllTemplates = async (req, res) => {
@@ -30,7 +31,8 @@ exports.createTemplate = async (req, res) => {
       eventType: SALARY_TEMPLATE_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: template.toObject()
+      newData: template.toObject(),
+      description: `Salary template created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.status(201).json(template);
@@ -47,19 +49,6 @@ exports.updateTemplate = async (req, res) => {
 
     const updated = await SalaryTemplate.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
-    // 🔹 Extract only changed fields
-    const oldData = {};
-    const newData = {};
-    const oldObj = existing.toObject();
-    const newObj = updated.toObject();
-
-    for (let key in newObj) {
-      if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
-        oldData[key] = oldObj[key];
-        newData[key] = newObj[key];
-      }
-    }
-
     // Activity Tracker
     activityTracker({
       userId: req.admin._id,
@@ -71,8 +60,9 @@ exports.updateTemplate = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_salaryTemplate],
       eventType: SALARY_TEMPLATE_UPDATED,
       actionDone: ACTIONS.update,
-      oldData,
-      newData
+      oldData: existing.toObject(),
+      newData: updated.toObject(),
+      description: `Salary template updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.json(updated);
@@ -100,7 +90,8 @@ exports.deleteTemplate = async (req, res) => {
       eventType: SALARY_TEMPLATE_DELETED,
       actionDone: ACTIONS.delete,
       oldData: deleted.toObject(),
-      newData: null
+      newData: null,
+      description: `Salary template deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.sendStatus(204);

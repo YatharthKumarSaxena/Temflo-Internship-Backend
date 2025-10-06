@@ -3,6 +3,7 @@ const UserWithBatch = require("../../models/parollModels/UserWithBatch");
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { COMPENSATION_CREATED, COMPENSATION_DELETED, COMPENSATION_UPDATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 // Helper
 const setNoCache = (res) => {
@@ -52,7 +53,8 @@ exports.createCompensation = async (req, res) => {
       eventType: COMPENSATION_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: compensation.toObject()
+      newData: compensation.toObject(),
+      description: `Compensation created for ${getFullName(req.admin.employeeInfo)}`
     });
 
     setNoCache(res);
@@ -201,8 +203,9 @@ exports.updateCompensation = async (req, res) => {
         modelAffected: [MODEL_AFFECTED.model_compensation],
         eventType: COMPENSATION_UPDATED,
         actionDone: ACTIONS.update,
-        oldData: diff,
-        newData: null
+        oldData: existing.toObject(),
+        newData: updated.toObject(),
+        description: `Compensation updated by ${getFullName(req.admin.employeeInfo)}`
       });
     }
 
@@ -235,7 +238,8 @@ exports.deleteCompensation = async (req, res) => {
       eventType: COMPENSATION_DELETED,
       actionDone: ACTIONS.delete,
       oldData: compensation.toObject(),
-      newData: null
+      newData: null,
+      description: `Compensation deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     setNoCache(res);

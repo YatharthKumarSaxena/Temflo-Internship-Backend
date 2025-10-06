@@ -2,6 +2,7 @@ const Batch = require("../../models/parollModels/Batch");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { BATCH_CREATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 // Create Batch
 exports.createBatch = async (req, res) => {
@@ -26,7 +27,8 @@ exports.createBatch = async (req, res) => {
       eventType: BATCH_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: saved.toObject()
+      newData: saved.toObject(),
+      description: `Batch created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.set("Cache-Control", "no-store");

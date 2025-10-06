@@ -2,6 +2,7 @@ const YTDImport = require("../../models/parollModels/YTDImport");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { YTD_IMPORT_CREATED, YTD_IMPORT_DELETED, YTD_IMPORT_UPDATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 // Get all records
 exports.getAll = async (req, res) => {
@@ -42,7 +43,8 @@ exports.create = async (req, res) => {
       eventType: YTD_IMPORT_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: saved.toObject()
+      newData: saved.toObject(),
+      description: `YTD Import record created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.status(201).json(saved);
@@ -59,19 +61,6 @@ exports.update = async (req, res) => {
 
     const updated = await YTDImport.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
-    // 🔹 Extract only changed fields
-    const oldData = {};
-    const newData = {};
-    const oldObj = existing.toObject();
-    const newObj = updated.toObject();
-
-    for (let key in newObj) {
-      if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
-        oldData[key] = oldObj[key];
-        newData[key] = newObj[key];
-      }
-    }
-
     // Activity Tracker
     activityTracker({
       userId: req.admin._id,
@@ -83,8 +72,9 @@ exports.update = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_YTDImport],
       eventType: YTD_IMPORT_UPDATED,
       actionDone: ACTIONS.update,
-      oldData,
-      newData
+      oldData: existing.toObject(),
+      newData: updated.toObject(),
+      description: `YTD Import record updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.json(updated);
@@ -112,7 +102,8 @@ exports.delete = async (req, res) => {
       eventType: YTD_IMPORT_DELETED,
       actionDone: ACTIONS.delete,
       oldData: deleted.toObject(),
-      newData: null
+      newData: null,
+      description: `YTD Import record deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.sendStatus(204);

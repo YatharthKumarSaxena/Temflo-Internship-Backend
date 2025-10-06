@@ -4,6 +4,7 @@ const Batch = require("../../models/parollModels/Batch");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { USER_WITH_BATCH_CREATED, USER_WITH_BATCH_DELETED, USER_WITH_BATCH_UPDATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const setNoCache = (res) => {
   res.set("Cache-Control", "no-store");
@@ -67,7 +68,8 @@ exports.syncUsers = async (req, res) => {
         eventType: USER_WITH_BATCH_CREATED,
         actionDone: ACTIONS.create,
         oldData: null,
-        newData: saved.toObject()
+        newData: saved.toObject(),
+        description: `User with batch created by ${getFullName(req.admin.employeeInfo)}`
       });
 
       inserted.push(saved);
@@ -142,7 +144,8 @@ exports.createUser = async (req, res) => {
       eventType: USER_WITH_BATCH_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: saved.toObject()
+      newData: saved.toObject(),
+      description: `User with batch created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.status(201).json(saved);
@@ -233,19 +236,6 @@ exports.updateUser = async (req, res) => {
 
     const updated = await UserWithBatch.findByIdAndUpdate(req.params.id, updatedData, { new: true });
 
-    // 🔹 Extract only changed fields
-    const oldData = {};
-    const newData = {};
-    const oldObj = existing.toObject();
-    const newObj = updated.toObject();
-
-    for (let key in newObj) {
-      if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
-        oldData[key] = oldObj[key];
-        newData[key] = newObj[key];
-      }
-    }
-
     // Activity Tracker
     activityTracker({
       userId: req.admin._id,
@@ -257,8 +247,9 @@ exports.updateUser = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_UserWithBatch],
       eventType: USER_WITH_BATCH_UPDATED,
       actionDone: ACTIONS.update,
-      oldData,
-      newData
+      oldData: existing.toObject(),
+      newData: updated.toObject(),
+      description: `User with batch updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
     setNoCache(res);
@@ -287,7 +278,8 @@ exports.deleteUser = async (req, res) => {
       eventType: USER_WITH_BATCH_DELETED,
       actionDone: ACTIONS.delete,
       oldData: deleted.toObject(),
-      newData: null
+      newData: null,
+      description: `User with batch deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     setNoCache(res);

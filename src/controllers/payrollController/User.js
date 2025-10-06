@@ -2,6 +2,7 @@ const User = require("../../models/userModels/User.js");
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { USER_CREATED_PAYROLL, USER_DELETED_PAYROLL, USER_UPDATED_PAYROLL } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const setNoCache = (res) => {
   res.set("Cache-Control", "no-store");
@@ -25,7 +26,8 @@ exports.createUser = async (req, res) => {
       eventType: USER_CREATED_PAYROLL,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: saved.toObject()
+      newData: saved.toObject(),
+      description: `User created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     setNoCache(res);
@@ -69,19 +71,6 @@ exports.updateUser = async (req, res) => {
 
     const updated = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
-    // 🔹 Extract only changed fields
-    const oldData = {};
-    const newData = {};
-    const oldObj = existing.toObject();
-    const newObj = updated.toObject();
-
-    for (let key in newObj) {
-      if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
-        oldData[key] = oldObj[key];
-        newData[key] = newObj[key];
-      }
-    }
-
     // Activity Tracker
     activityTracker({
       userId: req.admin._id,
@@ -93,8 +82,9 @@ exports.updateUser = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_user],
       eventType: USER_UPDATED_PAYROLL,
       actionDone: ACTIONS.update,
-      oldData,
-      newData
+      oldData: existing.toObject(),
+      newData: updated.toObject(),
+      description: `User updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
     setNoCache(res);
@@ -122,7 +112,8 @@ exports.deleteUser = async (req, res) => {
       eventType: USER_DELETED_PAYROLL,
       actionDone: ACTIONS.delete,
       oldData: deleted.toObject(),
-      newData: null
+      newData: null,
+      description: `User deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     setNoCache(res);

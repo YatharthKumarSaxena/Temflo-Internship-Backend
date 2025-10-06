@@ -2,6 +2,7 @@ const SalaryTemplateDeduction = require("../../models/parollModels/SalaryTemplat
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { SALARY_TEMPLATE_DEDUCTION_CREATED, SALARY_TEMPLATE_DEDUCTION_DELETED, SALARY_TEMPLATE_DEDUCTION_UPDATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 // GET all deductions
 exports.getAllDeductions = async (req, res) => {
@@ -30,7 +31,8 @@ exports.createDeduction = async (req, res) => {
       eventType: SALARY_TEMPLATE_DEDUCTION_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: deduction.toObject()
+      newData: deduction.toObject(),
+      description: `Salary template deduction created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.status(201).json(deduction);
@@ -47,19 +49,6 @@ exports.updateDeduction = async (req, res) => {
 
     const updated = await SalaryTemplateDeduction.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
-    // 🔹 Extract only changed fields
-    const oldData = {};
-    const newData = {};
-    const oldObj = existing.toObject();
-    const newObj = updated.toObject();
-
-    for (let key in newObj) {
-      if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
-        oldData[key] = oldObj[key];
-        newData[key] = newObj[key];
-      }
-    }
-
     // Activity Tracker
     activityTracker({
       userId: req.admin._id,
@@ -71,8 +60,9 @@ exports.updateDeduction = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_salaryTemplateDeduction],
       eventType: SALARY_TEMPLATE_DEDUCTION_UPDATED,
       actionDone: ACTIONS.update,
-      oldData,
-      newData
+      oldData: existing.toObject(),
+      newData: updated.toObject(),
+      description: `Salary template deduction updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.json(updated);
@@ -100,7 +90,8 @@ exports.deleteDeduction = async (req, res) => {
       eventType: SALARY_TEMPLATE_DEDUCTION_DELETED,
       actionDone: ACTIONS.delete,
       oldData: deleted.toObject(),
-      newData: null
+      newData: null,
+      description: `Salary template deduction deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.sendStatus(204);

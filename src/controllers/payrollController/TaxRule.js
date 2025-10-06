@@ -2,6 +2,7 @@ const TaxRule = require("../../models/parollModels/TaxRule");
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { TAX_RULE_CREATED, TAX_RULE_DELETED, TAX_RULE_UPDATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 // GET all tax rules
 exports.getAllTaxRules = async (req, res) => {
@@ -30,7 +31,8 @@ exports.createTaxRule = async (req, res) => {
       eventType: TAX_RULE_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: taxRule.toObject()
+      newData: taxRule.toObject(),
+      description: `Tax rule created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.status(201).json(taxRule);
@@ -47,19 +49,6 @@ exports.updateTaxRule = async (req, res) => {
 
     const updated = await TaxRule.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
-    // 🔹 Extract only changed fields
-    const oldData = {};
-    const newData = {};
-    const oldObj = existing.toObject();
-    const newObj = updated.toObject();
-
-    for (let key in newObj) {
-      if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
-        oldData[key] = oldObj[key];
-        newData[key] = newObj[key];
-      }
-    }
-
     // Activity Tracker
     activityTracker({
       userId: req.admin._id,
@@ -71,8 +60,9 @@ exports.updateTaxRule = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_taxRule],
       eventType: TAX_RULE_UPDATED,
       actionDone: ACTIONS.update,
-      oldData,
-      newData
+      oldData: existing.toObject(),
+      newData: updated.toObject(),
+      description: `Tax rule updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.json(updated);
@@ -100,7 +90,8 @@ exports.deleteTaxRule = async (req, res) => {
       eventType: TAX_RULE_DELETED,
       actionDone: ACTIONS.delete,
       oldData: deleted.toObject(),
-      newData: null
+      newData: null,
+      description: `Tax rule deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.sendStatus(204);

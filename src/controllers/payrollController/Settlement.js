@@ -2,6 +2,7 @@ const Settlement = require("../../models/parollModels/Settlement");
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { SETTLEMENT_CREATED, SETTLEMENT_DELETED, SETTLEMENT_UPDATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 // GET all settlements
 exports.getAllSettlements = async (req, res) => {
@@ -30,7 +31,8 @@ exports.createSettlement = async (req, res) => {
       eventType: SETTLEMENT_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: settlement.toObject()
+      newData: settlement.toObject(),
+      description: `Settlement created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.status(201).json(settlement);
@@ -47,19 +49,6 @@ exports.updateSettlement = async (req, res) => {
 
     const updated = await Settlement.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
-    // 🔹 Extract only changed fields
-    const oldData = {};
-    const newData = {};
-    const oldObj = existing.toObject();
-    const newObj = updated.toObject();
-
-    for (let key in newObj) {
-      if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
-        oldData[key] = oldObj[key];
-        newData[key] = newObj[key];
-      }
-    }
-
     // Activity Tracker
     activityTracker({
       userId: req.admin._id,
@@ -71,8 +60,9 @@ exports.updateSettlement = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_settlement],
       eventType: SETTLEMENT_UPDATED,
       actionDone: ACTIONS.update,
-      oldData,
-      newData
+      oldData: existing.toObject(),
+      newData: updated.toObject(),
+      description: `Settlement updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.json(updated);
@@ -100,7 +90,8 @@ exports.deleteSettlement = async (req, res) => {
       eventType: SETTLEMENT_DELETED,
       actionDone: ACTIONS.delete,
       oldData: deleted.toObject(),
-      newData: null
+      newData: null,
+      description: `Settlement deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.sendStatus(204);

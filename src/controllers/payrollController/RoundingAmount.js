@@ -1,7 +1,8 @@
 const RoundingSetting = require("../../models/parollModels/RoundingAmount");
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
-const { ROUNDING_SETTING_UPDATED } = require("@/config/activity.enums");
+const { ROUNDING_SETTING_UPDATED, ROUNDING_SETTING_CREATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const setNoCache = (res) => {
   res.set("Cache-Control", "no-store");
@@ -40,10 +41,11 @@ exports.updateRoundingSetting = async (req, res) => {
         subModuleAffected: null,
         fileAffected: FILE.file_roundingAmount,
         modelAffected: [MODEL_AFFECTED.model_roundingSetting],
-        eventType: ROUNDING_SETTING_UPDATED,
+        eventType: ROUNDING_SETTING_CREATED,
         actionDone: ACTIONS.create,
         oldData: null,
-        newData: { roundingType }
+        newData: setting.toObject(),
+        description: `Rounding setting created by ${getFullName(req.admin.employeeInfo)}`
       });
     } else {
       // Existing setting
@@ -51,14 +53,6 @@ exports.updateRoundingSetting = async (req, res) => {
       setting.roundingType = roundingType;
       await setting.save();
       const newObj = setting.toObject();
-
-      // 🔹 Extract only changed fields
-      const oldData = {};
-      const newData = {};
-      if (oldObj.roundingType !== newObj.roundingType) {
-        oldData.roundingType = oldObj.roundingType;
-        newData.roundingType = newObj.roundingType;
-      }
 
       // Activity Tracker
       activityTracker({
@@ -71,8 +65,9 @@ exports.updateRoundingSetting = async (req, res) => {
         modelAffected: [MODEL_AFFECTED.model_roundingSetting],
         eventType: ROUNDING_SETTING_UPDATED,
         actionDone: ACTIONS.update,
-        oldData,
-        newData
+        oldData: oldObj,
+        newData: newObj,
+        description: `Rounding setting updated by ${getFullName(req.admin.employeeInfo)}`
       });
     }
 

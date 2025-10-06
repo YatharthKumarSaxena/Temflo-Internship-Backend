@@ -2,6 +2,7 @@ const Loan = require("../../models/parollModels/Loan");
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { LOAN_CREATED, LOAN_DELETED, LOAN_UPDATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 // Get all loans
 exports.getAllLoans = async (req, res) => {
@@ -30,7 +31,8 @@ exports.createLoan = async (req, res) => {
       eventType: LOAN_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: loan.toObject()
+      newData: loan.toObject(),
+      description: `Loan created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.status(201).json(loan);
@@ -47,19 +49,6 @@ exports.updateLoan = async (req, res) => {
 
     const updated = await Loan.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
-    // 🔹 Extract changed fields
-    const oldData = {};
-    const newData = {};
-    const oldObj = existing.toObject();
-    const newObj = updated.toObject();
-
-    for (let key in newObj) {
-      if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
-        oldData[key] = oldObj[key];
-        newData[key] = newObj[key];
-      }
-    }
-
     // Activity Tracker
     activityTracker({
       userId: req.admin._id,
@@ -71,8 +60,9 @@ exports.updateLoan = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_loan],
       eventType: LOAN_UPDATED,
       actionDone: ACTIONS.update,
-      oldData,
-      newData
+      oldData: existing.toObject(),
+      newData: updated.toObject(),
+      description: `Loan updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.json(updated);
@@ -100,7 +90,8 @@ exports.deleteLoan = async (req, res) => {
       eventType: LOAN_DELETED,
       actionDone: ACTIONS.delete,
       oldData: deleted.toObject(),
-      newData: null
+      newData: null,
+      description: `Loan deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.sendStatus(204);

@@ -2,6 +2,7 @@ const LoanRepayment = require("../../models/parollModels/LoanRepayment");
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { LOAN_REPAYMENT_CREATED, LOAN_REPAYMENT_DELETED, LOAN_REPAYMENT_UPDATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 // Get all repayments
 exports.getAllLoanRepayments = async (req, res) => {
@@ -30,7 +31,8 @@ exports.createLoanRepayment = async (req, res) => {
       eventType: LOAN_REPAYMENT_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: repayment.toObject()
+      newData: repayment.toObject(),
+      description: `Loan repayment created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.status(201).json(repayment);
@@ -47,19 +49,6 @@ exports.updateLoanRepayment = async (req, res) => {
 
     const updated = await LoanRepayment.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
-    // 🔹 Extract changed fields
-    const oldData = {};
-    const newData = {};
-    const oldObj = existing.toObject();
-    const newObj = updated.toObject();
-
-    for (let key in newObj) {
-      if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
-        oldData[key] = oldObj[key];
-        newData[key] = newObj[key];
-      }
-    }
-
     // Activity Tracker
     activityTracker({
       userId: req.admin._id,
@@ -71,8 +60,9 @@ exports.updateLoanRepayment = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_loanRepayment],
       eventType: LOAN_REPAYMENT_UPDATED,
       actionDone: ACTIONS.update,
-      oldData,
-      newData
+      oldData: existing.toObject(),
+      newData: updated.toObject(),
+      description: `Loan repayment updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.json(updated);
@@ -99,7 +89,8 @@ exports.deleteLoanRepayment = async (req, res) => {
       eventType: LOAN_REPAYMENT_DELETED,
       actionDone: ACTIONS.delete,
       oldData: deleted.toObject(),
-      newData: null
+      newData: null,
+      description: `Loan repayment deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.sendStatus(204);
