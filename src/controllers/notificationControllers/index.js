@@ -2,6 +2,7 @@ const { NOTIFICATION_CREATED, NOTIFICATION_DELETED, NOTIFICATION_MARKED_ALL_AS_R
 const Notification = require('../../models/coreModels/Notification');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 class NotificationController {
   // Create a new notification
@@ -45,6 +46,7 @@ class NotificationController {
         actionDone: ACTIONS.create,
         oldData: null,
         newData: notification.toObject(),
+        description: `Notification created by ${getFullName(req.admin.employeeInfo)}`
       });
 
       return res.status(201).json({
@@ -160,7 +162,7 @@ class NotificationController {
       }
 
       // ✅ Activity Tracker Integration
-      await activityTracker({
+      activityTracker({
         userId: req.admin._id,
         companyId: req.admin.companyId,
         plantId: req.admin.plantId || null,
@@ -171,6 +173,7 @@ class NotificationController {
         eventType: NOTIFICATION_MARKED_AS_READ,
         oldData: { _id: id, isRead: notification.isRead.slice(0, -1) }, // Before marking
         newData: { isRead: notification.isRead },             // After marking
+        description: `Notification with ID '${id}' marked as read by ${getFullName(req.admin.employeeInfo)}`
       });
 
       return res.status(200).json({
@@ -218,8 +221,14 @@ class NotificationController {
         }
       );
 
+      const updatedNotifications = await Notification.find({
+        _id: { $in: notificationsToUpdate.map(n => n._id) }
+      });
+
+      const newData = updatedNotifications.map(n => ({ _id: n._id, isRead: n.isRead }));
+
       // ✅ Activity Tracker Integration
-      await activityTracker({
+      activityTracker({
         userId: req.admin._id,
         companyId: req.admin.companyId,
         plantId: req.admin.plantId || null,
@@ -229,7 +238,8 @@ class NotificationController {
         modelAffected: [MODEL_AFFECTED.model_notification],
         eventType: NOTIFICATION_MARKED_ALL_AS_READ,
         oldData: oldData,
-        newData: 'All marked as read by user',
+        newData: newData,
+        description: `All notifications marked as read by ${getFullName(req.admin.employeeInfo)}`
       });
 
       return res.status(200).json({
@@ -299,7 +309,7 @@ class NotificationController {
       }
 
       // ✅ Activity Tracker Integration
-      await activityTracker({
+      activityTracker({
         userId: req.admin._id,
         companyId: req.admin.companyId,
         plantId: req.admin.plantId || null,
@@ -308,13 +318,12 @@ class NotificationController {
         fileAffected: FILE.file_index,
         modelAffected: [MODEL_AFFECTED.model_notification],
         eventType: NOTIFICATION_DELETED,
-        oldData: {
-          _id: id,
-          isActive: true
-        },
+        oldData: notification.toObject(),
         newData: {
+          notes: "Soft deletion is done, Rest fields are same as oldData",
           isActive: false
-        }
+        },
+        description: `Notification with ID '${id}' soft deleted by ${getFullName(req.admin.employeeInfo)}`
       });
 
       return res.status(200).json({
