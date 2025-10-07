@@ -1,6 +1,10 @@
 const Supplier = require('../../models/MaterialModels/SupplierModel');
 const { catchErrors } = require('@/handlers/errorHandlers');
 const { indianStates, countries, pinCodeValidation } = require('../../config/indianStates');
+const { SUPPLIER_CREATED, SUPPLIER_UPDATED, SUPPLIER_APPROVED, SUPPLIER_REJECTED, SUPPLIER_DELETED, SUPPLIER_SUBMITTED } = require("@/config/activity.enums");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 // Validate mandatory documents based on business rules (top-level helper to avoid `this` binding issues)
 function validateMandatoryDocuments(supplierData) {
@@ -38,10 +42,10 @@ class SupplierController {
       const supplierData = {
         ...req.body,
         companyId: req.admin.companyId,
-        createdBy: req.user.id,
+        createdBy: req.admin._id,
         approvalStatus: 'draft', // Start as draft
         makerChecker: {
-          maker: req.user.id,
+          maker: req.admin._id,
           allowMakerToSelectChecker: true,
         },
       };
@@ -49,7 +53,7 @@ class SupplierController {
       // If a checker comes in payload, enforce maker-checker separation
       if (
         supplierData.makerChecker?.checker &&
-        supplierData.makerChecker.checker.toString() === req.user.id.toString()
+        supplierData.makerChecker.checker.toString() === req.admin._id.toString()
       ) {
         return res.status(400).json({
           success: false,
@@ -77,6 +81,22 @@ class SupplierController {
 
       const supplier = new Supplier(supplierData);
       await supplier.save();
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_supplier,
+        modelAffected: [MODEL_AFFECTED.model_Supplier],
+        eventType: SUPPLIER_CREATED,
+        actionDone: ACTIONS.create,
+        oldData: null, // ✅ Correct for creation
+        newData: supplier.toObject(), // ✅ Complete snapshot
+        description: `Supplier '${supplier.supplierCode}' created by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.status(201).json({
         success: true,
@@ -235,7 +255,7 @@ class SupplierController {
       const updateData = {
         ...rest,
         ...(allowedGstin !== null && { gstin: allowedGstin }),
-        updatedBy: req.user.id,
+        updatedBy: req.admin._id,
       };
 
       // Validate mandatory documents based on business rules for updates
@@ -248,24 +268,37 @@ class SupplierController {
         });
       }
 
-      const supplier = await Supplier.findByIdAndUpdate(req.params.id, updateData, {
-        new: true,
-        runValidators: true,
-      })
+      // Store original data before modification
+      const originalData = existingSupplier.toObject();
+
+      // Update using save method to avoid extra DB calls
+      Object.assign(existingSupplier, updateData);
+      await existingSupplier.save();
+
+      const populatedSupplier = await Supplier.findById(existingSupplier._id)
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email');
 
-      if (!supplier) {
-        return res.status(404).json({
-          success: false,
-          message: 'Supplier not found',
-        });
-      }
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_supplier,
+        modelAffected: [MODEL_AFFECTED.model_Supplier],
+        eventType: SUPPLIER_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData: originalData, // ✅ Original data before update
+        newData: existingSupplier.toObject(), // ✅ Complete snapshot after update
+        description: `Supplier '${existingSupplier.supplierCode}' updated by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
         message: 'Supplier updated successfully',
-        data: supplier,
+        data: populatedSupplier,
       });
     } catch (error) {
       if (error.code === 11000) {
@@ -281,24 +314,49 @@ class SupplierController {
   // Delete supplier
   async deleteSupplier(req, res) {
     try {
-      // Soft-delete: mark as inactive instead of removing the document
-      const supplier = await Supplier.findByIdAndUpdate(
-        req.params.id,
-        { status: 'inactive' },
-        { new: true }
-      );
+      // Get old data before soft delete
+      const existingSupplier = await Supplier.findById(req.params.id);
 
-      if (!supplier) {
+      if (!existingSupplier) {
         return res.status(404).json({
           success: false,
           message: 'Supplier not found',
         });
       }
 
+      // Store original data before modification
+      const originalData = existingSupplier.toObject();
+
+      // Soft-delete: mark as inactive instead of removing the document
+      existingSupplier.status = 'inactive';
+      await existingSupplier.save();
+
+      // ---- ACTIVITY TRACKER ----
+      // Note: Soft delete - all fields same as old data + status change
+      const newData = {
+        ...originalData,
+        status: 'inactive'
+      };
+
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_supplier,
+        modelAffected: [MODEL_AFFECTED.model_Supplier],
+        eventType: SUPPLIER_DELETED,
+        actionDone: ACTIONS.delete,
+        oldData: originalData, // ✅ Complete snapshot before soft delete
+        newData: { notes: "Supplier soft deleted (status changed to inactive). Rest fields same as Old Data", status: 'inactive' }, // ✅ Soft delete pattern
+        description: `Supplier '${originalData.supplierCode}' soft deleted by ${getFullName(req.admin.employeeInfo)}`
+      });
+
       res.json({
         success: true,
         message: 'Supplier inactivated successfully',
-        data: supplier,
+        data: existingSupplier,
       });
     } catch (error) {
       throw error;
@@ -342,15 +400,34 @@ class SupplierController {
         });
       }
 
+      // Store original data before status change
+      const originalData = supplier.toObject();
+
       supplier.approvalStatus = 'pending';
       supplier.approvalHistory.push({
-        approver: req.user.id,
+        approver: req.admin._id,
         action: 'submitted',
         comments: comments || 'Submitted for approval',
         approvedAt: new Date(),
       });
 
       await supplier.save();
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_supplier,
+        modelAffected: [MODEL_AFFECTED.model_Supplier],
+        eventType: SUPPLIER_SUBMITTED,
+        actionDone: ACTIONS.update,
+        oldData: originalData, // ✅ Original data before status change
+        newData: supplier.toObject(), // ✅ Complete snapshot after status change
+        description: `Supplier '${supplier.supplierCode}' submitted for approval by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
@@ -392,7 +469,7 @@ class SupplierController {
 
       // If a specific checker is assigned, only that checker can act
       if (supplier.makerChecker?.checker) {
-        if (supplier.makerChecker.checker.toString() !== req.user.id.toString()) {
+        if (supplier.makerChecker.checker.toString() !== req.admin._id.toString()) {
           return res.status(403).json({
             success: false,
             message: 'Only the assigned checker can approve/reject',
@@ -402,7 +479,7 @@ class SupplierController {
         // No checker assigned: ensure the approver is not the maker
         if (
           supplier.makerChecker?.maker &&
-          supplier.makerChecker.maker.toString() === req.user.id.toString()
+          supplier.makerChecker.maker.toString() === req.admin._id.toString()
         ) {
           return res.status(403).json({
             success: false,
@@ -411,15 +488,35 @@ class SupplierController {
         }
       }
 
+      // Store original data before approval change
+      const originalData = supplier.toObject();
+
       supplier.approvalStatus = action;
       supplier.approvalHistory.push({
-        approver: req.user.id,
+        approver: req.admin._id,
         action,
         comments: comments || `${action} by approver`,
         approvedAt: new Date(),
       });
 
       await supplier.save();
+
+      // ---- ACTIVITY TRACKER ----
+      const eventType = action === 'approved' ? SUPPLIER_APPROVED : SUPPLIER_REJECTED;
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_supplier,
+        modelAffected: [MODEL_AFFECTED.model_Supplier],
+        eventType: eventType,
+        actionDone: ACTIONS.update,
+        oldData: originalData, // ✅ Original data before approval
+        newData: supplier.toObject(), // ✅ Complete snapshot after approval
+        description: `Supplier '${supplier.supplierCode}' ${action} by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,

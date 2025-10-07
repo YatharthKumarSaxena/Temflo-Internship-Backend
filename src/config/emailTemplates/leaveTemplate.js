@@ -56,6 +56,105 @@ const leaveTemplate = {
         actionlink: "http://localhost:3000/leave/<Leave_ID>", // controller se replace hoga
         fallback_note: "Having trouble with the button?",
         action_link: "http://localhost:3000/leave/<Leave_ID>"
+    },
+
+    // 🔹 Leave Policy Events
+    leavePolicyCreated: {
+        ...defaultConfig,
+        subject: "New Leave Policy Created",
+        event_name: "Leave Policy Created",
+        action: "Create",
+        message_intro: "A new leave policy has been created for your organization.",
+        actionbutton_text: "View Leave Policies",
+        actionlink: "http://localhost:3000/leave/policies", // controller se replace hoga
+        fallback_note: "Having trouble with the button?",
+        action_link: "http://localhost:3000/leave/policies"
+    },
+
+    leavePolicyUpdated: {
+        ...defaultConfig,
+        subject: "Leave Policy Updated",
+        event_name: "Leave Policy Updated",
+        action: "Update",
+        message_intro: "A leave policy has been updated in your organization.",
+        actionbutton_text: "View Leave Policies",
+        actionlink: "http://localhost:3000/leave/policies", // controller se replace hoga
+        fallback_note: "Having trouble with the button?",
+        action_link: "http://localhost:3000/leave/policies"
+    },
+
+    leavePolicyApplied: {
+        ...defaultConfig,
+        subject: "New Leave Policy Applied",
+        event_name: "Leave Policy Applied",
+        action: "Apply",
+        message_intro: "A new leave policy has been applied to your account.",
+        actionbutton_text: "View My Leave Balance",
+        actionlink: "http://localhost:3000/leave/balance", // controller se replace hoga
+        fallback_note: "Having trouble with the button?",
+        action_link: "http://localhost:3000/leave/balance"
+    },
+
+    // 🔹 Leave Balance Events
+    leaveBalanceCreated: {
+        ...defaultConfig,
+        subject: "Leave Balance Created",
+        event_name: "Leave Balance Created",
+        action: "Create",
+        message_intro: "Your leave balance has been created for the new leave policy.",
+        actionbutton_text: "View My Leave Balance",
+        actionlink: "http://localhost:3000/leave/balance", // controller se replace hoga
+        fallback_note: "Having trouble with the button?",
+        action_link: "http://localhost:3000/leave/balance"
+    },
+
+    leaveBalanceUpdated: {
+        ...defaultConfig,
+        subject: "Leave Balance Updated",
+        event_name: "Leave Balance Updated",
+        action: "Update",
+        message_intro: "Your leave balance has been updated.",
+        actionbutton_text: "View My Leave Balance",
+        actionlink: "http://localhost:3000/leave/balance", // controller se replace hoga
+        fallback_note: "Having trouble with the button?",
+        action_link: "http://localhost:3000/leave/balance"
+    },
+
+    leaveBalanceReset: {
+        ...defaultConfig,
+        subject: "Leave Balance Reset",
+        event_name: "Leave Balance Reset",
+        action: "Reset",
+        message_intro: "Your leave balance has been reset by the administration.",
+        actionbutton_text: "View My Leave Balance",
+        actionlink: "http://localhost:3000/leave/balance", // controller se replace hoga
+        fallback_note: "Having trouble with the button?",
+        action_link: "http://localhost:3000/leave/balance"
+    },
+
+    // 🔹 WFH Policy Events
+    wfhPolicyCreated: {
+        ...defaultConfig,
+        subject: "New WFH Policy Created",
+        event_name: "WFH Policy Created",
+        action: "Create",
+        message_intro: "A new Work From Home policy has been created for your organization.",
+        actionbutton_text: "View WFH Policies",
+        actionlink: "http://localhost:3000/wfh/policies", // controller se replace hoga
+        fallback_note: "Having trouble with the button?",
+        action_link: "http://localhost:3000/wfh/policies"
+    },
+
+    wfhPolicyApplied: {
+        ...defaultConfig,
+        subject: "WFH Policy Applied",
+        event_name: "WFH Policy Applied",
+        action: "Apply",
+        message_intro: "Work From Home policy has been applied to your account.",
+        actionbutton_text: "View WFH Options",
+        actionlink: "http://localhost:3000/wfh/options", // controller se replace hoga
+        fallback_note: "Having trouble with the button?",
+        action_link: "http://localhost:3000/wfh/options"
     }
 }
 

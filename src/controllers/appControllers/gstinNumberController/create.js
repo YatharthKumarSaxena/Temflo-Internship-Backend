@@ -120,8 +120,8 @@ const create = async (Model, req, res) => {
       eventType: GSTIN_CREATED,
       actionDone: ACTIONS.create,
       description: `GSTIN Number created by ${getFullName(req.admin.employeeInfo)} for Company ID: ${req.admin.companyId}`,
-      oldData: null,
-      newData: result
+      oldData: null, // ✅ Correct for creation
+      newData: result.toObject() // ✅ Complete snapshot
     });
 
     // Returning successfull response

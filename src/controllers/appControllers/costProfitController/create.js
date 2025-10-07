@@ -1,3 +1,8 @@
+const { COST_PROFIT_CREATED } = require("@/config/activity.enums");
+const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
+
 const create = async (Model, req, res) => {
   try {
     const { costProfitCode, description } = req.body;
@@ -21,13 +26,29 @@ const create = async (Model, req, res) => {
 
     req.body.removed = false;
 
-    // Create the new business segment
+    // Create the new cost/profit center
     const result = await new Model({
       ...req.body,
       companyId,
     }).save();
 
-    return res.status(200).json({
+    // ---- ACTIVITY TRACKER ----
+    activityTracker({
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
+      module: MODULE.app,
+      subModuleAffected: SUBMODULE.cost_profit_center,
+      fileAffected: FILE.file_costProfitCenter_create,
+      modelAffected: [MODEL_AFFECTED.model_costProfitCenter],
+      eventType: COST_PROFIT_CREATED,
+      actionDone: ACTIONS.create,
+      oldData: null, // ✅ Correct for creation
+      newData: result.toObject(), // ✅ Complete snapshot
+      description: `Cost/Profit center '${costProfitCode}' created by ${getFullName(req.admin.employeeInfo)}`
+    });
+
+    return res.status(201).json({
       success: true,
       result,
       message: 'Successfully Added Cost/Profit Center',

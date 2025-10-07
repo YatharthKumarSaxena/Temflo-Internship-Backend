@@ -29435,6 +29435,7 @@
 2025-10-03T09:55:31.140Z [INFO] All security headers present - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
 2025-10-03T09:56:01.103Z [INFO] All security headers present - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
 2025-10-03T09:56:01.759Z [INFO] All security headers present - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+<<<<<<< HEAD
 2025-10-03T09:58:25.586Z [INFO] All security headers present - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
 2025-10-03T09:58:28.727Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/search?q=&fields=name - User-Agent: unknown
 2025-10-03T09:58:29.262Z [INFO] All security headers present - IP: ::1 - URL: /api/attendance/setting/68df9918c7e698ba6e10e2c1 - User-Agent: unknown
@@ -30794,3 +30795,34 @@
 2025-10-03T17:53:09.359Z [INFO] All security headers present - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
 2025-10-03T17:53:09.361Z [INFO] All security headers present - IP: ::1 - URL: /api/refresh-token?timestamp=1759513989360 - User-Agent: unknown
 2025-10-03T17:53:09.362Z [INFO] All security headers present - IP: ::1 - URL: /api/refresh-token?timestamp=1759513989361 - User-Agent: unknown
+=======
+2025-10-03T09:37:08.835Z [INFO] All security headers present - IP: ::1 - URL: /api/signup - User-Agent: unknown
+2025-10-03T09:38:24.008Z [INFO] All security headers present - IP: ::1 - URL: /api/verify-email - User-Agent: unknown
+2025-10-03T09:50:58.221Z [INFO] All security headers present - IP: ::1 - URL: /api/resend-verification - User-Agent: unknown
+2025-10-03T09:51:42.320Z [INFO] All security headers present - IP: ::1 - URL: /api/verify-email - User-Agent: unknown
+2025-10-03T11:53:41.273Z [INFO] All security headers present - IP: ::1 - URL: /api/resend-verification - User-Agent: unknown
+2025-10-03T11:54:27.294Z [INFO] All security headers present - IP: ::1 - URL: /api/verify-email - User-Agent: unknown
+2025-10-03T13:06:17.120Z [INFO] All security headers present - IP: ::1 - URL: /api/login - User-Agent: unknown
+2025-10-03T13:06:31.702Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/create - User-Agent: unknown
+2025-10-03T13:06:47.446Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/create - User-Agent: unknown
+2025-10-03T13:08:36.187Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/create - User-Agent: unknown
+2025-10-03T13:08:41.436Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/create - User-Agent: unknown
+2025-10-03T13:09:42.501Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/create - User-Agent: unknown
+2025-10-03T13:12:30.111Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/create - User-Agent: unknown
+2025-10-03T13:15:28.325Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/update/68dfcbbe13a705670b5a40b7 - User-Agent: unknown
+2025-10-03T13:16:34.904Z [INFO] All security headers present - IP: ::1 - URL: /api/login - User-Agent: unknown
+2025-10-03T13:17:38.549Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/update/68dfcbbe13a705670b5a40b7 - User-Agent: unknown
+2025-10-03T13:24:58.433Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/update/68dfcbbe13a705670b5a40b7 - User-Agent: unknown
+2025-10-03T13:26:08.308Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/update/68dfcbbd13a705670b5a40b3 - User-Agent: unknown
+2025-10-03T13:27:06.217Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/update/68dfcbbd13a705670b5a40b3 - User-Agent: unknown
+2025-10-03T13:29:24.505Z [INFO] All security headers present - IP: ::1 - URL: /api/plant/update/68dfcbbd13a705670b5a40b3 - User-Agent: unknown
+2025-10-03T13:37:30.648Z [INFO] All security headers present - IP: ::1 - URL: /api/get-user-activities?plantId=68172532ad9e57ab8fce2945&eventType=PLANT_CREATED,PLANT_UPDATED&actionDone=CREATE,UPDATE&startDate=2025-10-01&endDate=2025-10-03&page=1&limit=10&selectFields=userId,companyId,plantId,module,fileAffected,subModuleAffected,event,action,description&userSnapshotFields=name,email,employeeCode&oldDataFields=name,address,city,state,postalCode,email&newDataFields=name,address,city,state,postalCode,email - User-Agent: unknown
+2025-10-03T13:38:25.230Z [INFO] All security headers present - IP: ::1 - URL: /api/get-user-activities?plantId=68172532ad9e57ab8fce2945&eventType=PLANT_CREATED,PLANT_UPDATED&actionDone=CREATE,UPDATE&startDate=2025-10-01&endDate=2025-10-03&page=1&limit=10&selectFields=userId,companyId,plantId,module,fileAffected,subModuleAffected,event,action,description&userSnapshotFields=name,email&oldDataFields=name,address,city,state,postalCode,email&newDataFields=name,address,city,state,postalCode,email - User-Agent: unknown
+2025-10-03T13:39:24.880Z [INFO] All security headers present - IP: ::1 - URL: /api/get-user-activities?plantId=68172532ad9e57ab8fce2945&eventType=PLANT_CREATED,PLANT_UPDATED&actionDone=CREATE,UPDATE&startDate=2025-10-01&endDate=2025-10-03&page=1&limit=10&selectFields=userId,companyId,plantId,module,fileAffected,event,action,description&userSnapshotFields=name,email&oldDataFields=name,address,city,state,postalCode,email&newDataFields=name,address,city,state,postalCode,email - User-Agent: unknown
+2025-10-03T13:40:18.594Z [INFO] All security headers present - IP: ::1 - URL: /api/get-user-activities?plantId=68172532ad9e57ab8fce2945&eventType=PLANT_CREATED,PLANT_UPDATED&actionDone=CREATE,UPDATE&startDate=2025-10-01&endDate=2025-10-03&page=1&limit=10&selectFields=userId,companyId,plantId,module,fileAffected,event,action,description&userSnapshotFields=name,email&oldDataFields=name,address,city,state,postalCode,email&newDataFields=name,address,city,state,postalCode,email - User-Agent: unknown
+2025-10-03T13:41:04.372Z [INFO] All security headers present - IP: ::1 - URL: /api/get-user-activities?plantId=68172532ad9e57ab8fce2945&eventType=PLANT_CREATED,PLANT_UPDATED&actionDone=CREATE,UPDATE&startDate=2025-10-01&endDate=2025-10-03&page=1&limit=10&selectFields=userId,companyId,plantId,module,fileAffected,event,action,description&userSnapshotFields=name,email&oldDataFields=name,address,city,state,postalCode,email&newDataFields=name,address,city,state,postalCode,email - User-Agent: unknown
+2025-10-03T13:43:34.112Z [INFO] All security headers present - IP: ::1 - URL: /api/admin/activities?oldDataSearch={%22email%22:%22arunsaxena1240@gmail.com%22}&newDataSearch={%22postalCode%22:201301}&page=1&limit=10 - User-Agent: unknown
+2025-10-03T13:44:03.363Z [INFO] All security headers present - IP: ::1 - URL: /api/get-user-activities?page=1&limit=10&oldDataSearch={%22email%22:%22arunsaxena1240@gmail.com%22}&newDataSearch={%22postalCode%22:201301} - User-Agent: unknown
+2025-10-03T13:44:16.023Z [INFO] All security headers present - IP: ::1 - URL: /api/get-user-activities?oldDataSearch={%22email%22:%22arunsaxena1240@gmail.com%22} - User-Agent: unknown
+2025-10-03T13:45:04.070Z [INFO] All security headers present - IP: ::1 - URL: /api/get-user-activities?newDataSearch={%22email%22:%22arunsaxena1240@gmail.com%22} - User-Agent: unknown
+>>>>>>> bd40846219fb2e4f9d3453cc5765309d15fb8d0d

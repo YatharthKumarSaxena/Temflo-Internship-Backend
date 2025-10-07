@@ -1,6 +1,16 @@
 const { defaultConfig } = require("./defaultTemplates");
 
 const employeeTemplate = {
+
+    emailVerified: {
+        ...defaultConfig,
+        subject: "You’ve Verified Your ERPICA Account",
+        event_name: "Email Verified",
+        action: "Email Confirmation",
+        message_intro:
+            "Congratulations! You have successfully verified your ERPICA account. You can now access all the features and tools available to you."
+    },
+
     // 🔹 Verification Events
     verification: {
         ...defaultConfig,

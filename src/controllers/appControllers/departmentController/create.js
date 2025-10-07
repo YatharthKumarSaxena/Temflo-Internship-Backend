@@ -1,4 +1,4 @@
-const { OK } = require("@/config/httpStatus.config");
+const { CREATED } = require("@/config/httpStatus.config");
 const { DEPARTMENT_CREATED } = require("@/config/activity.enums");
 const { logWithTime } = require("@/utils/time-stamps");
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
@@ -62,12 +62,12 @@ const create = async (Model, req, res) => {
       eventType: DEPARTMENT_CREATED,
       actionDone: ACTIONS.create,
       description: `Department created by ${getFullName(req.admin.employeeInfo)} for Company ID: ${req.admin.companyId}`,
-      oldData: null,  
-      newData: result
+      oldData: null, // ✅ Correct for creation 
+      newData: result.toObject() // ✅ Complete snapshot
     });
 
-    // Returning successfull response
-    return res.status(OK).json({
+    // Returning successful response
+    return res.status(CREATED).json({
       success: true,
       result,
       message: 'Successfully Added Department',

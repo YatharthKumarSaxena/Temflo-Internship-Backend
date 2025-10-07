@@ -110,6 +110,43 @@ const assetTemplate = {
         fallback_note: "If the button doesn't work, copy the link below:",
         action_link: "<ASSET_LINK>", // Same as actionlink
         details: {} // Controller se dynamically populate hoga
+    },
+
+    // 🔹 Responsible Templates
+    assetResponsibleAssigned: {
+        ...defaultConfig,
+        subject: "You are now Responsible for an Asset",
+        event_name: "Asset Responsibility Assigned",
+        action: "Responsibility Assigned",
+        message_intro: "You have been designated as responsible for the following asset.",
+        actionbutton_text: "View Asset",
+        actionlink: "<ASSET_LINK>",
+        fallback_note: "Having trouble with the button?",
+        action_link: "<ASSET_LINK>"
+    },
+
+    assetResponsibleUnassigned: {
+        ...defaultConfig,
+        subject: "You are no longer Responsible for an Asset",
+        event_name: "Asset Responsibility Unassigned",
+        action: "Responsibility Removed",
+        message_intro: "You have been unassigned from responsible designation for the following asset.",
+        actionbutton_text: "View Asset",
+        actionlink: "<ASSET_LINK>",
+        fallback_note: "Having trouble with the button?",
+        action_link: "<ASSET_LINK>"
+    },
+
+    assetInformResponsible: {
+        ...defaultConfig,
+        subject: "Asset Transfer Notification",
+        event_name: "Asset Transfer Notification",
+        action: "Notify Responsibility",
+        message_intro: "The following asset has been transferred. Please find the details below.",
+        actionbutton_text: "View Asset",
+        actionlink: "<ASSET_LINK>",
+        fallback_note: "Having trouble with the button?",
+        action_link: "<ASSET_LINK>"
     }
 }
 

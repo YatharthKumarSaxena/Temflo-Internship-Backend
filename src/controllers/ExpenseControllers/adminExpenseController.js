@@ -4,12 +4,16 @@ const mongoose = require('mongoose');
 const User = require('../../models/userModels/User');
 const WalletTransaction = require('../../models/expenseModels/walletTransaction');
 const ErrorHandler = require('../../utils/errorHandler');
-const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { EXPENSE_CATEGORY_CREATED, EXPENSE_FORM_CREATED, EXPENSE_FORM_UPDATED, EXPENSE_CATEGORY_UPDATED, EXPENSE_CATEGORY_DELETED, EXPENSE_CLAIM_CREATED, WALLET_DEBITED, WALLET_REFUNDED, EXPENSE_UPDATED, COMMENT_ADDED, FILE_UPLOADED } = require("@/config/activity.enums");
 const { expenseTemplate } = require("@/config/emailTemplates/expenseTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
+
+// Get base URL from environment
+const baseUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:3000';
 
 exports.createExpenseCategory = async (req, res) => {
   try {
@@ -55,7 +59,8 @@ exports.createExpenseCategory = async (req, res) => {
       eventType: EXPENSE_CATEGORY_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: ExpenseCategoryRecord.toObject()
+      newData: ExpenseCategoryRecord.toObject(),
+      description: `Expense category '${expenseCategory}' created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({
@@ -151,7 +156,8 @@ exports.saveExpenseForm = async (req, res) => {
         eventType: EXPENSE_FORM_UPDATED,
         actionDone: ACTIONS.update,
         oldData: oldData,
-        newData: expenseCategoryRecord.toObject()
+        newData: expenseCategoryRecord.toObject(),
+        description: `Expense form updated by ${getFullName(req.admin.employeeInfo)}`
       });
     } else {
       expenseCategoryRecord = new ExpensePolicy({
@@ -173,7 +179,8 @@ exports.saveExpenseForm = async (req, res) => {
         eventType: EXPENSE_FORM_CREATED,
         actionDone: ACTIONS.create,
         oldData: null,
-        newData: expenseCategoryRecord.toObject()
+        newData: expenseCategoryRecord.toObject(),
+        description: `Expense form created by ${getFullName(req.admin.employeeInfo)}`
       });
     }
 
@@ -239,7 +246,8 @@ exports.updateExpenseCategory = async (req, res, next) => {
       newData: {
         category: expenseCategory || oldData.category,
         subCategory: subCategories || oldData.subCategory
-      }
+      },
+      description: `Expense category '${expenseCategory || oldData.category}' updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({
@@ -304,7 +312,8 @@ exports.deleteExpenseRecord = async (req, res, next) => {
       newData: {
         note: "All fields same as Old Data, Soft deletion is Done",
         removed: true
-      }
+      },
+      description: `Expense category '${deletedCategory.category}' deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({
@@ -442,7 +451,8 @@ exports.claimExpense = async (req, res, next) => {
       eventType: EXPENSE_CLAIM_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: newExpense.toObject()
+      newData: newExpense.toObject(),
+      description: `Expense claim '${category}${subCategory ? ` (${subCategory})` : ''}' created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     let walletTransactionData = null;
@@ -507,11 +517,12 @@ exports.claimExpense = async (req, res, next) => {
         eventType: WALLET_DEBITED,
         actionDone: ACTIONS.update,
         oldData: { expenseId: newExpense._id, plantId, balance: currentWalletBalance },
-        newData: { balance: balanceAfter, deducted: expenseAmount }
+        newData: { balance: balanceAfter, deducted: expenseAmount },
+        description: `Wallet debited ₹${expenseAmount} for expense claim by ${getFullName(req.admin.employeeInfo)}`
       });
 
       walletTransactionData = { previous: currentWalletBalance, current: balanceAfter, deducted: expenseAmount };
-    } 
+    }
     // Admin/Owner wallet deduction
     else if (shouldDeductFromWallet && (req.admin.role === 'admin' || req.admin.role === 'owner')) {
       const targetEmployee = await User.findOne({
@@ -580,7 +591,8 @@ exports.claimExpense = async (req, res, next) => {
         eventType: WALLET_DEBITED,
         actionDone: ACTIONS.update,
         oldData: { expenseId: newExpense._id, plantId, balance: employeeWalletBalance },
-        newData: { balance: balanceAfter, deducted: expenseAmount }
+        newData: { balance: balanceAfter, deducted: expenseAmount },
+        description: `Admin debited ₹${expenseAmount} from employee wallet for expense claim by ${getFullName(req.admin.employeeInfo)}`
       });
 
       walletTransactionData = {
@@ -599,6 +611,9 @@ exports.claimExpense = async (req, res, next) => {
     const employeeNameForEmail = employeeForEmail?.name || employeeForEmail?.employeeCode || 'N/A';
     const employeeEmailForEmail = employeeForEmail?.email || '';
 
+    // Define expense link for reuse
+    const expenseLink = `${baseUrl}/expenses/${newExpense._id}`;
+
     // Employee Email
     const emailHtmlEmployee = generateMasterTemplate({
       event_name: expenseTemplate.expenseClaimCreated.event_name,
@@ -607,15 +622,13 @@ exports.claimExpense = async (req, res, next) => {
         req.admin.role === 'employee'
           ? 'You submitted an expense claim.'
           : 'An expense claim has been submitted on your behalf by admin.',
-      notes: `Expense ID: ${newExpense._id}<br/>Amount: ₹${expenseAmount}<br/>Category: ${category}${
-        subCategory ? ` (${subCategory})` : ''
-      }<br/>Date: ${new Date().toLocaleString()}<br/>Wallet Deducted: ${
-        shouldDeductFromWallet ? 'Yes' : 'No'
-      }`,
-        actionbutton_text: expenseTemplate.expenseClaimCreated.actionbutton_text,
-        actionlink: expenseTemplate.expenseClaimCreated.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
-        fallback_note: expenseTemplate.expenseClaimCreated.fallback_note,
-        action_link: expenseTemplate.expenseClaimCreated.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+      notes: `Expense ID: ${newExpense._id}<br/>Amount: ₹${expenseAmount}<br/>Category: ${category}${subCategory ? ` (${subCategory})` : ''
+        }<br/>Date: ${new Date().toLocaleString()}<br/>Wallet Deducted: ${shouldDeductFromWallet ? 'Yes' : 'No'
+        }`,
+      actionbutton_text: expenseTemplate.expenseClaimCreated.actionbutton_text,
+      actionlink: expenseLink,
+      fallback_note: expenseTemplate.expenseClaimCreated.fallback_note,
+      action_link: expenseLink,
     });
 
     if (employeeEmailForEmail) {
@@ -628,15 +641,13 @@ exports.claimExpense = async (req, res, next) => {
         event_name: expenseTemplate.expenseClaimCreated.event_name,
         action: expenseTemplate.expenseClaimCreated.action,
         message_intro: `You have submitted an expense claim successfully.`,
-        notes: `Expense ID: ${newExpense._id}<br/>Employee: ${employeeNameForEmail}<br/>Amount: ₹${expenseAmount}<br/>Category: ${category}${
-          subCategory ? ` (${subCategory})` : ''
-        }<br/>Date: ${new Date().toLocaleString()}<br/>Wallet Deducted: ${
-          shouldDeductFromWallet ? 'Yes' : 'No'
-        }`,
+        notes: `Expense ID: ${newExpense._id}<br/>Employee: ${employeeNameForEmail}<br/>Amount: ₹${expenseAmount}<br/>Category: ${category}${subCategory ? ` (${subCategory})` : ''
+          }<br/>Date: ${new Date().toLocaleString()}<br/>Wallet Deducted: ${shouldDeductFromWallet ? 'Yes' : 'No'
+          }`,
         actionbutton_text: expenseTemplate.expenseClaimCreated.actionbutton_text,
-        actionlink: expenseTemplate.expenseClaimCreated.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+        actionlink: expenseLink,
         fallback_note: expenseTemplate.expenseClaimCreated.fallback_note,
-        action_link: expenseTemplate.expenseClaimCreated.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+        action_link: expenseLink,
       });
 
       if (req.admin.email) {
@@ -650,8 +661,8 @@ exports.claimExpense = async (req, res, next) => {
         shouldDeductFromWallet && req.admin.role === 'employee'
           ? 'Expense submitted and amount deducted from wallet successfully'
           : shouldDeductFromWallet && (req.admin.role === 'admin' || req.admin.role === 'owner')
-          ? `Expense submitted and amount deducted from ${walletTransactionData?.employeeName || 'selected employee'}'s wallet successfully`
-          : 'Expense submitted successfully (no wallet deduction)',
+            ? `Expense submitted and amount deducted from ${walletTransactionData?.employeeName || 'selected employee'}'s wallet successfully`
+            : 'Expense submitted successfully (no wallet deduction)',
     };
 
     if (walletTransactionData) {
@@ -870,7 +881,7 @@ exports.updateExpense = async (req, res) => {
       }).session(session);
 
       if (originalTransaction) {
-        const employee = await User.findById(originalTransaction.employeeId).session(session);
+        const employee = await User.findById(originalTransaction.employeeId).select('name email employeeCode walletBalance').session(session);
         if (employee) {
           const currentBalance = employee.walletBalance || 0;
           const refundAmount = originalTransaction.amount;
@@ -905,6 +916,7 @@ exports.updateExpense = async (req, res) => {
             actionDone: ACTIONS.update,
             oldData: { _id: expenseId, plantId, balance: currentBalance },
             newData: { balance: newBalance, refunded: refundAmount },
+            description: `Wallet refunded ₹${refundAmount} for rejected expense by ${getFullName(req.admin.employeeInfo)}`
           });
 
           expense.walletRefunded = true;
@@ -912,6 +924,7 @@ exports.updateExpense = async (req, res) => {
           // --- EMAILS with button ---
           const employeeEmail = employee.email || '';
           if (employeeEmail) {
+            const walletLink = `${baseUrl}/dashboard/wallet/${expense._id}`;
             const emailHtmlEmployee = generateMasterTemplate({
               company_name: req.admin.companyName,
               user_name: employee.name || employee.employeeCode,
@@ -921,24 +934,25 @@ exports.updateExpense = async (req, res) => {
               message_intro: 'Your wallet has been refunded due to rejected expense claim by Admin.',
               notes: `Expense ID: ${expense._id}<br/>Refund Amount: ${refundAmount}<br/>New Balance: ${newBalance}<br/>Date: ${new Date().toLocaleString()}`,
               actionbutton_text: expenseTemplate.walletRefunded.actionbutton_text || 'View Wallet',
-              actionlink: expenseTemplate.walletRefunded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+              actionlink: walletLink,
               fallback_note: expenseTemplate.walletRefunded.fallback_note,
-              action_link: expenseTemplate.walletRefunded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+              action_link: walletLink,
             });
             sendEmail(employeeEmail, expenseTemplate.walletRefunded.subject, emailHtmlEmployee);
           }
 
           if (req.admin.email) {
+            const walletLink = `${baseUrl}/dashboard/wallet/${expense._id}`;
             const emailHtmlAdmin = generateMasterTemplate({
               event_name: expenseTemplate.walletRefunded.event_name,
               action: expenseTemplate.walletRefunded.action,
               status: expenseTemplate.walletRefunded.status,
               message_intro: "You have processed a wallet refund for an employee's rejected expense claim.",
-              notes: `Expense ID: ${expense._id}<br/>Employee ID: ${employee._id}<br/>Refund Amount: ${refundAmount}<br/>New Balance: ${newBalance}<br/>Date: ${new Date().toLocaleString()}`,
+              notes: `Expense ID: ${expense._id}<br/>Employee Code: ${employee.employeeCode || 'N/A'}<br/>Refund Amount: ${refundAmount}<br/>New Balance: ${newBalance}<br/>Date: ${new Date().toLocaleString()}`,
               actionbutton_text: expenseTemplate.walletRefunded.actionbutton_text || 'View Wallet',
-              actionlink: expenseTemplate.walletRefunded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+              actionlink: walletLink,
               fallback_note: expenseTemplate.walletRefunded.fallback_note,
-              action_link: expenseTemplate.walletRefunded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+              action_link: walletLink,
             });
             sendEmail(req.admin.email, expenseTemplate.walletRefunded.subject, emailHtmlAdmin);
           }
@@ -966,7 +980,11 @@ exports.updateExpense = async (req, res) => {
         actionDone: ACTIONS.update,
         oldData: { expenseId, plantId, files: oldExpenseData.files },
         newData: expense.files,
+        description: `Files uploaded to expense by ${getFullName(req.admin.employeeInfo)}`
       });
+
+      // Define expense link for reuse in file upload emails
+      const expenseLink = `${baseUrl}/expenses/${expense._id}`;
 
       const employeeEmail = expense.employeeId?.email || '';
       if (employeeEmail) {
@@ -976,9 +994,9 @@ exports.updateExpense = async (req, res) => {
           message_intro: 'New file(s) have been uploaded to your expense claim by Admin.',
           notes: `Expense ID: ${expense._id}<br/>Files: ${uploadedUrls.join('<br/>')}<br/>Date: ${new Date().toLocaleString()}`,
           actionbutton_text: expenseTemplate.expenseFileUploaded.actionbutton_text || 'View Files',
-          actionlink: expenseTemplate.expenseFileUploaded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+          actionlink: expenseLink,
           fallback_note: expenseTemplate.expenseFileUploaded.fallback_note,
-          action_link: expenseTemplate.expenseFileUploaded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+          action_link: expenseLink,
         });
         sendEmail(employeeEmail, expenseTemplate.expenseFileUploaded.subject, emailHtml);
       }
@@ -988,11 +1006,11 @@ exports.updateExpense = async (req, res) => {
           event_name: expenseTemplate.expenseFileUploaded.event_name,
           action: expenseTemplate.expenseFileUploaded.action,
           message_intro: "You have uploaded new file(s) to an employee's expense claim.",
-          notes: `Expense ID: ${expense._id}<br/>Files: ${uploadedUrls.join('<br/>')}<br/>Employee ID: ${expense.employeeId}<br/>Date: ${new Date().toLocaleString()}`,
+          notes: `Expense ID: ${expense._id}<br/>Files: ${uploadedUrls.join('<br/>')}<br/>Employee Code: ${expense.employeeId?.employeeCode || 'N/A'}<br/>Date: ${new Date().toLocaleString()}`,
           actionbutton_text: expenseTemplate.expenseFileUploaded.actionbutton_text || 'View Files',
-          actionlink: expenseTemplate.expenseFileUploaded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+          actionlink: expenseLink,
           fallback_note: expenseTemplate.expenseFileUploaded.fallback_note,
-          action_link: expenseTemplate.expenseFileUploaded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+          action_link: expenseLink,
         });
         sendEmail(req.admin.email, expenseTemplate.expenseFileUploaded.subject, emailHtmlAdmin);
       }
@@ -1013,33 +1031,36 @@ exports.updateExpense = async (req, res) => {
         actionDone: ACTIONS.update,
         oldData: null,
         newData: { expenseId, plantId, comment: comment.trim(), commentBy: userId },
+        description: `Comment added to expense by ${getFullName(req.admin.employeeInfo)}`
       });
 
       const employeeEmail = expense.employeeId?.email || '';
       if (employeeEmail) {
+        const expenseLink = `${baseUrl}/expenses/${expense._id}`;
         const emailHtml = generateMasterTemplate({
           event_name: expenseTemplate.expenseCommentAdded.event_name,
           action: expenseTemplate.expenseCommentAdded.action,
           message_intro: 'A new comment has been added to your expense claim by Admin.',
           notes: `Expense ID: ${expense._id}<br/>Comment: ${comment.trim()}<br/>Date: ${new Date().toLocaleString()}`,
           actionbutton_text: expenseTemplate.expenseCommentAdded.actionbutton_text || 'View Expense',
-          actionlink: expenseTemplate.expenseCommentAdded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+          actionlink: expenseLink,
           fallback_note: expenseTemplate.expenseCommentAdded.fallback_note,
-          action_link: expenseTemplate.expenseCommentAdded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+          action_link: expenseLink,
         });
         sendEmail(employeeEmail, expenseTemplate.expenseCommentAdded.subject, emailHtml);
       }
 
       if (req.admin.email) {
+        const expenseLink = `${baseUrl}/expenses/${expense._id}`;
         const emailHtmlAdmin = generateMasterTemplate({
           event_name: expenseTemplate.expenseCommentAdded.event_name,
           action: expenseTemplate.expenseCommentAdded.action,
           message_intro: "You have added a new comment to an employee's expense claim.",
-          notes: `Expense ID: ${expense._id}<br/>Comment: ${comment.trim()}<br/>Employee ID: ${expense.employeeId}<br/>Date: ${new Date().toLocaleString()}`,
+          notes: `Expense ID: ${expense._id}<br/>Comment: ${comment.trim()}<br/>Employee Code: ${expense.employeeId?.employeeCode || 'N/A'}<br/>Date: ${new Date().toLocaleString()}`,
           actionbutton_text: expenseTemplate.expenseCommentAdded.actionbutton_text || 'View Expense',
-          actionlink: expenseTemplate.expenseCommentAdded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+          actionlink: expenseLink,
           fallback_note: expenseTemplate.expenseCommentAdded.fallback_note,
-          action_link: expenseTemplate.expenseCommentAdded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+          action_link: expenseLink,
         });
         sendEmail(req.admin.email, expenseTemplate.expenseCommentAdded.subject, emailHtmlAdmin);
       }
@@ -1064,19 +1085,21 @@ exports.updateExpense = async (req, res) => {
       actionDone: ACTIONS.update,
       oldData: oldExpenseData,
       newData: expense.toObject(),
+      description: `Expense '${expense.category}${expense.subCategory ? ` (${expense.subCategory})` : ''}' updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
     // Expense Updated Email
     if (expense.employeeId?.email) {
+      const expenseLink = `${baseUrl}/expenses/${expense._id}`;
       const emailHtml = generateMasterTemplate({
         event_name: expenseTemplate.expenseUpdated.event_name,
         action: expenseTemplate.expenseUpdated.action,
         message_intro: 'Your expense has been updated by Admin.',
         notes: `Expense ID: ${expense._id}<br/>Updated Fields: ${JSON.stringify(updateFields)}<br/>Date: ${new Date().toLocaleString()}`,
         actionbutton_text: expenseTemplate.expenseUpdated.actionbutton_text || 'View Expense',
-        actionlink: expenseTemplate.expenseUpdated.actionlink?.replace('<EXPENSE_LINK>', `#`),
+        actionlink: expenseLink,
         fallback_note: expenseTemplate.expenseUpdated.fallback_note || 'Having trouble with the button?',
-        action_link: expenseTemplate.expenseUpdated.action_link?.replace('<EXPENSE_LINK>', `#`),
+        action_link: expenseLink,
       });
       sendEmail(expense.employeeId.email, expenseTemplate.expenseUpdated.subject, emailHtml);
     }
@@ -1111,7 +1134,8 @@ exports.addComment = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
-    const expense = await Expense.findOne({ _id: expenseId, companyId });
+    const expense = await Expense.findOne({ _id: expenseId, companyId })
+      .populate({ path: 'employeeId', select: 'employeeCode email name' });
 
     if (!expense) {
       return res.status(404).json({ success: false, message: 'Expense not found or company mismatch' });
@@ -1136,10 +1160,14 @@ exports.addComment = async (req, res) => {
       actionDone: ACTIONS.create,
       oldData: { expenseId, plantId, comments: oldComments },
       newData: updatedExpense.comments,
+      description: `Comment added to expense by ${getFullName(req.admin.employeeInfo)}`
     });
 
-const expenseWithEmployee = await expense.populate('employeeId', 'email name employeeCode');
-const employeeEmail = expenseWithEmployee.employeeId?.email || '';
+    const expenseWithEmployee = await expense.populate('employeeId', 'email name employeeCode');
+    const employeeEmail = expenseWithEmployee.employeeId?.email || '';
+
+    // Define expense link for reuse in comment emails
+    const expenseLink = `${baseUrl}/expenses/${expense._id}`;
 
     if (employeeEmail) {
       const emailHtml = generateMasterTemplate({
@@ -1148,9 +1176,9 @@ const employeeEmail = expenseWithEmployee.employeeId?.email || '';
         message_intro: 'A new comment has been added to your expense claim by Admin.',
         notes: `Expense ID: ${expense._id}<br/>Comment: ${comment.trim()}<br/>Date: ${new Date().toLocaleString()}`,
         actionbutton_text: expenseTemplate.expenseCommentAdded.actionbutton_text,
-        actionlink: expenseTemplate.expenseCommentAdded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+        actionlink: expenseLink,
         fallback_note: expenseTemplate.expenseCommentAdded.fallback_note,
-        action_link: expenseTemplate.expenseCommentAdded.action_link.replace('<APPROVED_REQUEST_LINK>', '#'),
+        action_link: expenseLink,
       });
       sendEmail(employeeEmail, expenseTemplate.expenseCommentAdded.subject, emailHtml);
     }
@@ -1162,11 +1190,11 @@ const employeeEmail = expenseWithEmployee.employeeId?.email || '';
         event_name: expenseTemplate.expenseCommentAdded.event_name,
         action: expenseTemplate.expenseCommentAdded.action,
         message_intro: "You have added a new comment to an employee's expense claim.",
-        notes: `Expense ID: ${expense._id}<br/>Comment: ${comment.trim()}<br/>Employee ID: ${expense.employeeId}<br/>Date: ${new Date().toLocaleString()}`,
+        notes: `Expense ID: ${expense._id}<br/>Comment: ${comment.trim()}<br/>Employee Code: ${expense.employeeId?.employeeCode || 'N/A'}<br/>Date: ${new Date().toLocaleString()}`,
         actionbutton_text: expenseTemplate.expenseCommentAdded.actionbutton_text,
-        actionlink: expenseTemplate.expenseCommentAdded.actionlink.replace('<APPROVED_REQUEST_LINK>', '#'),
+        actionlink: expenseLink,
         fallback_note: expenseTemplate.expenseCommentAdded.fallback_note,
-        action_link: expenseTemplate.expenseCommentAdded.action_link.replace('<APPROVED_REQUEST_LINK>', '#')
+        action_link: expenseLink
       });
       sendEmail(adminEmail, expenseTemplate.expenseCommentAdded.subject, emailHtmlAdmin);
     }
@@ -1253,11 +1281,11 @@ exports.getEmployeeExpenseSummary = async (req, res) => {
             employeeId: employee._id,
             ...(startDate &&
               endDate && {
-                createdAt: {
-                  $gte: new Date(startDate),
-                  $lte: new Date(endDate + 'T23:59:59.999Z'),
-                },
-              }),
+              createdAt: {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate + 'T23:59:59.999Z'),
+              },
+            }),
           })
             .populate('relatedExpenseId', 'category amount status')
             .sort({ createdAt: -1 })
@@ -1447,11 +1475,11 @@ exports.exportEmployeeExpenses = async (req, res) => {
         employeeId,
         ...(startDate &&
           endDate && {
-            createdAt: {
-              $gte: new Date(startDate),
-              $lte: new Date(endDate + 'T23:59:59.999Z'),
-            },
-          }),
+          createdAt: {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate + 'T23:59:59.999Z'),
+          },
+        }),
       })
         .populate('relatedExpenseId', 'category amount')
         .sort({ createdAt: -1 }),

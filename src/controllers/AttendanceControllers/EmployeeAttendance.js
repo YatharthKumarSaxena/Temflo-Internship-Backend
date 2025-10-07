@@ -1,5 +1,4 @@
 const Attendance = require('../../models/AttendanceModels/Attendance');
-const AttendanceRequest = require('../../models/AttendanceModels/AttendanceRequest');
 const moment = require('moment');
 
 const EmployeeAttendance = async (req,res) =>{

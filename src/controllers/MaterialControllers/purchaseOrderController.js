@@ -5,6 +5,10 @@ const PurchaseOrderBooking = require('../../models/MaterialModels/PurchaseOrderB
 const BusinessSegment = require('../../models/appModels/BusinessSegment');
 const CostProfitCenter = require('../../models/appModels/CostProfitCenter');
 const PlantMapping = require('../../models/appModels/PlantMapping');
+const { PURCHASE_ORDER_APPROVED, PURCHASE_ORDER_CREATED, PURCHASE_ORDER_DELETED, PURCHASE_ORDER_REJECTED, PURCHASE_ORDER_SUBMITTED, PURCHASE_ORDER_UPDATED } = require("@/config/activity.enums");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 class PurchaseOrderController {
   // Create new purchase order
@@ -20,7 +24,7 @@ class PurchaseOrderController {
 
       const poData = {
         ...req.body,
-        createdBy: req.user.id,
+        createdBy: req.admin._id,
       };
 
       const purchaseOrder = new PurchaseOrder(poData);
@@ -31,6 +35,22 @@ class PurchaseOrderController {
         .populate('supplier', 'supplierCode supplierName')
         .populate('lineItems.material', 'materialCode materialName measurement basicCost')
         .populate('createdBy', 'name email');
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_purchaseOrder,
+        modelAffected: [MODEL_AFFECTED.model_PurchaseOrder],
+        eventType: PURCHASE_ORDER_CREATED,
+        actionDone: ACTIONS.create,
+        oldData: null, // ✅ Correct for creation
+        newData: purchaseOrder.toObject(), // ✅ Complete snapshot
+        description: `Purchase Order '${purchaseOrder.poCode}' created by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.status(201).json({
         success: true,
@@ -164,7 +184,7 @@ class PurchaseOrderController {
 
       const updateData = {
         ...req.body,
-        updatedBy: req.user.id,
+        updatedBy: req.admin._id,
       };
 
       // If line items are being updated, validate deletion rules
@@ -185,10 +205,24 @@ class PurchaseOrderController {
         }
       }
 
-      const purchaseOrder = await PurchaseOrder.findByIdAndUpdate(req.params.id, updateData, {
-        new: true,
-        runValidators: true,
-      })
+      // Get old data before update
+      const existingRecord = await PurchaseOrder.findById(req.params.id);
+
+      if (!existingRecord) {
+        return res.status(404).json({
+          success: false,
+          message: 'Purchase Order not found',
+        });
+      }
+
+      // Store original data before modification
+      const originalData = existingRecord.toObject();
+
+      // Update using save method to avoid extra DB calls
+      Object.assign(existingRecord, updateData);
+      await existingRecord.save();
+
+      const populatedPO = await PurchaseOrder.findById(existingRecord._id)
         .populate('plant', 'plantName plantCode')
         .populate('supplier', 'supplierCode supplierName')
         .populate('lineItems.material', 'materialCode materialName measurement basicCost')
@@ -196,17 +230,26 @@ class PurchaseOrderController {
         .populate('updatedBy', 'name email')
         .populate('approvalHistory.approver', 'name email');
 
-      if (!purchaseOrder) {
-        return res.status(404).json({
-          success: false,
-          message: 'Purchase Order not found',
-        });
-      }
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_purchaseOrder,
+        modelAffected: [MODEL_AFFECTED.model_PurchaseOrder],
+        eventType: PURCHASE_ORDER_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData: originalData, // ✅ Original data before update
+        newData: existingRecord.toObject(), // ✅ Complete snapshot after update
+        description: `Purchase Order '${existingRecord.poCode}' updated by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
         message: 'Purchase Order updated successfully',
-        data: purchaseOrder,
+        data: populatedPO,
       });
     } catch (error) {
       if (error.code === 11000) {
@@ -260,9 +303,8 @@ class PurchaseOrderController {
           lineItemIndex,
           material: lineItem.material,
           netBookingAmount,
-          message: `Cannot delete line item ${
-            lineItemIndex + 1
-          }. Net booking amount (${netBookingAmount}) is greater than 0.`,
+          message: `Cannot delete line item ${lineItemIndex + 1
+            }. Net booking amount (${netBookingAmount}) is greater than 0.`,
         });
       }
     }
@@ -281,7 +323,7 @@ class PurchaseOrderController {
   // Delete purchase order
   async deletePurchaseOrder(req, res) {
     try {
-      const purchaseOrder = await PurchaseOrder.findByIdAndDelete(req.params.id);
+      const purchaseOrder = await PurchaseOrder.findById(req.params.id);
 
       if (!purchaseOrder) {
         return res.status(404).json({
@@ -289,6 +331,28 @@ class PurchaseOrderController {
           message: 'Purchase Order not found',
         });
       }
+
+      // Get old data before delete
+      const oldData = purchaseOrder.toObject();
+
+      // Hard delete (not soft delete)
+      await PurchaseOrder.findByIdAndDelete(req.params.id);
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_purchaseOrder,
+        modelAffected: [MODEL_AFFECTED.model_PurchaseOrder],
+        eventType: PURCHASE_ORDER_DELETED,
+        actionDone: ACTIONS.delete,
+        oldData: oldData, // ✅ Complete snapshot before delete
+        newData: null, // ✅ Hard delete - null as per requirement
+        description: `Purchase Order '${oldData.poCode}' deleted by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
@@ -318,6 +382,9 @@ class PurchaseOrderController {
         });
       }
 
+      // Store original data before status change
+      const originalData = purchaseOrder.toObject();
+
       purchaseOrder.status = 'pending';
       await purchaseOrder.save();
 
@@ -326,6 +393,22 @@ class PurchaseOrderController {
         .populate('supplier', 'supplierCode supplierName')
         .populate('lineItems.material', 'materialCode materialName measurement basicCost')
         .populate('createdBy', 'name email');
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_purchaseOrder,
+        modelAffected: [MODEL_AFFECTED.model_PurchaseOrder],
+        eventType: PURCHASE_ORDER_SUBMITTED,
+        actionDone: ACTIONS.update,
+        oldData: originalData, // ✅ Original data before status change
+        newData: purchaseOrder.toObject(), // ✅ Complete snapshot after status change
+        description: `Purchase Order '${purchaseOrder.poCode}' submitted for approval by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
@@ -366,9 +449,12 @@ class PurchaseOrderController {
         });
       }
 
+      // Store original data before approval change
+      const originalData = purchaseOrder.toObject();
+
       // Add approval history
       purchaseOrder.approvalHistory.push({
-        approver: req.user.id,
+        approver: req.admin._id,
         action,
         comments,
         approvedAt: new Date(),
@@ -383,6 +469,23 @@ class PurchaseOrderController {
         .populate('lineItems.material', 'materialCode materialName measurement basicCost')
         .populate('createdBy', 'name email')
         .populate('approvalHistory.approver', 'name email');
+
+      // ---- ACTIVITY TRACKER ----
+      const eventType = action === 'approved' ? PURCHASE_ORDER_APPROVED : PURCHASE_ORDER_REJECTED;
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_purchaseOrder,
+        modelAffected: [MODEL_AFFECTED.model_PurchaseOrder],
+        eventType: eventType,
+        actionDone: ACTIONS.update,
+        oldData: originalData, // ✅ Original data before approval
+        newData: purchaseOrder.toObject(), // ✅ Complete snapshot after approval
+        description: `Purchase Order '${purchaseOrder.poCode}' ${action} by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,

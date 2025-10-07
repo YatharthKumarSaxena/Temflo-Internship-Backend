@@ -1,5 +1,9 @@
 const VerificationConfig = require('../../models/MaterialModels/VerificationConfigModel');
 const { catchErrors } = require('@/handlers/errorHandlers');
+const { MAKER_CHECKER_CONFIG_CREATED, MAKER_CHECKER_CONFIG_UPDATED, VERIFICATION_CONFIG_CREATED, VERIFICATION_CONFIG_UPDATED,  VERIFICATION_CONFIG_RESET, VERIFICATION_REQUIREMENTS_UPDATED } = require("@/config/activity.enums");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 class VerificationConfigController {
   /**
@@ -16,7 +20,7 @@ class VerificationConfigController {
 
       if (!config) {
         // Return default configuration if none exists
-        const defaultConfig = this.getDefaultConfig(req.admin.companyId, req.user.id);
+        const defaultConfig = this.getDefaultConfig(req.admin.companyId, req.admin._id);
         return res.json({
           success: true,
           data: defaultConfig,
@@ -41,7 +45,7 @@ class VerificationConfigController {
       const configData = {
         ...req.body,
         companyId: req.admin.companyId,
-        updatedBy: req.user.id,
+        updatedBy: req.admin._id,
       };
 
       // Remove fields that shouldn't be updated
@@ -61,10 +65,27 @@ class VerificationConfigController {
       );
 
       // If this is a new config, set the createdBy field
-      if (!config.createdBy) {
-        config.createdBy = req.user.id;
+      const isNewConfig = !config.createdBy;
+      if (isNewConfig) {
+        config.createdBy = req.admin._id;
         await config.save();
       }
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_verificationConfig,
+        modelAffected: [MODEL_AFFECTED.model_VerificationConfig],
+        eventType: isNewConfig ? VERIFICATION_CONFIG_CREATED : VERIFICATION_CONFIG_UPDATED,
+        actionDone: isNewConfig ? ACTIONS.create : ACTIONS.update,
+        oldData: isNewConfig ? null : req.body, // ✅ Configuration data before update
+        newData: config.toObject(), // ✅ Complete snapshot after update
+        description: `Verification configuration ${isNewConfig ? 'created' : 'updated'} by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
@@ -81,7 +102,10 @@ class VerificationConfigController {
    */
   resetVerificationConfig = async (req, res) => {
     try {
-      const defaultConfig = this.getDefaultConfig(req.admin.companyId, req.user.id);
+      const defaultConfig = this.getDefaultConfig(req.admin.companyId, req.admin._id);
+
+      // Store original data before reset
+      const originalConfig = await VerificationConfig.findOne({ companyId: req.admin.companyId });
 
       const config = await VerificationConfig.findOneAndUpdate(
         { companyId: req.admin.companyId },
@@ -93,6 +117,22 @@ class VerificationConfigController {
           runValidators: true,
         }
       );
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_verificationConfig,
+        modelAffected: [MODEL_AFFECTED.model_VerificationConfig],
+        eventType: VERIFICATION_CONFIG_RESET,
+        actionDone: ACTIONS.update,
+        oldData: originalConfig ? originalConfig.toObject() : null, // ✅ Original configuration before reset
+        newData: config.toObject(), // ✅ Complete snapshot after reset
+        description: `Verification configuration reset to defaults by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
@@ -117,7 +157,7 @@ class VerificationConfigController {
       });
 
       if (!config) {
-        const defaultConfig = this.getDefaultConfig(req.admin.companyId, req.user.id);
+        const defaultConfig = this.getDefaultConfig(req.admin.companyId, req.admin._id);
         return res.json({
           success: true,
           data: defaultConfig.verificationRequirements[type] || null,
@@ -149,13 +189,29 @@ class VerificationConfigController {
         // Create new config with this requirement
         const newConfig = new VerificationConfig({
           companyId: req.admin.companyId,
-          createdBy: req.user.id,
-          updatedBy: req.user.id,
+          createdBy: req.admin._id,
+          updatedBy: req.admin._id,
           verificationRequirements: {
             [type]: requirements,
           },
         });
         await newConfig.save();
+
+        // ---- ACTIVITY TRACKER ----
+        activityTracker({
+          userId: req.admin._id,
+          companyId: req.admin.companyId,
+          plantId: req.admin.plantId || null,
+          module: MODULE.material,
+          subModuleAffected: null,
+          fileAffected: FILE.file_verificationConfig,
+          modelAffected: [MODEL_AFFECTED.model_VerificationConfig],
+          eventType: VERIFICATION_CONFIG_CREATED,
+          actionDone: ACTIONS.create,
+          oldData: null, // ✅ No previous data for new config
+          newData: newConfig.toObject(), // ✅ Complete snapshot of new config
+          description: `Verification requirements for '${type}' created by ${getFullName(req.admin.employeeInfo)}`
+        });
 
         return res.json({
           success: true,
@@ -164,10 +220,29 @@ class VerificationConfigController {
         });
       }
 
+      // Store original data before update
+      const originalData = config.toObject();
+
       // Update existing config
       config.verificationRequirements[type] = requirements;
-      config.updatedBy = req.user.id;
+      config.updatedBy = req.admin._id;
       await config.save();
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_verificationConfig,
+        modelAffected: [MODEL_AFFECTED.model_VerificationConfig],
+        eventType: VERIFICATION_REQUIREMENTS_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData: originalData, // ✅ Original config before requirements update
+        newData: config.toObject(), // ✅ Complete snapshot after requirements update
+        description: `Verification requirements for '${type}' updated by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
@@ -190,7 +265,7 @@ class VerificationConfigController {
       });
 
       if (!config) {
-        const defaultConfig = this.getDefaultConfig(req.admin.companyId, req.user.id);
+        const defaultConfig = this.getDefaultConfig(req.admin.companyId, req.admin._id);
         return res.json({
           success: true,
           data: defaultConfig.makerCheckerConfig,
@@ -213,11 +288,15 @@ class VerificationConfigController {
     try {
       const makerCheckerConfig = req.body;
 
+      // Store original data before update
+      const originalConfig = await VerificationConfig.findOne({ companyId: req.admin.companyId });
+      const isNewConfig = !originalConfig;
+
       const config = await VerificationConfig.findOneAndUpdate(
         { companyId: req.admin.companyId },
         {
           makerCheckerConfig,
-          updatedBy: req.user.id,
+          updatedBy: req.admin._id,
         },
         {
           upsert: true,
@@ -226,6 +305,22 @@ class VerificationConfigController {
           runValidators: true,
         }
       );
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.material,
+        subModuleAffected: null,
+        fileAffected: FILE.file_verificationConfig,
+        modelAffected: [MODEL_AFFECTED.model_VerificationConfig],
+        eventType: isNewConfig ? MAKER_CHECKER_CONFIG_CREATED : MAKER_CHECKER_CONFIG_UPDATED,
+        actionDone: isNewConfig ? ACTIONS.create : ACTIONS.update,
+        oldData: originalConfig ? originalConfig.toObject() : null, // ✅ Original config before maker-checker update
+        newData: config.toObject(), // ✅ Complete snapshot after maker-checker update
+        description: `Maker-checker configuration ${isNewConfig ? 'created' : 'updated'} by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
@@ -248,7 +343,7 @@ class VerificationConfigController {
       const checkers = await User.find({
         companyId: req.admin.companyId,
         status: 'active',
-        _id: { $ne: req.user.id }, // Exclude current user (maker) from checker list
+        _id: { $ne: req.admin._id }, // Exclude current user (maker) from checker list
       })
         .select('_id name email role department')
         .sort({ name: 1 });

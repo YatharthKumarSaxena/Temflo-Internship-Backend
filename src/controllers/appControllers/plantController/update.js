@@ -52,6 +52,13 @@ const update = async (Model, req, res) => {
     const oldEmail = oldPlant.email;
     const newEmail = updateData.email;
 
+    const plantDetails = `
+    Plant Code: ${oldPlant.plantCode || "N/A"}
+    Name      : ${oldPlant.name || "N/A"}
+    Address   : ${oldPlant.address || "N/A"}, ${oldPlant.city || "N/A"}, ${oldPlant.state || "N/A"} - ${oldPlant.postalCode || "N/A"}, ${oldPlant.country || "N/A"}
+    Phone     : ${oldPlant.phone || "N/A"}
+    Email     : ${oldPlant.email || "N/A"}`;
+
     if (oldEmail && newEmail && oldEmail !== newEmail) {
       try {
         const User = mongoose.model("User");
@@ -65,11 +72,12 @@ const update = async (Model, req, res) => {
         if (newEmail) {
           sendEmail(
             newEmail,
-            appTemplate.plantCreation.subject,
+            appTemplate.plantUpdation.subject,
             generateMasterTemplate({
-              ...appTemplate.plantCreation,
-              user_name: updateData.name,
+              ...appTemplate.plantUpdation,
+              user_name: "User",
               message_intro: `A plant has been updated using your Email ID for the company ${req.admin.name}`,
+              notes: plantDetails
             })
           );
         }
@@ -78,11 +86,12 @@ const update = async (Model, req, res) => {
         if (owner) {
           sendEmail(
             owner.email,
-            appTemplate.plantCreation.subject,
+            appTemplate.plantUpdation.subject,
             generateMasterTemplate({
-              ...appTemplate.plantCreation,
-              user_name: getFullName(owner.name),
+              ...appTemplate.plantUpdation,
+              user_name: getFullName(owner.employeeInfo),
               message_intro: `A plant with email '${oldEmail}' was updated to '${newEmail}' for company ${req.admin.name}`,
+              notes: plantDetails
             })
           );
         }

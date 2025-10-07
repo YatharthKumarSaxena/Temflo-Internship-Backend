@@ -65,16 +65,16 @@ const create = async (Model, req, res) => {
       eventType: BUSINESS_AREA_CREATED,
       actionDone: ACTIONS.create,
       description: `Business Area created by ${getFullName(req.admin.employeeInfo)} for Company ID: ${req.admin.companyId}`,
-      oldData: null,   // abhi optional rakha hai
-      newData: result  // abhi ke liye add kar diya
+      oldData: null, // ✅ Correct for creation
+      newData: result.toObject() // ✅ Complete snapshot
     });
-    
-  // Returning successful response
-  return res.status(200).json({
-    success: true,
-    result,
-    message: 'Successfully Created the document in Model ',
-  });
+
+    // Returning successful response
+    return res.status(201).json({
+      success: true,
+      result,
+      message: 'Successfully added the Business Area',
+    });
   } catch (err) {
     return res.status(500).json({
       success: false,

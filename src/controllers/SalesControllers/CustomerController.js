@@ -1,5 +1,9 @@
 const Customer = require('../../models/SalesModels/CustomerModel');
 const { indianStates, countries, pinCodeValidation } = require('../../config/indianStates');
+const { CUSTOMER_APPROVED, CUSTOMER_CREATED, CUSTOMER_DELETED, CUSTOMER_CHECKER_ASSIGNED, CUSTOMER_REJECTED, CUSTOMER_UPDATED } = require("@/config/activity.enums");
+const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
+const { activityTracker } = require("@/utils/activityTracker");
+const { getFullName } = require("@/utils/commonFunctions");
 
 class CustomerController {
   // Validate mandatory documents based on business rules
@@ -33,15 +37,15 @@ class CustomerController {
     try {
       console.log('📥 Customer creation request received:', {
         body: req.body,
-        user: req.user?.id,
+        user: req.admin._id,
         admin: req.admin?.companyId,
       });
 
       const customerData = {
         ...req.body,
         companyId: req.admin.companyId,
-        createdBy: req.user.id,
-        enteredBy: req.user.id,
+        createdBy: req.admin._id,
+        enteredBy: req.admin._id,
         status: 'active',
       };
 
@@ -68,13 +72,13 @@ class CustomerController {
 
       // Initialize maker-checker default state
       customerData.makerChecker = {
-        maker: req.user.id,
+        maker: req.admin._id,
         checker: req.body.makerChecker?.checker || undefined,
       };
       // Enforce maker-checker separation
       if (
         customerData.makerChecker.checker &&
-        customerData.makerChecker.checker.toString() === req.user.id.toString()
+        customerData.makerChecker.checker.toString() === req.admin._id.toString()
       ) {
         return res.status(400).json({
           success: false,
@@ -87,6 +91,22 @@ class CustomerController {
       console.log('💾 Saving customer to database...');
       await customer.save();
       console.log('✅ Customer saved successfully:', customer._id);
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.sales,
+        subModuleAffected: null,
+        fileAffected: FILE.file_customer,
+        modelAffected: [MODEL_AFFECTED.model_customer],
+        eventType: CUSTOMER_CREATED,
+        actionDone: ACTIONS.create,
+        oldData: null,
+        newData: customer.toObject(),
+        description: `Customer '${customer.customerCode}' created by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.status(201).json({
         success: true,
@@ -157,16 +177,19 @@ class CustomerController {
       }
       if (
         checkerId &&
-        req.user.id &&
-        req.user.id.toString() === customer.makerChecker?.maker?.toString()
+        req.admin._id &&
+        req.admin._id.toString() === customer.makerChecker?.maker?.toString()
       ) {
         // Maker is assigning – still fine as long as checker != maker; already checked above
       }
 
+      // Store original data before checker assignment
+      const originalData = customer.toObject();
+
       customer.makerChecker.checker = checkerId;
-      customer.makerChecker.checkerAssignedBy = req.user.id;
+      customer.makerChecker.checkerAssignedBy = req.admin._id;
       customer.makerChecker.checkerAssignedAt = new Date();
-      customer.updatedBy = req.user.id;
+      customer.updatedBy = req.admin._id;
 
       // Move to pending state if currently draft
       if (customer.approvalStatus === 'draft') {
@@ -174,6 +197,22 @@ class CustomerController {
       }
 
       await customer.save();
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.sales,
+        subModuleAffected: null,
+        fileAffected: FILE.file_customer,
+        modelAffected: [MODEL_AFFECTED.model_customer],
+        eventType: CUSTOMER_CHECKER_ASSIGNED,
+        actionDone: ACTIONS.update,
+        oldData: originalData,
+        newData: customer.toObject(),
+        description: `Checker assigned for customer '${customer.customerCode}' by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({ success: true, data: customer, message: 'Checker assigned successfully' });
     } catch (error) {
@@ -217,24 +256,44 @@ class CustomerController {
       }
 
       // Only the checker can take action
-      if (customer.makerChecker.checker.toString() !== req.user.id.toString()) {
+      if (customer.makerChecker.checker.toString() !== req.admin._id.toString()) {
         return res.status(403).json({ success: false, message: 'Not authorized' });
       }
+
+      // Store original data before checker action
+      const originalData = customer.toObject();
 
       customer.makerChecker.checkerAction = action;
       customer.makerChecker.checkerActionAt = new Date();
       customer.makerChecker.checkerComments = comments;
-      customer.updatedBy = req.user.id;
+      customer.updatedBy = req.admin._id;
 
       customer.approvalStatus = action === 'approved' ? 'approved' : 'rejected';
       customer.approvalHistory.push({
-        approver: req.user.id,
+        approver: req.admin._id,
         action,
         comments,
         approvedAt: new Date(),
       });
 
       await customer.save();
+
+      // ---- ACTIVITY TRACKER ----
+      const eventType = action === 'approved' ? CUSTOMER_APPROVED : CUSTOMER_REJECTED;
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.sales,
+        subModuleAffected: null,
+        fileAffected: FILE.file_customer,
+        modelAffected: [MODEL_AFFECTED.model_customer],
+        eventType: eventType,
+        actionDone: ACTIONS.update,
+        oldData: originalData,
+        newData: customer.toObject(),
+        description: `Customer '${customer.customerCode}' ${action} by checker ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({ success: true, data: customer, message: `Customer ${action} successfully` });
     } catch (error) {
@@ -356,10 +415,22 @@ class CustomerController {
   // Update customer
   async updateCustomer(req, res) {
     try {
+      // Find existing customer first for activity tracking
+      const existingCustomer = await Customer.findById(req.params.id);
+      if (!existingCustomer) {
+        return res.status(404).json({
+          success: false,
+          message: 'Customer not found',
+        });
+      }
+
+      // Store original data before update
+      const originalData = existingCustomer.toObject();
+
       const customerData = {
         ...req.body,
-        updatedBy: req.user.id,
-        lastChangeBy: req.user.id,
+        updatedBy: req.admin._id,
+        lastChangeBy: req.admin._id,
         lastChangeDate: new Date(),
       };
 
@@ -385,12 +456,21 @@ class CustomerController {
         runValidators: true,
       });
 
-      if (!customer) {
-        return res.status(404).json({
-          success: false,
-          message: 'Customer not found',
-        });
-      }
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.sales,
+        subModuleAffected: null,
+        fileAffected: FILE.file_customer,
+        modelAffected: [MODEL_AFFECTED.model_customer],
+        eventType: CUSTOMER_UPDATED,
+        actionDone: ACTIONS.update,
+        oldData: originalData,
+        newData: customer.toObject(),
+        description: `Customer '${customer.customerCode}' updated by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
@@ -421,23 +501,44 @@ class CustomerController {
   // Delete customer (soft delete)
   async deleteCustomer(req, res) {
     try {
-      const customer = await Customer.findByIdAndUpdate(
-        req.params.id,
-        {
-          status: 'inactive',
-          updatedBy: req.user.id,
-          lastChangeBy: req.user.id,
-          lastChangeDate: new Date(),
-        },
-        { new: true }
-      );
-
-      if (!customer) {
+      // Find existing customer first for activity tracking
+      const existingCustomer = await Customer.findById(req.params.id);
+      if (!existingCustomer) {
         return res.status(404).json({
           success: false,
           message: 'Customer not found',
         });
       }
+
+      // Store original data before deletion
+      const originalData = existingCustomer.toObject();
+
+      const customer = await Customer.findByIdAndUpdate(
+        req.params.id,
+        {
+          status: 'inactive',
+          updatedBy: req.admin._id,
+          lastChangeBy: req.admin._id,
+          lastChangeDate: new Date(),
+        },
+        { new: true }
+      );
+
+      // ---- ACTIVITY TRACKER ----
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.sales,
+        subModuleAffected: null,
+        fileAffected: FILE.file_customer,
+        modelAffected: [MODEL_AFFECTED.model_customer],
+        eventType: CUSTOMER_DELETED,
+        actionDone: ACTIONS.delete,
+        oldData: originalData,
+        newData: { status: 'inactive', lastChangeDate: customer.lastChangeDate, notes: "Note: Soft deletion is done all other fields are same as Old Data" }, // Soft delete pattern
+        description: `Customer '${originalData.customerCode}' deleted by ${getFullName(req.admin.employeeInfo)}`
+      });
 
       res.json({
         success: true,
