@@ -14,8 +14,8 @@ const readW = async (req, res) => {
         companyId: req.admin.companyId,
         removed: false, // Only active memberships
       });
-      
-      if (projectIds.length > 0 ) {
+
+      if (projectIds.length > 0) {
         const projects = [];
         projectIds.map(async (project) => {
           const projectId = project.projectId;
@@ -28,8 +28,8 @@ const readW = async (req, res) => {
         });
 
         if (projects.length == 0) {
-          return res.status(404).json({
-            success: false,
+          return res.status(200).json({
+            success: true,
             projects: null,
             message: 'No Projects found',
           });
@@ -41,8 +41,8 @@ const readW = async (req, res) => {
           });
         }
       } else {
-        return res.status(404).json({
-          success: false,
+        return res.status(200).json({
+          success: true,
           projects: null,
           message: 'No Projects found',
         });
