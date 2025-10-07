@@ -21,8 +21,8 @@ const readP = async (req, res) => {
         });
 
         if (!project) {
-          return res.status(404).json({
-            success: false,
+          return res.status(200).json({
+            success: true,
             project: null,
             message: 'No Project found',
           });
@@ -34,8 +34,8 @@ const readP = async (req, res) => {
           });
         }
       } else {
-        return res.status(404).json({
-          success: false,
+        return res.status(200).json({
+          success: true,
           project: null,
           message: 'No Project found',
         });

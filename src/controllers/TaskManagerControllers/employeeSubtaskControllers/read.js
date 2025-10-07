@@ -13,7 +13,7 @@ const read = async (req, res) => {
         companyId: req.admin.companyId,
         removed: false, // Only active memberships
       });
-      
+
       if (response) {
         const subtasks = [];
         response.map(async (project) => {
@@ -27,8 +27,8 @@ const read = async (req, res) => {
         });
 
         if (subtasks.length == 0) {
-          return res.status(404).json({
-            success: false,
+          return res.status(200).json({
+            success: true,
             subtasks: null,
             message: 'No Subtasks found',
           });
@@ -40,8 +40,8 @@ const read = async (req, res) => {
           });
         }
       } else {
-        return res.status(404).json({
-          success: false,
+        return res.status(200).json({
+          success: true,
           subtasks: null,
           message: 'No Subtasks found',
         });

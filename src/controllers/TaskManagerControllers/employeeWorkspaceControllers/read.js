@@ -22,8 +22,8 @@ const read = async (req, res) => {
     });
 
     if (!workspaceIds || workspaceIds.length === 0) {
-      return res.status(404).json({
-        success: false,
+      return res.status(200).json({
+        success: true,
         workspaces: [],
         message: 'No Workspaces found',
       });
