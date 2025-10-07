@@ -51,7 +51,8 @@
     "shortid": "^2.2.16",
     "transliteration": "^2.3.5",
     "uuid": "^11.1.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zeptomail": "^6.2.1"
   },
   "devDependencies": {
     "nodemon": "3.0.1"
