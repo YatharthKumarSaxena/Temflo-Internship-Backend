@@ -45,6 +45,33 @@ function modelController() {
     }
   };
 
+  methods.assignedPlant = async (req, res) => {
+    try {
+      const { featureName } = req.params;
+
+      if (!featureName) {
+        return res.status(400).json({ message: 'featureName is required' });
+      }
+
+      // Find all permissions where the employee has the feature and populate plant
+      const permissions = await Model.find({
+        employeeId: req.admin.id,
+        'features.featureName': featureName,
+      }).populate({
+        path: 'plantId',
+        select: 'name _id', // select only name and _id
+      });
+
+      // Extract plant info
+      const plants = permissions.map(p => p.plantId).filter(Boolean); // remove nulls
+
+      res.json({ success: true, result: plants });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ success: false, message: 'Internal Server error' });
+    }
+  }
+
   return methods;
 }
 

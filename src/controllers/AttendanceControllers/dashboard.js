@@ -146,10 +146,11 @@ exports.getAttendanceRequests = async (req, res) => {
       const formattedData = data.map((user) => ({
         userId: user
           ? {
-              email: user.email,
-              employeeCode: user.employeeCode,
-              name: user.name,
-            }
+            _id: user._id,
+            email: user.email,
+            employeeCode: user.employeeCode,
+            name: user.name,
+          }
           : null,
         companyId: user.companyId,
         status: 'notMarked',
