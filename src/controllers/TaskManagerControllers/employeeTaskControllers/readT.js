@@ -14,8 +14,8 @@ const readT = async (req, res) => {
       });
 
       if (!task) {
-        return res.status(404).json({
-          success: false,
+        return res.status(200).json({
+          success: true,
           task: null,
           message: 'No Task found',
         });
@@ -35,8 +35,8 @@ const readT = async (req, res) => {
           message: 'We found this Task',
         });
       } else {
-        return res.status(404).json({
-          success: false,
+        return res.status(200).json({
+          success: true,
           task: null,
           message: 'No Task found',
         });

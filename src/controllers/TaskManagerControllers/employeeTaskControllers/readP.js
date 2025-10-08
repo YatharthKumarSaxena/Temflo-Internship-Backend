@@ -23,8 +23,8 @@ const readP = async (req, res) => {
         });
 
         if (tasks.length == 0) {
-          return res.status(404).json({
-            success: false,
+          return res.status(200).json({
+            success: true,
             tasks: null,
             message: 'No Tasks found',
           });
@@ -36,8 +36,8 @@ const readP = async (req, res) => {
           });
         }
       } else {
-        return res.status(404).json({
-          success: false,
+        return res.status(200).json({
+          success: true,
           tasks: null,
           message: 'No Tasks found',
         });

@@ -21,8 +21,8 @@ const readW = async (req, res) => {
         });
 
         if (!workspace) {
-          return res.status(404).json({
-            success: false,
+          return res.status(200).json({
+            success: true,
             workspace: null,
             message: 'No Workspace found',
           });
@@ -34,8 +34,8 @@ const readW = async (req, res) => {
           });
         }
       } else {
-        return res.status(404).json({
-          success: false,
+        return res.status(200).json({
+          success: true,
           workspaces: null,
           message: 'No Workspace found',
         });

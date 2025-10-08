@@ -14,8 +14,8 @@ const readT = async (req, res) => {
       });
 
       if (!subtask) {
-        return res.status(404).json({
-          success: false,
+        return res.status(200).json({
+          success: true,
           subtask: null,
           message: 'No Subtask found',
         });
@@ -35,8 +35,8 @@ const readT = async (req, res) => {
           message: 'We found this Subtask',
         });
       } else {
-        return res.status(404).json({
-          success: false,
+        return res.status(200).json({
+          success: true,
           subtask: null,
           message: 'No Subtask found',
         });
