@@ -5,7 +5,7 @@ const buildCrud = (Model) => {
         const payload = {
           ...req.body,
           companyId: req.admin.companyId,
-          createdBy: req.user?._id || req.admin?._id,
+          createdBy: req.admin._id,
         };
         const doc = await Model.create(payload);
         return res.status(201).json({ success: true, data: doc });
@@ -44,7 +44,7 @@ const buildCrud = (Model) => {
       try {
         const doc = await Model.findOneAndUpdate(
           { _id: req.params.id, companyId: req.admin.companyId },
-          { ...req.body, updatedBy: req.user?._id || req.admin?._id },
+          { ...req.body, updatedBy: req.admin._id },
           { new: true }
         );
         if (!doc) return res.status(404).json({ success: false, message: 'Not found' });
@@ -58,7 +58,7 @@ const buildCrud = (Model) => {
       try {
         const doc = await Model.findOneAndUpdate(
           { _id: req.params.id, companyId: req.admin.companyId },
-          { removed: true, updatedBy: req.user?._id || req.admin?._id },
+          { removed: true, updatedBy: req.admin._id },
           { new: true }
         );
         if (!doc) return res.status(404).json({ success: false, message: 'Not found' });

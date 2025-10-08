@@ -73,15 +73,18 @@ const update = async (req, res) => {
       description: `Subtask updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
+    // ---- EMAIL INTEGRATION ----
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const subtaskLink = `${baseUrl}subtasks/${subtask._id}`;
+    const assignedUser = await User.findById(subtask.assignedTo);
+
     // 🔹 Email Notifications if assignedTo changed
     if (assignedTo && assignedTo.toString() !== previousAssignedTo?.toString()) {
       // 1️⃣ Email to new assigned user
       if (assignedTo) {
-        const newUser = await User.findById(assignedTo);
-        if (newUser?.email) {
+        if (assignedUser?.email) {
           const html = generateMasterTemplate({
-            company_name: req.admin.companyName,
-            user_name: newUser.name,
+            user_name: getFullName(assignedUser.employeeInfo),
             event_name: taskManagerTemplate.subtaskAssignedToEmployee.event_name,
             action: taskManagerTemplate.subtaskAssignedToEmployee.action,
             status: 'Assigned',
@@ -90,14 +93,14 @@ const update = async (req, res) => {
               Subtask Title: ${subtask.title}<br/>
               Task ID: ${subtask.taskId}<br/>
               Project ID: ${subtask.projectId}<br/>
-              Assigned By: ${req.admin.name}<br/>
+              Assigned By: ${getFullName(req.admin.employeeInfo)}<br/>
               Date: ${new Date().toLocaleString()}
             `,
             actionbutton_text: "View Subtask",
-            actionlink: `http://localhost:3000/tasks/${subtask.taskId}/subtasks/${subtask._id}`,
-            action_link: `http://localhost:3000/tasks/${subtask.taskId}/subtasks/${subtask._id}`
+            actionlink: subtaskLink,
+            action_link: subtaskLink
           });
-          sendEmail(newUser.email, taskManagerTemplate.subtaskAssignedToEmployee.subject, html);
+          sendEmail(assignedUser.email, taskManagerTemplate.subtaskAssignedToEmployee.subject, html);
         }
       }
 
@@ -106,8 +109,7 @@ const update = async (req, res) => {
         const oldUser = await User.findById(previousAssignedTo);
         if (oldUser?.email) {
           const html = generateMasterTemplate({
-            company_name: req.admin.companyName,
-            user_name: oldUser.name,
+            user_name: getFullName(oldUser.employeeInfo),
             event_name: taskManagerTemplate.subtaskRemovedFromEmployee.event_name,
             action: taskManagerTemplate.subtaskRemovedFromEmployee.action,
             status: 'Removed',
@@ -116,7 +118,7 @@ const update = async (req, res) => {
               Subtask Title: ${subtask.title}<br/>
               Task ID: ${subtask.taskId}<br/>
               Project ID: ${subtask.projectId}<br/>
-              Removed By: ${req.admin.name}<br/>
+              Removed By: ${getFullName(req.admin.employeeInfo)}<br/>
               Date: ${new Date().toLocaleString()}
             `
           });
@@ -127,11 +129,9 @@ const update = async (req, res) => {
 
     // 🔹 Email Notifications if a comment is added
     if (comment && subtask.assignedTo) {
-      const assignedUser = await User.findById(subtask.assignedTo);
       if (assignedUser?.email) {
         const html = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: assignedUser.name,
+          user_name: getFullName(assignedUser.employeeInfo),
           event_name: taskManagerTemplate.subtaskCommentAdded.event_name,
           action: taskManagerTemplate.subtaskCommentAdded.action,
           status: 'Comment Added',
@@ -141,14 +141,31 @@ const update = async (req, res) => {
         Task ID: ${subtask.taskId}<br/>
         Project ID: ${subtask.projectId}<br/>
         Comment: ${comment}<br/>
-        Added By: ${req.admin.name}<br/>
+        Added By: ${getFullName(req.admin.employeeInfo)}<br/>
         Date: ${new Date().toLocaleString()}
       `,
           actionbutton_text: "View Subtask",
-          actionlink: `http://localhost:3000/tasks/${subtask.taskId}/subtasks/${subtask._id}`,
-          action_link: `http://localhost:3000/tasks/${subtask.taskId}/subtasks/${subtask._id}`
+          actionlink: subtaskLink,
+          action_link: subtaskLink
         });
         sendEmail(assignedUser.email, taskManagerTemplate.subtaskCommentAdded.subject, html);
+      }
+    }
+
+    // 🔹 Email notification for status change
+    if (status && subtask.assignedTo && oldData.status !== status) {
+      if (assignedUser?.email) {
+        const html = generateMasterTemplate({
+          user_name: getFullName(assignedUser.employeeInfo),
+          event_name: taskManagerTemplate.subtaskStatusUpdated.event_name,
+          action: taskManagerTemplate.subtaskStatusUpdated.action,
+          status: `Status Changed to ${status}`,
+          message_intro: taskManagerTemplate.subtaskStatusUpdated.message_intro,
+          actionbutton_text: taskManagerTemplate.subtaskStatusUpdated.actionbutton_text || "View Subtask",
+          actionlink: subtaskLink,
+          action_link: subtaskLink
+        });
+        sendEmail(assignedUser.email, taskManagerTemplate.subtaskStatusUpdated.subject, html);
       }
     }
 

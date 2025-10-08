@@ -103,26 +103,27 @@ const update = async (req, res) => {
       });
     }
 
+    // ---- EMAIL INTEGRATION ----
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const taskLink = `${baseUrl}tasks/${task._id}`;
+    const newUser = await User.findById(task.assignedTo);
+
     // 🔹 Email logic for assigned/unassigned
     if (assignedTo && String(assignedTo) !== String(previousAssignedTo)) {
       // Email to new assigned user
-      if (assignedTo) {
-        const newUser = await User.findById(assignedTo);
         if (newUser?.email) {
           const html = generateMasterTemplate({
-            company_name: req.admin.companyName,
-            user_name: newUser.name,
+            user_name: getFullName(newUser.employeeInfo),
             event_name: taskManagerTemplate.taskAssignedToEmployee.event_name,
             action: taskManagerTemplate.taskAssignedToEmployee.action,
             status: 'Assigned',
             message_intro: taskManagerTemplate.taskAssignedToEmployee.message_intro,
-            notes: `Task Title: ${task.title}<br/>Assigned By: ${req.admin.name}<br/>Date: ${new Date().toLocaleString()}`,
+            notes: `Task Title: ${task.title}<br/>Assigned By: ${getFullName(req.admin.employeeInfo)}<br/>Date: ${new Date().toLocaleString()}`,
             actionbutton_text: taskManagerTemplate.taskAssignedToEmployee.actionbutton_text,
-            actionlink: `http://localhost:3000/tasks/${task._id}`,
-            action_link: `http://localhost:3000/tasks/${task._id}`
+            actionlink: taskLink,
+            action_link: taskLink
           });
           sendEmail(newUser.email, taskManagerTemplate.taskAssignedToEmployee.subject, html);
-        }
       }
 
       // Email to previous assigned user
@@ -130,13 +131,12 @@ const update = async (req, res) => {
         const oldUser = await User.findById(previousAssignedTo);
         if (oldUser?.email) {
           const html = generateMasterTemplate({
-            company_name: req.admin.companyName,
-            user_name: oldUser.name,
+            user_name: getFullName(oldUser.employeeInfo),
             event_name: taskManagerTemplate.taskUnassignedFromEmployee.event_name,
             action: taskManagerTemplate.taskUnassignedFromEmployee.action,
             status: 'Removed',
             message_intro: taskManagerTemplate.taskUnassignedFromEmployee.message_intro,
-            notes: `Task Title: ${task.title}<br/>Removed By: ${req.admin.name}<br/>Date: ${new Date().toLocaleString()}`
+            notes: `Task Title: ${task.title}<br/>Removed By: ${getFullName(req.admin.employeeInfo)}<br/>Date: ${new Date().toLocaleString()}`
           });
           sendEmail(oldUser.email, taskManagerTemplate.taskUnassignedFromEmployee.subject, html);
         }
@@ -148,18 +148,35 @@ const update = async (req, res) => {
       const assignedUser = await User.findById(task.assignedTo);
       if (assignedUser?.email) {
         const html = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: assignedUser.name,
+          user_name: getFullName(assignedUser.employeeInfo),
           event_name: taskManagerTemplate.taskCommentAdded.event_name,
           action: taskManagerTemplate.taskCommentAdded.action,
           status: 'Comment Added',
           message_intro: taskManagerTemplate.taskCommentAdded.message_intro,
-          notes: `Task Title: ${task.title}<br/>Comment: ${comment}<br/>Added By: ${req.admin.name}<br/>Date: ${new Date().toLocaleString()}`,
+          notes: `Task Title: ${task.title}<br/>Comment: ${comment}<br/>Added By: ${getFullName(req.admin.employeeInfo)}<br/>Date: ${new Date().toLocaleString()}`,
           actionbutton_text: taskManagerTemplate.taskCommentAdded.actionbutton_text || "View Task",
-          actionlink: `http://localhost:3000/tasks/${task._id}`,
-          action_link: `http://localhost:3000/tasks/${task._id}`
+          actionlink: taskLink,
+          action_link: taskLink
         });
         sendEmail(assignedUser.email, taskManagerTemplate.taskCommentAdded.subject, html);
+      }
+    }
+
+    // 🔹 Email notification for status change
+    if (status && task.assignedTo && oldData.status !== status) {
+      if (newUser?.email) {
+        const html = generateMasterTemplate({
+          user_name: getFullName(newUser.employeeInfo),
+          event_name: taskManagerTemplate.taskStatusUpdated.event_name,
+          action: taskManagerTemplate.taskStatusUpdated.action,
+          status: `Status Changed to ${status}`,
+          message_intro: taskManagerTemplate.taskStatusUpdated.message_intro,
+          notes: `Task Title: ${task.title}<br/>New Status: ${status}<br/>Updated By: ${getFullName(req.admin.employeeInfo)}<br/>Date: ${new Date().toLocaleString()}`,
+          actionbutton_text: taskManagerTemplate.taskStatusUpdated.actionbutton_text || "View Task",
+          actionlink: taskLink,
+          action_link: taskLink
+        });
+        sendEmail(newUser.email, taskManagerTemplate.taskStatusUpdated.subject, html);
       }
     }
 

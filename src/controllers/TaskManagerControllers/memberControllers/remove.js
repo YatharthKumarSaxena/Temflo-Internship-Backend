@@ -62,8 +62,7 @@ const remove = async (req, res) => {
     const assignedUser = await User.findById(member.userId);
     if (assignedUser && assignedUser.email) {
       const emailHtml = generateMasterTemplate({
-        company_name: req.admin.companyName,
-        user_name: assignedUser.name,
+        user_name: getFullName(assignedUser.employeeInfo),
         event_name: taskManagerTemplate.employeeRemovedFromProject.event_name,
         action: taskManagerTemplate.employeeRemovedFromProject.action,
         status: 'Removed',
@@ -71,7 +70,7 @@ const remove = async (req, res) => {
         notes: `
           Project ID: ${member.projectId}<br/>
           Task ID: ${member.taskId}<br/>
-          Removed By: ${req.admin.name}<br/>
+          Removed By: ${getFullName(req.admin.employeeInfo)}<br/>
           Date: ${new Date().toLocaleString()}
         `,
         actionbutton_text: "View Projects",

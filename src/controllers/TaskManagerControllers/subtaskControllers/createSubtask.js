@@ -85,8 +85,7 @@ const createSubtask = async (req, res) => {
       const assignedUser = await User.findById(assignedTo);
       if (assignedUser && assignedUser.email) {
         const emailHtml = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: assignedUser.name,
+          user_name: getFullName(assignedUser.employeeInfo),
           event_name: taskManagerTemplate.subtaskAssignedToEmployee.event_name,
           action: taskManagerTemplate.subtaskAssignedToEmployee.action,
           status: 'Assigned',
@@ -95,7 +94,7 @@ const createSubtask = async (req, res) => {
             Subtask Title: ${subtask.title}<br/>
             Task ID: ${task._id}<br/>
             Project ID: ${projectId}<br/>
-            Assigned By: ${req.admin.name}<br/>
+            Assigned By: ${getFullName(req.admin.employeeInfo)}<br/>
             Due Date: ${subtask.dueDate || 'N/A'}<br/>
           `,
           actionbutton_text: "View Subtask",

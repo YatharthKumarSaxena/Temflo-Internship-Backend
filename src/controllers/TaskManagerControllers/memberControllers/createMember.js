@@ -29,10 +29,37 @@ const createMember = async (req, res) => {
     // 2. Check if member already exists
     const prevMember = await Member.findOne({ projectId, userId });
 
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000/';
+    const projectLink = `${baseUrl}projects/${projectId}`;
+
     if (prevMember) {
       if (prevMember.removed === true) {
         prevMember.removed = false;
         await prevMember.save();
+
+        const requestDate = new Date().toLocaleString();
+        const projectDetails = `
+        Project Name: ${project?.name || 'N/A'}<br/>
+        Project ID: ${projectId}<br/>
+        Workspace: ${workspace.name}<br/>
+        Assigned By: ${getFullName(req.admin.employeeInfo)}<br/>
+        Date: ${requestDate}
+      `;
+
+        const emailHtml = generateMasterTemplate({
+          user_name: getFullName(prevMember.employeeInfo),
+          event_name: taskManagerTemplate.employeeAssignedToProject.event_name,
+          action: taskManagerTemplate.employeeAssignedToProject.action,
+          status: 'Assigned',
+          message_intro: `You have been reassigned to this project.`,
+          notes: projectDetails,
+          actionbutton_text: "View Project",
+          actionlink: projectLink,
+          action_link: projectLink
+        });
+
+        sendEmail(prevMember.email, taskManagerTemplate.employeeAssignedToProject.subject, emailHtml);
+
         return res.status(200).json({ success: true, message: 'Previous Member Found, Readded Successfully' });
       }
       return res.status(200).json({ success: true, message: 'Previous Member Found, Cannot Readd' });
@@ -75,21 +102,20 @@ const createMember = async (req, res) => {
         Project Name: ${project?.name || 'N/A'}<br/>
         Project ID: ${projectId}<br/>
         Workspace: ${workspace.name}<br/>
-        Assigned By: ${req.admin.name}<br/>
+        Assigned By: ${getFullName(req.admin.employeeInfo)}<br/>
         Date: ${requestDate}
       `;
 
       const emailHtml = generateMasterTemplate({
-        company_name: req.admin.companyName,
-        user_name: assignedUser.name,
+        user_name: getFullName(assignedUser.employeeInfo),
         event_name: taskManagerTemplate.employeeAssignedToProject.event_name,
         action: taskManagerTemplate.employeeAssignedToProject.action,
         status: 'Assigned',
         message_intro: `You have been assigned to a new project.`,
         notes: projectDetails,
         actionbutton_text: "View Project",
-        actionlink: `http://localhost:3000/projects/${projectId}`,
-        action_link: `http://localhost:3000/projects/${projectId}`
+        actionlink: projectLink,
+        action_link: projectLink
       });
 
       sendEmail(assignedUser.email, taskManagerTemplate.employeeAssignedToProject.subject, emailHtml);

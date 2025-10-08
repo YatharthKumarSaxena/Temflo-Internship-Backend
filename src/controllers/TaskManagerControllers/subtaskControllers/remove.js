@@ -49,17 +49,16 @@ const remove = async (req, res) => {
       const assignedUser = await User.findById(subtask.assignedTo);
       if (assignedUser && assignedUser.email) {
         const emailHtml = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: assignedUser.name,
+          user_name: getFullName(assignedUser.employeeInfo),
           event_name: taskManagerTemplate.subtaskRemovedFromEmployee.event_name,
           action: taskManagerTemplate.subtaskRemovedFromEmployee.action,
           status: 'Removed',
-          message_intro: `A subtask assigned to you has been removed.`,
+          message_intro: `A subtask assigned to you has been removed due to Subtask deletion by Admin.`,
           notes: `
             Subtask Title: ${subtask.title}<br/>
             Task ID: ${subtask.taskId}<br/>
             Project ID: ${subtask.projectId}<br/>
-            Removed By: ${req.admin.name}<br/>
+            Removed By: ${getFullName(req.admin.employeeInfo)}<br/>
             Date: ${new Date().toLocaleString()}
           `
           // ✅ No action button/link sent

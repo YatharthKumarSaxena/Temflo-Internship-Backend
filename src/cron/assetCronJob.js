@@ -27,8 +27,7 @@ function assetCronJobs() {
         try {
             // 1️⃣ Assets expiring in 7 days
             const assets7Days = await Asset.find({
-                expiryDate: { $gte: startOf7DaysLaterUTC, $lte: endOf7DaysLaterUTC },
-                assignedTo: { $ne: null }
+                expiryDate: { $gte: startOf7DaysLaterUTC, $lte: endOf7DaysLaterUTC }
             });
 
             for (const asset of assets7Days) {
@@ -37,8 +36,7 @@ function assetCronJobs() {
 
             // 2️⃣ Assets expiring today
             const assetsToday = await Asset.find({
-                expiryDate: { $gte: startOfTodayUTC, $lte: endOfTodayUTC },
-                assignedTo: { $ne: null }
+                expiryDate: { $gte: startOfTodayUTC, $lte: endOfTodayUTC }
             });
 
             for (const asset of assetsToday) {
@@ -55,8 +53,8 @@ async function sendAssetMail(asset, type = "today") {
     if (!asset.assignedTo) return;
 
     const User = mongoose.model('User');
-    const user = await User.findById(asset.assignedTo);
-    if (!user || !user.email) {
+    const users = await User.find({ companyId: asset.companyId, plantId: asset.plantId, role: "admin" });
+    if (!users || users.length === 0) {
         console.log(`[SKIP] No user/email for asset ${asset.name}`);
         return;
     }
@@ -68,22 +66,27 @@ async function sendAssetMail(asset, type = "today") {
         .replace("<EXPIRY_TYPE>", isToday ? "today" : "in 7 days");
 
     const assetLink = `https://yourapp.com/assets/${asset._id}`;
-    const emailBody = generateMasterTemplate({
-        ...assetTemplate.assetExpiryTemplate,
-        user_name: getFullName(user.employeeInfo),
-        message_intro: messageIntro,
-        action_link: assetLink,
-        actionLink: assetLink,
-        actionbutton_text: assetTemplate.assetExpiryTemplate.actionbutton_text,
-        fallback_note: assetTemplate.assetExpiryTemplate.fallback_note
-    });
 
-    // Fire and forget with error logging
-    sendEmail(user.email, assetTemplate.assetExpiryTemplate.subject, emailBody).then(() => {
-        console.log(`[MAIL] Sent asset expiry mail to ${user.email} for asset ${asset.name} [${type}]`);
-    }).catch(err => {
-        console.error(`[MAIL ERROR] Failed to send mail to ${user.email} for asset ${asset.name}:`, err);
-    });
+    for(const user of users){
+        const emailBody = generateMasterTemplate({
+            ...assetTemplate.assetExpiryTemplate,
+            user_name: getFullName(user.employeeInfo),
+            message_intro: messageIntro,
+            action_link: assetLink,
+            actionLink: assetLink,
+            actionbutton_text: assetTemplate.assetExpiryTemplate.actionbutton_text,
+            fallback_note: assetTemplate.assetExpiryTemplate.fallback_note
+        });
+        
+        if (user.email) {
+            // Fire and forget with error logging
+            sendEmail(user.email, assetTemplate.assetExpiryTemplate.subject, emailBody).then(() => {
+                console.log(`[MAIL] Sent asset expiry mail to ${user.email} for asset ${asset.name} [${type}]`);
+            }).catch(err => {
+                console.error(`[MAIL ERROR] Failed to send mail to ${user.email} for asset ${asset.name}:`, err);
+            });
+        }
+    }
 }
 
 module.exports = assetCronJobs;

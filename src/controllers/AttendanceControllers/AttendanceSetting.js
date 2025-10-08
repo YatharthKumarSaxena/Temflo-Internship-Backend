@@ -24,7 +24,7 @@ exports.setSettings = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid location format' });
     }
 
-  
+
 
     const updateFields = {
       ...(location && { location }),
@@ -41,7 +41,7 @@ exports.setSettings = async (req, res) => {
     const oldData = existingSettings ? existingSettings.toObject() : null;
 
     const updated = await AttendanceSettings.findOneAndUpdate(
-      { plantId,companyId: req.admin.companyId },
+      { plantId, companyId: req.admin.companyId },
       updateFields,
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
@@ -128,6 +128,7 @@ exports.addHoliday = async (req, res) => {
       description: `Holiday '${occasion}' added for date ${date} by ${getFullName(req.admin.employeeInfo)}`
     });
 
+    /*
     // ---- EMAIL INTEGRATION ----
     const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
     const holidayLink = `${baseUrl}attendance/holidays`;
@@ -164,7 +165,7 @@ exports.addHoliday = async (req, res) => {
         sendEmail(employee.email, attendanceTemplate.holidayAdded.subject, emailHtml);
       }
     }
-
+    */
     return res.status(200).json({ success: true, settings });
   } catch (err) {
     return res.status(500).json({
@@ -465,11 +466,11 @@ exports.setWorkingHours = async (req, res) => {
   }
 };
 
-exports.getEmployeeSetting = async (req,res) => {
+exports.getEmployeeSetting = async (req, res) => {
   try {
     const plantId = req.params.plantId;
     const userId = req.params.userId;
-    const settings = await EmployeeAttendanceSetting.findOne({ userId,companyId:req.admin.companyId,plantId });
+    const settings = await EmployeeAttendanceSetting.findOne({ userId, companyId: req.admin.companyId, plantId });
     return res.status(200).json({ success: true, settings });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Failed to get settings', error: err.message });
@@ -478,50 +479,50 @@ exports.getEmployeeSetting = async (req,res) => {
 }
 
 
-exports.createAttendancePolicy = async (req,res) => {
+exports.createAttendancePolicy = async (req, res) => {
 
   try {
-          const {
-            name,
-            plantId,
-            isLocationBased,
-            isApprovalRequired,
-            isMarkingEnabled,
-            inTime,
-            outTime,
-            avgHours,
-            location,
-            workingHours,
-            weeklyOffs,
-            remote
-          } = req.body;
-      
-          if (!name || !plantId) {
-            return res.status(400).json({ message: "Required fields are missing" });
-          }
+    const {
+      name,
+      plantId,
+      isLocationBased,
+      isApprovalRequired,
+      isMarkingEnabled,
+      inTime,
+      outTime,
+      avgHours,
+      location,
+      workingHours,
+      weeklyOffs,
+      remote
+    } = req.body;
+
+    if (!name || !plantId) {
+      return res.status(400).json({ message: "Required fields are missing" });
+    }
 
 
-          const policy = new AttendancePolicy({
-            name,
-            plantId,
-            companyId: req.admin.companyId,
-            isLocationBased,
-            isApprovalRequired,
-            isMarkingEnabled,
-            inTime,
-            outTime,
-            avgHours,
-            location,
-            workingHours,
-            weeklyOffs,
-            remote
-          })
-      
-    
-      
-          await policy.save();
+    const policy = new AttendancePolicy({
+      name,
+      plantId,
+      companyId: req.admin.companyId,
+      isLocationBased,
+      isApprovalRequired,
+      isMarkingEnabled,
+      inTime,
+      outTime,
+      avgHours,
+      location,
+      workingHours,
+      weeklyOffs,
+      remote
+    })
 
-          // Activity Tracker
+
+
+    await policy.save();
+
+    // Activity Tracker
     activityTracker({
       userId: req.admin._id,
       companyId: req.admin.companyId,
@@ -544,7 +545,8 @@ exports.createAttendancePolicy = async (req,res) => {
     // Email to Admins about new policy
     const adminUsers = await User.find({
       companyId: req.admin.companyId,
-      role: { $in: ['admin', 'owner'] }
+      plantId: plantId,
+      role: 'admin'
     });
 
     const policyDetails = `
@@ -574,21 +576,21 @@ exports.createAttendancePolicy = async (req,res) => {
       }
     }
 
-          return res.status(200).json({
-            success: true,
-            message: `Attendance policy created successfully`,
-            policy
-          });
-      
-        } catch (error) {
-  console.error('Error creating Attendance Policy:', error); // ✅ Fixed
-  return res.status(500).json({ success: false, message: error.message }); // ✅ Fixed
-}
+    return res.status(200).json({
+      success: true,
+      message: `Attendance policy created successfully`,
+      policy
+    });
+
+  } catch (error) {
+    console.error('Error creating Attendance Policy:', error); // ✅ Fixed
+    return res.status(500).json({ success: false, message: error.message }); // ✅ Fixed
+  }
 
 
 }
 
-exports.updateAttendancePolicy = async (req,res) => {
+exports.updateAttendancePolicy = async (req, res) => {
 
   try {
     const {
@@ -653,7 +655,7 @@ exports.updateAttendancePolicy = async (req,res) => {
     activityTracker({
       userId: req.admin._id,
       companyId: req.admin.companyId,
-      plantId: plantId,
+      plantId: plantId || policy.plantId,
       module: MODULE.attendance,
       subModuleAffected: null,
       fileAffected: FILE.file_attendance_setting,
@@ -665,35 +667,73 @@ exports.updateAttendancePolicy = async (req,res) => {
       description: `Attendance policy '${name}' updated for plant ${plantId} by ${getFullName(req.admin.employeeInfo)}`
     });
 
+    // ---- EMAIL INTEGRATION ----
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const policyLink = `${baseUrl}attendance/policies`;
+
+    // Email to Admins about new policy
+    const adminUsers = await User.find({
+      companyId: req.admin.companyId,
+      plantId: plantId || policy.plantId,
+      role: 'admin'
+    });
+
+    const policyDetails = `
+      Policy Name: ${name}<br/>
+      Plant: ${plantId}<br/>
+      Location Based: ${isLocationBased ? 'Yes' : 'No'}<br/>
+      Approval Required: ${isApprovalRequired ? 'Yes' : 'No'}<br/>
+      Created By: ${getFullName(req.admin.employeeInfo)}
+    `;
+    const createDate = new Date().toLocaleString();
+
+    for (const adminUser of adminUsers) {
+      if (adminUser?.email) {
+        const emailHtml = generateMasterTemplate({
+          user_name: getFullName(adminUser.employeeInfo),
+          event_name: attendanceTemplate.attendancePolicyUpdated.event_name,
+          action: attendanceTemplate.attendancePolicyUpdated.action,
+          status: 'Update',
+          message_intro: `An attendance policy has been updated`,
+          notes: `${policyDetails}<br/>Updated On: ${createDate}`,
+          actionbutton_text: attendanceTemplate.attendancePolicyUpdated.actionbutton_text,
+          actionlink: policyLink,
+          fallback_note: attendanceTemplate.attendancePolicyUpdated.fallback_note,
+          action_link: policyLink
+        });
+        sendEmail(adminUser.email, attendanceTemplate.attendancePolicyUpdated.subject, emailHtml);
+      }
+    }
+
     return res.status(200).json({ success: true, policy });
 
   } catch (error) {
-  console.error('Error updating Attendance Policy:', error); // ✅ Fixed
-  return res.status(500).json({ success: false, message: error.message }); // ✅ Fixed
-}
+    console.error('Error updating Attendance Policy:', error); // ✅ Fixed
+    return res.status(500).json({ success: false, message: error.message }); // ✅ Fixed
+  }
 
 
 }
 
-exports.getAttendancePolicy = async (req,res) =>{
+exports.getAttendancePolicy = async (req, res) => {
 
   try {
-      const { plantId } = req.params;
-  
-      if (!plantId) {
-        return res.status(400).json({ success: false, message: "plantId is required in URL params" });
-      }
-  
-      const policies = await AttendancePolicy.find({
-        companyId: req.admin.companyId,
-        plantId
-      });
-  
-      res.json({ success: true, policies });
-    } catch (err) {
-      console.error('Error fetching policies:', err);
-      res.status(500).json({ success: false, message: "Failed to fetch policies" });
+    const { plantId } = req.params;
+
+    if (!plantId) {
+      return res.status(400).json({ success: false, message: "plantId is required in URL params" });
     }
+
+    const policies = await AttendancePolicy.find({
+      companyId: req.admin.companyId,
+      plantId
+    });
+
+    res.json({ success: true, policies });
+  } catch (err) {
+    console.error('Error fetching policies:', err);
+    res.status(500).json({ success: false, message: "Failed to fetch policies" });
+  }
 
 }
 
@@ -888,223 +928,223 @@ exports.applyAttendancePolicyToSelectedEmployees = async (req, res) => {
 };
 
 
-exports.EmployeeAttendanceSetting = async (req,res) =>{
+exports.EmployeeAttendanceSetting = async (req, res) => {
 
   try {
-      // Step 1: Find user by _id
-      const userId = req.admin.id
-      const user = await User.findOne({ _id: userId, companyId:req.admin.companyId });
-  
-      if (!user) {
-        return res.status(404).json({ success: false, message: 'User not found' });
-      }
-  
-      const { companyId, plantId } = user;
-  
-      if (!companyId || !plantId) {
-        return res.status(400).json({ success: false, message: 'User does not have company or plant info' });
-      }
-  
-      // Step 2: Find attendance settings using companyId and plantId
-      const settings = await EmployeeAttendanceSetting.findOne({ userId,companyId, plantId });
-  
-      if (!settings) {
-        return res.status(404).json({ success: false, message: 'First Set Employee Attendance settings ' });
-      }
-  
-      const holidaySettings = await AttendanceSettings.findOne({ companyId, plantId }, 'holidays'); // Only fetching holidays field
-  
-      // Attach holidays to the settings response
-      const settingsWithHolidays = {
-        ...settings.toObject(),
-        holidays: holidaySettings?.holidays || [],
-      };
-      
-      res.status(200).json({ success: true, settings:settingsWithHolidays });
-    } catch (error) {
-      console.error('Error getting settings:', error);
-      res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    // Step 1: Find user by _id
+    const userId = req.admin.id
+    const user = await User.findOne({ _id: userId, companyId: req.admin.companyId });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
+
+    const { companyId, plantId } = user;
+
+    if (!companyId || !plantId) {
+      return res.status(400).json({ success: false, message: 'User does not have company or plant info' });
+    }
+
+    // Step 2: Find attendance settings using companyId and plantId
+    const settings = await EmployeeAttendanceSetting.findOne({ userId, companyId, plantId });
+
+    if (!settings) {
+      return res.status(404).json({ success: false, message: 'First Set Employee Attendance settings ' });
+    }
+
+    const holidaySettings = await AttendanceSettings.findOne({ companyId, plantId }, 'holidays'); // Only fetching holidays field
+
+    // Attach holidays to the settings response
+    const settingsWithHolidays = {
+      ...settings.toObject(),
+      holidays: holidaySettings?.holidays || [],
+    };
+
+    res.status(200).json({ success: true, settings: settingsWithHolidays });
+  } catch (error) {
+    console.error('Error getting settings:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
 }
 
-exports.EmployeeAttendance = async (req,res) => {
+exports.EmployeeAttendance = async (req, res) => {
 
   const { month, year } = req.query;
-     if (!month || !year) {
-      return res.status(400).json({ error: 'Month and Year are required' });
-    }
-  
-    const startDate = moment.utc(`${year}-${month}-01`).startOf('month');
-    const endDate = moment.utc(startDate).endOf('month');
-  
-     try {
-      // Fetch from Attendance
-      const attendances = await Attendance.find({
-        userId:req.admin.id,
-        companyId:req.admin.companyId,
-        date: { $gte: startDate.toDate(), $lte: endDate.toDate() }
-      });
-  
-  
-      // Map attendance records to format
-      const records = attendances.map(att => ({
-        date: moment(att.date).format('YYYY-MM-DD'),
-        empStatus: att.status,
-        inTime: att.inTime,
-        exitTime: att.outTime,
-      }));
-  
-      res.status(200).json({success:true, attendance: records});
-    } catch (err) {
-      console.error('Error fetching attendance:', err);
-      res.status(500).json({ error: 'Server error' });
-    }
+  if (!month || !year) {
+    return res.status(400).json({ error: 'Month and Year are required' });
+  }
+
+  const startDate = moment.utc(`${year}-${month}-01`).startOf('month');
+  const endDate = moment.utc(startDate).endOf('month');
+
+  try {
+    // Fetch from Attendance
+    const attendances = await Attendance.find({
+      userId: req.admin.id,
+      companyId: req.admin.companyId,
+      date: { $gte: startDate.toDate(), $lte: endDate.toDate() }
+    });
+
+
+    // Map attendance records to format
+    const records = attendances.map(att => ({
+      date: moment(att.date).format('YYYY-MM-DD'),
+      empStatus: att.status,
+      inTime: att.inTime,
+      exitTime: att.outTime,
+    }));
+
+    res.status(200).json({ success: true, attendance: records });
+  } catch (err) {
+    console.error('Error fetching attendance:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
 }
 
 
-exports.getAttendanceRequests = async (req,res) =>{
+exports.getAttendanceRequests = async (req, res) => {
   try {
-      const page = parseInt(req.query.page || 1);
-      const limit = parseInt(req.query.items || 10);
-      const skip = (page - 1) * limit;
-  
-      const { sortBy = 'createdAt', sortValue = -1, filter, equal, leaveTypeId } = req.query;
-  
-      const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
-      const searchQuery = req.query.q || '';
-  
-      let fields = [];
-      let userIds = [];
-  
-      // Search logic
-      if (searchQuery && fieldsArray.length > 0) {
-        for (const field of fieldsArray) {
-          if (field === 'userId.employeeCode') {
-            const matched = await User.find({
-              employeeCode: { $regex: new RegExp(searchQuery, 'i') }
-            }).distinct('_id');
-            userIds.push(...matched);
-          } else if (field === 'userId.email') {
-            const matched = await User.find({
-              email: { $regex: new RegExp(searchQuery, 'i') }
-            }).distinct('_id');
-            userIds.push(...matched);
-          } else {
-            fields.push({ [field]: { $regex: new RegExp(searchQuery, 'i') } });
-          }
+    const page = parseInt(req.query.page || 1);
+    const limit = parseInt(req.query.items || 10);
+    const skip = (page - 1) * limit;
+
+    const { sortBy = 'createdAt', sortValue = -1, filter, equal, leaveTypeId } = req.query;
+
+    const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
+    const searchQuery = req.query.q || '';
+
+    let fields = [];
+    let userIds = [];
+
+    // Search logic
+    if (searchQuery && fieldsArray.length > 0) {
+      for (const field of fieldsArray) {
+        if (field === 'userId.employeeCode') {
+          const matched = await User.find({
+            employeeCode: { $regex: new RegExp(searchQuery, 'i') }
+          }).distinct('_id');
+          userIds.push(...matched);
+        } else if (field === 'userId.email') {
+          const matched = await User.find({
+            email: { $regex: new RegExp(searchQuery, 'i') }
+          }).distinct('_id');
+          userIds.push(...matched);
+        } else {
+          fields.push({ [field]: { $regex: new RegExp(searchQuery, 'i') } });
         }
       }
-  
-      // Main filtered query
-      const query = {
-        companyId: req.admin.companyId,
-        approver: req.admin.id,
-      };
-  
-      if (filter && equal) {
-        query[filter] = equal;
-      }
-  
-      if (leaveTypeId) {
-        query.leaveTypeId = leaveTypeId;
-      }
-  
-      if (fields.length > 0) {
-        query.$or = fields;
-      }
-  
-      if (userIds.length > 0) {
-        query.$or = [...(query.$or || []), { userId: { $in: userIds } }];
-      }
-  
-      // Date range filter
-      if (req.query.startDate && req.query.endDate) {
-        query.fromDate = { $gte: new Date(req.query.startDate) };
-        query.toDate = { $lte: new Date(req.query.endDate) };
-      }
-  
-      // Paginated + Filtered Results
-      const resultsPromise = Attendance.find(query)
-        .populate('plantId', 'name')
-        .populate('userId', 'employeeCode email')
-        .skip(skip)
-        .limit(limit)
-        .sort({ [sortBy]: sortValue });
-  
-      const countPromise = Attendance.countDocuments(query);
-  
-      // Global Summary (Unfiltered except by company & plant)
-      const summaryQuery = {
-        companyId: req.admin.companyId,
-        approver: mongoose.Types.ObjectId.isValid(req.admin.id)
-                ? new mongoose.Types.ObjectId(req.admin.id)
-                : req.admin.id,
-      };
-  
-      const totalCountPromise = Attendance.countDocuments(summaryQuery);
-  
-      const statusCountsPromise = Attendance.aggregate([
-        { $match: summaryQuery },
-        {
-          $group: {
-            _id: '$status',
-            count: { $sum: 1 },
-          },
-        },
-      ]);
-  
-      // Await all promises
-      const [result, count, totalCount, statusCounts] = await Promise.all([
-        resultsPromise,
-        countPromise,
-        totalCountPromise,
-        statusCountsPromise,
-      ]);
-  
-      // Build Summary
-      const statusSummary = {
-        present: 0,
-        absent: 0,
-        pending: 0,
-      };
-  
-     
-  
-  
-      statusCounts.forEach(({ _id, count }) => {
-        if (statusSummary.hasOwnProperty(_id)) {
-          statusSummary[_id] = count;
-        }
-      });
-  
-      const pagination = {
-        page,
-        pages: Math.ceil(count / limit),
-        count,
-      };
-  
-      return res.status(200).json({
-        success: true,
-        result,
-        pagination,
-        summary: {
-          total: totalCount,
-          present: statusSummary['present'],
-          absent: statusSummary['absent'],
-          pending: statusSummary['pending'],
-        },
-        message:
-          count > 0
-            ? 'Successfully found Attendance requests'
-            : 'No matching attendance requests found',
-      });
-    } catch (err) {
-      console.error('Leave request error:', err);
-      return res.status(500).json({
-        success: false,
-        message: err.message || 'Internal server error',
-      });
     }
+
+    // Main filtered query
+    const query = {
+      companyId: req.admin.companyId,
+      approver: req.admin.id,
+    };
+
+    if (filter && equal) {
+      query[filter] = equal;
+    }
+
+    if (leaveTypeId) {
+      query.leaveTypeId = leaveTypeId;
+    }
+
+    if (fields.length > 0) {
+      query.$or = fields;
+    }
+
+    if (userIds.length > 0) {
+      query.$or = [...(query.$or || []), { userId: { $in: userIds } }];
+    }
+
+    // Date range filter
+    if (req.query.startDate && req.query.endDate) {
+      query.fromDate = { $gte: new Date(req.query.startDate) };
+      query.toDate = { $lte: new Date(req.query.endDate) };
+    }
+
+    // Paginated + Filtered Results
+    const resultsPromise = Attendance.find(query)
+      .populate('plantId', 'name')
+      .populate('userId', 'employeeCode email')
+      .skip(skip)
+      .limit(limit)
+      .sort({ [sortBy]: sortValue });
+
+    const countPromise = Attendance.countDocuments(query);
+
+    // Global Summary (Unfiltered except by company & plant)
+    const summaryQuery = {
+      companyId: req.admin.companyId,
+      approver: mongoose.Types.ObjectId.isValid(req.admin.id)
+        ? new mongoose.Types.ObjectId(req.admin.id)
+        : req.admin.id,
+    };
+
+    const totalCountPromise = Attendance.countDocuments(summaryQuery);
+
+    const statusCountsPromise = Attendance.aggregate([
+      { $match: summaryQuery },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Await all promises
+    const [result, count, totalCount, statusCounts] = await Promise.all([
+      resultsPromise,
+      countPromise,
+      totalCountPromise,
+      statusCountsPromise,
+    ]);
+
+    // Build Summary
+    const statusSummary = {
+      present: 0,
+      absent: 0,
+      pending: 0,
+    };
+
+
+
+
+    statusCounts.forEach(({ _id, count }) => {
+      if (statusSummary.hasOwnProperty(_id)) {
+        statusSummary[_id] = count;
+      }
+    });
+
+    const pagination = {
+      page,
+      pages: Math.ceil(count / limit),
+      count,
+    };
+
+    return res.status(200).json({
+      success: true,
+      result,
+      pagination,
+      summary: {
+        total: totalCount,
+        present: statusSummary['present'],
+        absent: statusSummary['absent'],
+        pending: statusSummary['pending'],
+      },
+      message:
+        count > 0
+          ? 'Successfully found Attendance requests'
+          : 'No matching attendance requests found',
+    });
+  } catch (err) {
+    console.error('Leave request error:', err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || 'Internal server error',
+    });
+  }
 
 
 }

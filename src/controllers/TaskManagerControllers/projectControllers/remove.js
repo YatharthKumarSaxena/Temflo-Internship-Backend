@@ -55,9 +55,9 @@ const remove = async (req, res) => {
         await subtask.save();
 
         activityTracker({
-          userId: req.user._id,
-          companyId: req.user.companyId,
-          plantId: req.user.plantId || null,
+          userId: req.admin._id,
+          companyId: req.admin.companyId,
+          plantId: req.admin.plantId || null,
           module: MODULE.taskManager,
           subModuleAffected: SUBMODULE.project,
           fileAffected: FILE.file_remove_project,
@@ -69,7 +69,7 @@ const remove = async (req, res) => {
             removed: newRemovedStatus,
             note: "Soft delete toggled",
           },
-          description: `Subtask soft deletion toggled due to project ${removed ? 'deactivation' : 'activation'} by ${getFullName(req.user.employeeInfo)}`
+          description: `Subtask soft deletion toggled due to project ${removed ? 'deactivation' : 'activation'} by ${getFullName(req.admin.employeeInfo)}`
         });
       }
 
@@ -77,9 +77,9 @@ const remove = async (req, res) => {
       await task.save();
 
       activityTracker({
-        userId: req.user._id,
-        companyId: req.user.companyId,
-        plantId: req.user.plantId || null,
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
         module: MODULE.taskManager,
         subModuleAffected: SUBMODULE.project,
         fileAffected: FILE.file_remove_project,
@@ -91,7 +91,7 @@ const remove = async (req, res) => {
           removed: newRemovedStatus,
           note: "Soft delete toggled",
         },
-        description: `Task soft deletion toggled due to project ${removed ? 'deactivation' : 'activation'} by ${getFullName(req.user.employeeInfo)}`
+        description: `Task soft deletion toggled due to project ${removed ? 'deactivation' : 'activation'} by ${getFullName(req.admin.employeeInfo)}`
       });
     }
 
@@ -100,9 +100,9 @@ const remove = async (req, res) => {
     await project.save();
 
     activityTracker({
-      userId: req.user._id,
-      companyId: req.user.companyId,
-      plantId: req.user.plantId || null,
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
       module: MODULE.taskManager,
       subModuleAffected: SUBMODULE.project,
       fileAffected: FILE.file_remove_project,
@@ -114,7 +114,7 @@ const remove = async (req, res) => {
         removed: newRemovedStatus,
         note: "Soft delete toggled",
       },
-      description: `Project ${removed ? 'deactivated' : 'activated'} by ${getFullName(req.user.employeeInfo)}`
+      description: `Project ${removed ? 'deactivated' : 'activated'} by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({

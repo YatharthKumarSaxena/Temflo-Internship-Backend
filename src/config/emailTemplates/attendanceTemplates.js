@@ -100,6 +100,18 @@ const attendanceTemplate = {
         action_link: "http://localhost:3000/attendance/policies"
     },
 
+    attendancePolicyUpdated: {
+        ...defaultConfig,
+        subject: "Attendance Policy Updated",
+        event_name: "Attendance Policy Updated",
+        action: "Update",
+        message_intro: "An attendance policy has been updated in your organization.",
+        actionbutton_text: "View Attendance Policies",
+        actionlink: "http://localhost:3000/attendance/policies",
+        fallback_note: "Having trouble with the button?",
+        action_link: "http://localhost:3000/attendance/policies"
+    },
+
     attendancePolicyApplied: {
         ...defaultConfig,
         subject: "New Attendance Policy Applied",
