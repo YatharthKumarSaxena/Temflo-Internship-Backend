@@ -58,6 +58,9 @@ const remove = async (req, res) => {
       description: `Member removed from project by ${getFullName(req.admin.employeeInfo)}`
     });
 
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000/';
+    const projectLink = `${baseUrl}projects/${member.projectId}`;
+
     // ✅ Send Email to the removed member
     const assignedUser = await User.findById(member.userId);
     if (assignedUser && assignedUser.email) {
@@ -74,8 +77,8 @@ const remove = async (req, res) => {
           Date: ${new Date().toLocaleString()}
         `,
         actionbutton_text: "View Projects",
-        actionlink: `http://localhost:3000/projects/${member.projectId}`,
-        action_link: `http://localhost:3000/projects/${member.projectId}`
+        actionlink: projectLink,
+        action_link: projectLink
       });
 
       sendEmail(assignedUser.email, taskManagerTemplate.employeeRemovedFromProject.subject, emailHtml);

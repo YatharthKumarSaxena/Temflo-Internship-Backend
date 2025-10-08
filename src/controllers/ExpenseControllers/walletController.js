@@ -114,8 +114,7 @@ exports.addWalletBalance = async (req, res, next) => {
     // ------------------- EMAIL INTEGRATION -------------------
     if (employee.email) {
       const emailHtml = generateMasterTemplate({
-        company_name: req.admin.companyName,
-        user_name: employee.name || employee.employeeCode,
+        user_name: getFullName(employee.employeeInfo),
         event_name: expenseTemplate.walletRequestApproved.event_name,
         action: expenseTemplate.walletRequestApproved.action,
         status: expenseTemplate.walletRequestApproved.status,
@@ -136,12 +135,11 @@ exports.addWalletBalance = async (req, res, next) => {
     // Email to Admin (notification)
     if (req.admin.email) {
       const emailHtmlAdmin = generateMasterTemplate({
-        company_name: req.admin.companyName,
-        user_name: req.admin.name || req.admin.employeeCode,
+        user_name: getFullName(req.admin.employeeInfo),
         event_name: expenseTemplate.walletBalanceAdded.event_name,
         action: expenseTemplate.walletBalanceAdded.action,
         status: expenseTemplate.walletBalanceAdded.status,
-        message_intro: `You have successfully added funds to ${employee.name || employee.employeeCode}'s wallet.`,
+        message_intro: `You have successfully added funds to Employee's wallet whose Employee Code is ${employee.employeeCode}.`,
         details: {
           Amount: amount,
           Date: new Date().toLocaleString(),
@@ -316,8 +314,7 @@ exports.requestWalletBalance = async (req, res, next) => {
     // ------------------- EMAIL TO EMPLOYEE -------------------
     if (employee && employee.email) {
       const emailHtmlEmployee = generateMasterTemplate({
-        company_name: req.admin.companyName,
-        user_name: employee.name || employee.employeeCode,
+        user_name: getFullName(employee.employeeInfo),
         event_name: expenseTemplate.walletRequestCreated.event_name,
         action: "Your wallet balance request has been submitted",
         status: "Pending",
@@ -344,18 +341,17 @@ exports.requestWalletBalance = async (req, res, next) => {
     // ------------------- EMAIL TO SUPERVISOR -------------------
     const supervisor = await User.findOne({
       companyId,
-      role: { $in: ['admin', 'owner'] },
+      supervisor: employee.supervisor,
       plantId,
     }).select('name email').exec();
 
     if (supervisor && supervisor.email) {
       const emailHtml = generateMasterTemplate({
-        company_name: req.admin.companyName,
-        user_name: supervisor.name || supervisor.employeeCode,
+        user_name: getFullName(supervisor.employeeInfo),
         event_name: expenseTemplate.walletRequestCreated.event_name,
         action: expenseTemplate.walletRequestCreated.action,
         status: expenseTemplate.walletRequestCreated.status,
-        message_intro: `Employee ${employee.name || employee.employeeCode} has submitted a wallet balance request.`,
+        message_intro: `Employee whose Employee Code is ${employee.employeeCode} has submitted a wallet balance request.`,
         details: {
           Amount: amount,
           Date: new Date().toLocaleString(),
@@ -372,7 +368,7 @@ exports.requestWalletBalance = async (req, res, next) => {
 
       sendEmail(
         supervisor.email,
-        `Wallet Request Submitted by ${employee.name || employee.employeeCode}`,
+        `Wallet Request Submitted by ${getFullName(employee.employeeInfo)}`,
         emailHtml
       );
     }
@@ -619,8 +615,7 @@ exports.processBalanceRequest = async (req, res, next) => {
     // Email to Employee
     if (employee.email) {
       const emailDataEmployee = generateMasterTemplate({
-        company_name: req.admin.companyName,
-        user_name: employee.name || employee.employeeCode,
+        user_name: getFullName(employee.employeeInfo),
         event_name: emailTemplate.event_name,
         action: emailTemplate.action,
         status: emailTemplate.status,
@@ -642,12 +637,11 @@ exports.processBalanceRequest = async (req, res, next) => {
     // Email to Admin (notification)
     if (req.admin.email) {
       const emailDataAdmin = generateMasterTemplate({
-        company_name: req.admin.companyName,
-        user_name: req.admin.name || req.admin.employeeCode,
+        user_name: getFullName(req.admin.employeeInfo),
         event_name: emailTemplate.event_name,
         action: emailTemplate.action,
         status: emailTemplate.status,
-        message_intro: `You have ${action} a wallet balance request for ${employee.name || employee.employeeCode}.`,
+        message_intro: `You have ${action} a wallet balance request for ${getFullName(employee.employeeInfo)} whose Employee Code is ${employee.employeeCode}.`,
         details: {
           Amount: transaction.amount,
           Date: transaction.processedAt.toLocaleString(),
@@ -661,7 +655,7 @@ exports.processBalanceRequest = async (req, res, next) => {
         fallback_note: emailTemplate.fallback_note,
         action_link: walletLink,
       });
-      sendEmail(req.admin.email, `Wallet Request ${action.charAt(0).toUpperCase() + action.slice(1)} for ${employee.name || employee.employeeCode}`, emailDataAdmin);
+      sendEmail(req.admin.email, `Wallet Request ${action.charAt(0).toUpperCase() + action.slice(1)} for ${getFullName(employee.employeeInfo)}`, emailDataAdmin);
     }
 
     await session.commitTransaction();

@@ -80,6 +80,9 @@ const createSubtask = async (req, res) => {
       description: `New subtask created by ${getFullName(req.admin.employeeInfo)}`
     });
 
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000/';
+    const subtaskLink = `${baseUrl}projects/${projectId}/subtasks/${subtask._id}`;
+
     // 🔹 Email Notification (if assignedTo exists)
     if (assignedTo) {
       const assignedUser = await User.findById(assignedTo);
@@ -98,8 +101,8 @@ const createSubtask = async (req, res) => {
             Due Date: ${subtask.dueDate || 'N/A'}<br/>
           `,
           actionbutton_text: "View Subtask",
-          actionlink: `http://localhost:3000/tasks/${task._id}/subtasks/${subtask._id}`,
-          action_link: `http://localhost:3000/tasks/${task._id}/subtasks/${subtask._id}`
+          actionlink: subtaskLink,
+          action_link: subtaskLink
         });
 
         sendEmail(assignedUser.email, taskManagerTemplate.subtaskAssignedToEmployee.subject, emailHtml);

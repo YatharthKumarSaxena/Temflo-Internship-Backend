@@ -43,7 +43,7 @@ const remove = async (req, res) => {
     if(removed){
       const emailConfig = {
         ...employeeTemplate.accountStatusChange,
-        user_name: getFullName(user.employeeInfo) || "User",
+        user_name: getFullName(user.employeeInfo),
         status: "Deactivated",
         message_intro: "Your Account is deactivated by Admin",
         notes: "You will not be able to log in until your account is reactivated. For assistance, please contact support."
@@ -53,7 +53,7 @@ const remove = async (req, res) => {
     }else{
       const emailConfig = {
         ...employeeTemplate.accountStatusChange,
-        user_name: getFullName(user.employeeInfo) || "User",
+        user_name: getFullName(user.employeeInfo),
         status: "Activated",
         message_intro: "Your Account is now reactivated by Admin",
         notes: "You can now log in and access all features of the platform."
