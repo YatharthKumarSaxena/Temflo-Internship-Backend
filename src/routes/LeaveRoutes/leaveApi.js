@@ -12,10 +12,8 @@ const requireWriteAccess = require('@/middlewares/access/requireWriteAccess')
 // Leave Policy
 router.route('/leave-policy').post(checkPermission('manage_leave'), requireWriteAccess,
     catchErrors(leaveApi.adminLeaveController.createLeavePolicy))
-router.route('/leave-policy/:id').patch(catchErrors(checkPermission('manage_leave'), requireWriteAccess,
-    leaveApi.adminLeaveController.updateLeavePolicy))
-router.route('/leave-policy/:id').delete(catchErrors(checkPermission('manage_leave'), requireWriteAccess,
-    leaveApi.adminLeaveController.deleteLeavePolicy))
+router.route('/leave-policy/:id').patch(checkPermission('manage_leave'), requireWriteAccess, catchErrors(leaveApi.adminLeaveController.updateLeavePolicy))
+router.route('/leave-policy/:id').delete(checkPermission('manage_leave'), requireWriteAccess, catchErrors(leaveApi.adminLeaveController.deleteLeavePolicy))
 router.route('/leave-policy/:plantId').get(checkPermission('manage_leave'), requireReadAccess, catchErrors(leaveApi.adminLeaveController.getCompanyLeavePolicies))
 router.route('/create-leave-balance/selected').post(checkPermission('manage_leave'), requireWriteAccess, catchErrors(checkPermission('manage_leave'), requireWriteAccess,
     leaveApi.adminLeaveController.applyLeavePolicyToSelectedEmployees))
