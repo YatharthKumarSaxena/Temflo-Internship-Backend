@@ -56,7 +56,7 @@ const updatePassword = async (userModel, req, res) => {
     // Inject dynamic values into template
     const emailConfig = {
       ...employeeTemplate.userPasswordChanged,
-      user_name: getFullName(targetUser),
+      user_name: getFullName(targetUser.employeeInfo),
     };
 
     const html = generateMasterTemplate(emailConfig);

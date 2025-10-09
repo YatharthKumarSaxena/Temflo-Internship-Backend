@@ -1,6 +1,6 @@
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE, SUBMODULE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
-const { PERMISSION_UPDATED } = require("@/config/activity.enums");
+const { PERMISSION_ADDED } = require("@/config/activity.enums");
 
 const feature = async (Model, req, res) => {
   const { features } = req.body;
@@ -24,7 +24,7 @@ const feature = async (Model, req, res) => {
     await user.save();
 
     // ✅ Activity Tracker logging
-    await activityTracker({
+    activityTracker({
       userId: req.admin._id,
       companyId: req.admin.companyId,
       plantId: req.admin.plantId || null,
@@ -32,7 +32,7 @@ const feature = async (Model, req, res) => {
       subModuleAffected: null, 
       fileAffected: FILE.file_permission_added, 
       modelAffected: [MODEL_AFFECTED.model_user],
-      eventType: PERMISSION_UPDATED,
+      eventType: PERMISSION_ADDED,
       actionDone: ACTIONS.update,
       oldData: oldPermissions,
       newData: {
