@@ -10,7 +10,7 @@ const payrollApi = require('./../../controllers/payrollController');
 // ========================
 // PAY PERIOD
 // ========================
-router.route('/payperiod')
+router.route('/pay-period')
   .get(catchErrors(payrollApi.PayPeriod.getPayPeriod))
   .post(catchErrors(payrollApi.PayPeriod.create))
   .put(catchErrors(payrollApi.PayPeriod.updatePayPeriod));
@@ -18,21 +18,21 @@ router.route('/payperiod')
 // ========================
 // TDS CONFIG
 // ========================
-router.route('/tds')
+router.route('/tds-config')
   .get(catchErrors(payrollApi.TDSConfig.getTDSConfig))
   .put(catchErrors(payrollApi.TDSConfig.updateTDSConfig));
 
 // ========================
 // PAYSLIP SETTINGS
 // ========================
-router.route('/payslipsettings')
+router.route('/payslip-settings')
   .get(catchErrors(payrollApi.PayslipSettings.getSettings))
   .put(catchErrors(payrollApi.PayslipSettings.updateSettings));
 
 // ========================
 // ROUNDING SETTINGS
 // ========================
-router.route('/rounding')
+router.route('/rounding-amount')
   .get(catchErrors(payrollApi.RoundingSetting.getRoundingSetting))
   .put(catchErrors(payrollApi.RoundingSetting.updateRoundingSetting));
 
@@ -60,19 +60,19 @@ router.route('/users/:id')
 // ========================
 // USER WITH BATCH
 // ========================
-router.route('/sync')
+router.route('/user-with-batch/sync')
   .post(catchErrors(payrollApi.UserWithBatch.syncUsers));
 
-router.route('/get_active_users_with_batch')
+router.route('/user-with-batch/get-active-users-with-batch')
   .get(catchErrors(payrollApi.UserWithBatch.getActiveUsersWithBatch));
 
 
 
-router.route('/user_with_batch')
+router.route('user-with-batch')
   .get(catchErrors(payrollApi.UserWithBatch.getAllUsers))
   .post(catchErrors(payrollApi.UserWithBatch.createUser));
 
-router.route('/user_with_batch/:id')
+router.route('user-with-batch')
   .get(catchErrors(payrollApi.UserWithBatch.getUserById))
   .put(catchErrors(payrollApi.UserWithBatch.updateUser))
   .delete(catchErrors(payrollApi.UserWithBatch.deleteUser));

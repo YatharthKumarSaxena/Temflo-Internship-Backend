@@ -52,7 +52,7 @@ router
   .route('/transfer/:transferId/reject')
   .put(checkPermission('manage_asset'), requireWriteAccess, catchErrors(AssetApi.adminAssetController.rejectAssetTransfer));
 router
-  .route('/asset/:assetId/transfer-history')
+  .route('/:assetId/transfer-history')
   .get(checkPermission('manage_asset'), requireReadAccess, catchErrors(AssetApi.adminAssetController.getAssetTransferHistory));
 
 // Employee Asset routes
