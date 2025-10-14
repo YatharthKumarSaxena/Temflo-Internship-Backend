@@ -111,9 +111,7 @@ const update = async (Model, req, res) => {
       modelAffected: [MODEL_AFFECTED.model_plant],
       eventType: PLANT_UPDATED,
       actionDone: ACTIONS.update,
-      description: `Plant with code '${oldPlant.plantCode}' was updated by ${getFullName(
-        req.admin.employeeInfo
-      )}.`,
+      description: `Plant with code '${oldPlant.plantCode}' was updated by ${req.admin.name}.`,
       oldData: oldPlant.toObject(),
       newData: { ...oldPlant.toObject(), ...updateData },
     });

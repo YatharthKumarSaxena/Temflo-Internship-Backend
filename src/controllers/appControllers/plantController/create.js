@@ -57,7 +57,7 @@ const create = async (Model, req, res) => {
       modelAffected: [MODEL_AFFECTED.model_plant],
       eventType: PLANT_CREATED,
       actionDone: ACTIONS.create,
-      description: `Plant with Code '${result.plantCode}' created successfully by ${getFullName(req.admin.employeeInfo)}`,
+      description: `Plant with Code '${result.plantCode}' created successfully by ${req.admin.name}`,
       oldData: null, // ✅ Correct for creation
       newData: result.toObject() // ✅ Complete snapshot
     });
