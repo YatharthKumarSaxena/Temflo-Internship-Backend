@@ -24,7 +24,7 @@ router.post("/", createUser);
 // Get all active users with batch info
 router.get("/", getActiveUsersWithBatch);
 
-router.get("/", getActiveUsersWithOutBatch);
+// router.get("/", getActiveUsersWithOutBatch);
 
 // Get all users
 router.get("/", getAllUsers);

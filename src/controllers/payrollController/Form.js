@@ -2,6 +2,7 @@ const Form = require("../../models/parollModels/Form");
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { FORM_CREATED, FORM_UPDATED, FORM_DELETED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 // Get all forms
 exports.getAllForms = async (req, res) => {
@@ -30,7 +31,8 @@ exports.createForm = async (req, res) => {
       eventType: FORM_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: form.toObject()
+      newData: form.toObject(),
+      description: `Form created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.status(201).json(form);
@@ -47,19 +49,6 @@ exports.updateForm = async (req, res) => {
 
     const updated = await Form.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
-    // 🔹 Extract changed fields
-    const oldData = {};
-    const newData = {};
-    const oldObj = existing.toObject();
-    const newObj = updated.toObject();
-
-    for (let key in newObj) {
-      if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
-        oldData[key] = oldObj[key];
-        newData[key] = newObj[key];
-      }
-    }
-
     // Activity Tracker
     activityTracker({
       userId: req.admin._id,
@@ -71,8 +60,9 @@ exports.updateForm = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_form],
       eventType: FORM_UPDATED,
       actionDone: ACTIONS.update,
-      oldData,
-      newData
+      oldData: existing.toObject(),
+      newData: updated.toObject(),
+      description: `Form updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.json(updated);
@@ -100,7 +90,8 @@ exports.deleteForm = async (req, res) => {
       eventType: FORM_DELETED,
       actionDone: ACTIONS.delete,
       oldData: deleted.toObject(),
-      newData: null
+      newData: null,
+      description: `Form deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.sendStatus(204);

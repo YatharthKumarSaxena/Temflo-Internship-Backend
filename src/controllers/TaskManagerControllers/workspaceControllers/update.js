@@ -2,6 +2,10 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { WORKSPACE_UPDATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
+const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
+const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
+const { sendEmail } = require("@/utils/emailSender");
 
 const update = async (req, res) => {
   try {
@@ -18,27 +22,24 @@ const update = async (req, res) => {
       });
     }
 
-    let newData = {};
-    let oldData = {};
+    const oldData = workspace.toObject();
 
     if (name){
-      oldData.name = workspace.name;
       workspace.name = name;
-      newData.name = name;
     } 
     if (description) {
-      oldData.description = workspace.description;
       workspace.description = description;
-      newData.description = description;
     }
 
     await workspace.save();
 
+    const newData = workspace.toObject();
+
     // 🔹 Activity Tracker logging
     activityTracker({
-      userId: req.user._id,
-      companyId: req.user.companyId,
-      plantId: req.user.plantId || null,
+      userId: req.admin._id,
+      companyId: req.admin.companyId,
+      plantId: req.admin.plantId || null,
       module: MODULE.taskManager,
       subModuleAffected: SUBMODULE.workspace,
       fileAffected: FILE.file_update_workspace,
@@ -46,8 +47,34 @@ const update = async (req, res) => {
       eventType: WORKSPACE_UPDATED,
       actionDone: ACTIONS.update,
       oldData: oldData,
-      newData: newData
+      newData: newData,
+      description: `Workspace updated by ${getFullName(req.admin.employeeInfo)}`
     });
+
+    // Email Integration
+    const adminUsers = await mongoose.model('User').find({
+      companyId: req.admin.companyId,
+      plantId: plantId,
+      role: 'admin'
+    });
+    
+    const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
+    const workspaceLink = `${baseUrl}task-manager/workspaces/${workspace._id}`;
+
+    for (const admin of adminUsers) {
+      const emailBody = generateMasterTemplate({
+        ...taskManagerTemplate.workspaceUpdated,
+        user_name: getFullName(admin.employeeInfo),
+        message_intro: `The workspace named '${name}' has been updated by ${getFullName(req.admin.employeeInfo)}.`,
+        action_link: workspaceLink,
+        actionLink: workspaceLink,
+        actionbutton_text: 'View Workspace'
+      });
+
+      if (admin.email) {
+        sendEmail(admin.email, taskManagerTemplate.workspaceUpdated.subject, emailBody);
+      }
+    }
 
     return res.status(200).json({
       success: true,

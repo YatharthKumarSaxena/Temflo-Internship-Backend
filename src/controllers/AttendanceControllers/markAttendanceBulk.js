@@ -114,6 +114,7 @@ const markAttendanceBulk = async (req, res) => {
 
         success.push({ employeeCode, date: date.format('YYYY-MM-DD') });
 
+        /*
         // ---- EMAIL INTEGRATION FOR INDIVIDUAL RECORD ----
         const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
         const attendanceLink = `${baseUrl}attendance/my-attendance`;
@@ -142,6 +143,7 @@ const markAttendanceBulk = async (req, res) => {
           });
           sendEmail(user.email, attendanceTemplate.bulkAttendanceCreated.subject, emailHtml);
         }
+        **/
 
       } catch (err) {
         failed.push({ ...row, reason: err.message });
@@ -150,6 +152,7 @@ const markAttendanceBulk = async (req, res) => {
 
     fs.unlinkSync(file.path); // Clean up uploaded file
 
+    /*
     // ---- BULK EMAIL INTEGRATION ----
     if (success.length > 0) {
       const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
@@ -190,7 +193,7 @@ const markAttendanceBulk = async (req, res) => {
           sendEmail(user.email, attendanceTemplate.bulkAttendanceCreated.subject, emailHtml);
         }
       }
-    }
+    }*/
 
     return res.status(200).json({
       success: true,

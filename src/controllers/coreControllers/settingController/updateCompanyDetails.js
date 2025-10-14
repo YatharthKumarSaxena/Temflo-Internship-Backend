@@ -67,7 +67,7 @@ if (req.admin.email) { // ensure admin email exists
 
   const emailConfig = {
     ...employeeTemplate.companyDetailsUpdated,
-    user_name: req.admin.name || "Admin",
+    user_name: getFullName(req.admin.employeeInfo),
     action_cta: "Please visit your profile to verify the updated details.",
     actionbutton_text: "Go to Profile",
     actionlink: profileLink,

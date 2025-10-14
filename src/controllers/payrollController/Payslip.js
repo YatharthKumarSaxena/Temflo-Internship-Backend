@@ -2,6 +2,7 @@ const Payslip = require("../../models/parollModels/Payslip");
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { PAYSLIP_CREATED, PAYSLIP_UPDATED, PAYSLIP_DELETED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const setNoCache = (res) => {
   res.set("Cache-Control", "no-store");
@@ -35,7 +36,8 @@ exports.createPayslip = async (req, res) => {
       eventType: PAYSLIP_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: payslip.toObject()
+      newData: payslip.toObject(),
+      description: `Payslip created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     setNoCache(res);
@@ -53,19 +55,6 @@ exports.updatePayslip = async (req, res) => {
 
     const updated = await Payslip.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
-    // 🔹 Extract only changed fields
-    const oldData = {};
-    const newData = {};
-    const oldObj = existing.toObject();
-    const newObj = updated.toObject();
-
-    for (let key in newObj) {
-      if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
-        oldData[key] = oldObj[key]; // pehle ka value
-        newData[key] = newObj[key];  // update ke baad ka value
-      }
-    }
-
     // Activity Tracker
     activityTracker({
       userId: req.admin._id,
@@ -77,8 +66,9 @@ exports.updatePayslip = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_payslip],
       eventType: PAYSLIP_UPDATED,
       actionDone: ACTIONS.update,
-      oldData,   // sirf changed fields ke old values
-      newData    // sirf changed fields ke new values
+      oldData: existing.toObject(),
+      newData: updated.toObject(),
+      description: `Payslip updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
     setNoCache(res);
@@ -107,7 +97,8 @@ exports.deletePayslip = async (req, res) => {
       eventType: PAYSLIP_DELETED,
       actionDone: ACTIONS.delete,
       oldData: deleted.toObject(),
-      newData: null
+      newData: null,
+      description: `Payslip deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     setNoCache(res);

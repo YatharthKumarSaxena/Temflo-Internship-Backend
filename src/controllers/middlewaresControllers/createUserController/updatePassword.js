@@ -56,7 +56,7 @@ const updatePassword = async (userModel, req, res) => {
     // Inject dynamic values into template
     const emailConfig = {
       ...employeeTemplate.userPasswordChanged,
-      user_name: targetUser.name || "User",
+      user_name: getFullName(targetUser.employeeInfo),
     };
 
     const html = generateMasterTemplate(emailConfig);
@@ -75,7 +75,7 @@ const updatePassword = async (userModel, req, res) => {
       modelAffected: [MODEL_AFFECTED.model_userPassword],
       eventType: USER_PASSWORD_UPDATED_BY_ID,
       actionDone: ACTIONS.update,
-      description: `Password updated by ${getFullName(req.admin.employeeInfo)} for ${getFullName(targetUser.employeeInfo)} whose user Id: ${targetUser._id}`,
+      description: `Password updated by ${getFullName(req.admin.employeeInfo)} for ${getFullName(targetUser.employeeInfo)} whose Employee Code: ${targetUser.employeeCode}`,
       oldData: { _id: req.params.id, passwordChanged: false },
       newData: { passwordChanged: true }
     });

@@ -5,6 +5,7 @@ const { MEMBER_DELETED } = require("@/config/activity.enums");
 const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const remove = async (req, res) => {
   try {
@@ -51,17 +52,20 @@ const remove = async (req, res) => {
       actionDone: ACTIONS.delete,
       oldData: memberOldData,
       newData: {
-        note: "Soft deletion done",
+        note: "Soft deletion done. Rest fields are same as old data.",
         removed: true
-      }
+      },
+      description: `Member removed from project by ${getFullName(req.admin.employeeInfo)}`
     });
+
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000/';
+    const projectLink = `${baseUrl}projects/${member.projectId}`;
 
     // ✅ Send Email to the removed member
     const assignedUser = await User.findById(member.userId);
     if (assignedUser && assignedUser.email) {
       const emailHtml = generateMasterTemplate({
-        company_name: req.admin.companyName,
-        user_name: assignedUser.name,
+        user_name: getFullName(assignedUser.employeeInfo),
         event_name: taskManagerTemplate.employeeRemovedFromProject.event_name,
         action: taskManagerTemplate.employeeRemovedFromProject.action,
         status: 'Removed',
@@ -69,12 +73,12 @@ const remove = async (req, res) => {
         notes: `
           Project ID: ${member.projectId}<br/>
           Task ID: ${member.taskId}<br/>
-          Removed By: ${req.admin.name}<br/>
+          Removed By: ${getFullName(req.admin.employeeInfo)}<br/>
           Date: ${new Date().toLocaleString()}
         `,
         actionbutton_text: "View Projects",
-        actionlink: `http://localhost:3000/projects/${member.projectId}`,
-        action_link: `http://localhost:3000/projects/${member.projectId}`
+        actionlink: projectLink,
+        action_link: projectLink
       });
 
       sendEmail(assignedUser.email, taskManagerTemplate.employeeRemovedFromProject.subject, emailHtml);

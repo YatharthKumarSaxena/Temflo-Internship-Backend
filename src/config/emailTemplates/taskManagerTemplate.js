@@ -1,6 +1,32 @@
 const { defaultConfig } = require("./defaultTemplates");
 
 const taskManagerTemplate = {
+
+    // Workspcae Created
+    workspaceCreated: {
+        ...defaultConfig,
+        subject: "New Workspace Created",
+        event_name: "Workspace Created",
+        action: "Create",
+        message_intro: "A new workspace has been created.",
+        actionbutton_text: "View Workspace",
+        actionlink: "<WORKSPACE_LINK>", // controller se inject hoga
+        fallback_note: "Having trouble with the button?",
+        action_link: "<WORKSPACE_LINK>"
+    },
+
+    workspaceUpdated: {
+        ...defaultConfig,
+        subject: "Workspace Updated",
+        event_name: "Workspace Updated",
+        action: "Update",
+        message_intro: "The workspace has been updated.",
+        actionbutton_text: "View Workspace",
+        actionlink: "<WORKSPACE_LINK>", // controller se inject hoga
+        fallback_note: "Having trouble with the button?",
+        action_link: "<WORKSPACE_LINK>"
+    },
+
     // Task related events
     taskCommentAdded: {
         ...defaultConfig,
@@ -8,6 +34,18 @@ const taskManagerTemplate = {
         event_name: "Task Comment Added",
         action: "Create",
         message_intro: "A new comment has been added to your task.",
+        actionbutton_text: "View Task",
+        actionlink: "<TASK_LINK>", // controller se inject hoga
+        fallback_note: "Having trouble with the button?",
+        action_link: "<TASK_LINK>"
+    },
+
+    taskStatusUpdated: {
+        ...defaultConfig,
+        subject: "Task Status Updated",
+        event_name: "Task Status Updated",
+        action: "Update",
+        message_intro: "The task status has been updated.",
         actionbutton_text: "View Task",
         actionlink: "<TASK_LINK>", // controller se inject hoga
         fallback_note: "Having trouble with the button?",
@@ -73,6 +111,18 @@ const taskManagerTemplate = {
         event_name: "Subtask Unassigned from Employee",
         action: "Delete",
         message_intro: "A subtask has been unassigned from you."
+    },
+
+    subtaskStatusUpdated: {
+        ...defaultConfig,
+        subject: "Subtask Status Updated",
+        event_name: "Subtask Status Updated",
+        action: "Update",
+        message_intro: "The subtask status has been updated.",
+        actionbutton_text: "View Subtask",
+        actionlink: "<SUBTASK_LINK>", // controller se inject hoga
+        fallback_note: "Having trouble with the button?",
+        action_link: "<SUBTASK_LINK>"
     },
 
     subtaskCommentAdded: {

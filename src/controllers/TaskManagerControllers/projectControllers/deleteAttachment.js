@@ -4,6 +4,7 @@ const path = require('path');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { PROJECT_ATTACHMENT_DELETED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const deleteAttachment = async (req, res) => {
   try {
@@ -45,9 +46,13 @@ const deleteAttachment = async (req, res) => {
       }
     });
 
-    // Remove attachment from project
+    const oldAttachments = [...project.attachments]; // before removal
+
+    // Remove attachment
     project.attachments.splice(attachmentIndex, 1);
     await project.save();
+
+    const newAttachments = [...project.attachments]; // after removal
 
     // 🔹 Activity Tracker logging
     activityTracker({
@@ -60,8 +65,9 @@ const deleteAttachment = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_project],
       eventType: PROJECT_ATTACHMENT_DELETED,
       actionDone: ACTIONS.delete,
-      oldData: attachment,
-      newData: { note: "Attachment removed from project" }
+      oldData: oldAttachments,
+      newData: newAttachments,
+      description: `Attachment deleted from project by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({

@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
-const { TASK_REMOVED,SUBTASK_DELETED } = require("@/config/activity.enums");
+const { TASK_REMOVED, SUBTASK_DELETED } = require("@/config/activity.enums");
 const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const remove = async (req, res) => {
   try {
@@ -26,24 +27,48 @@ const remove = async (req, res) => {
     // 🔹 Soft delete Subtasks
     for (const subtask of subtasks) {
       subtask.removed = true;
-          // ✅ Activity Tracker logging
-          await activityTracker({
-            userId: req.admin._id,
-            companyId: req.admin.companyId,
-            plantId: req.admin.plantId || null,
-            module: MODULE.taskManager,
-            subModuleAffected: SUBMODULE.task,
-            fileAffected: FILE.file_remove_task,
-            modelAffected: [MODEL_AFFECTED.model_subtask],
-            eventType: SUBTASK_DELETED,
-            actionDone: ACTIONS.delete,
-            oldData: subtask.toObject(),
-            newData: {
-              note: "Soft delete performed",
-              removed: true
-            }
-          }),
+      // ✅ Activity Tracker logging
+      activityTracker({
+        userId: req.admin._id,
+        companyId: req.admin.companyId,
+        plantId: req.admin.plantId || null,
+        module: MODULE.taskManager,
+        subModuleAffected: SUBMODULE.task,
+        fileAffected: FILE.file_remove_task,
+        modelAffected: [MODEL_AFFECTED.model_subtask],
+        eventType: SUBTASK_DELETED,
+        actionDone: ACTIONS.delete,
+        oldData: subtask.toObject(),
+        newData: {
+          note: "Soft delete performed",
+          removed: true
+        },
+        description: `Subtask deleted due to task deletion by ${getFullName(req.admin.employeeInfo)}`
+      });
       await subtask.save();
+      // 🔹 Email Notification (if assignedTo exists)
+      if (subtask.assignedTo) {
+        const assignedUser = await User.findById(subtask.assignedTo);
+        if (assignedUser && assignedUser.email) {
+          const emailHtml = generateMasterTemplate({
+            user_name: getFullName(assignedUser.employeeInfo),
+            event_name: taskManagerTemplate.subtaskRemovedFromEmployee.event_name,
+            action: taskManagerTemplate.subtaskRemovedFromEmployee.action,
+            status: 'Removed',
+            message_intro: `A subtask assigned to you has been removed due to task deletion by Admin.`,
+            notes: `
+                  Subtask Title: ${subtask.title}<br/>
+                  Task ID: ${subtask.taskId}<br/>
+                  Project ID: ${subtask.projectId}<br/>
+                  Removed By: ${getFullName(req.admin.employeeInfo)}<br/>
+                  Date: ${new Date().toLocaleString()}
+                `
+            // ✅ No action button/link sent
+          });
+
+          sendEmail(assignedUser.email, taskManagerTemplate.subtaskRemovedFromEmployee.subject, emailHtml);
+        }
+      }
     }
 
     // 🔹 Soft delete Task
@@ -51,7 +76,7 @@ const remove = async (req, res) => {
     await task.save();
 
     // 🔹 Activity Tracker
-    await activityTracker({
+    activityTracker({
       userId: req.admin._id,
       companyId: req.admin.companyId,
       plantId: req.admin.plantId || null,
@@ -62,7 +87,8 @@ const remove = async (req, res) => {
       eventType: TASK_REMOVED,
       actionDone: ACTIONS.delete,
       oldData: task.toObject(),
-      newData: { note: "Soft deletion performed", removed: true }
+      newData: { note: "Soft deletion performed", removed: true },
+      description: `Task deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     // 🔹 Email to previously assigned user
@@ -70,15 +96,14 @@ const remove = async (req, res) => {
       const assignedUser = await User.findById(previousAssignedTo);
       if (assignedUser?.email) {
         const html = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: assignedUser.name,
+          user_name: getFullName(assignedUser.employeeInfo),
           event_name: taskManagerTemplate.taskUnassignedFromEmployee.event_name,
           action: taskManagerTemplate.taskUnassignedFromEmployee.action,
           status: 'Removed',
-          message_intro: taskManagerTemplate.taskUnassignedFromEmployee.message_intro,
+          message_intro: `A task assigned to you has been removed due to task deletion by Admin.`,
           notes: `
             Task Title: ${task.title}<br/>
-            Removed By: ${req.admin.name}<br/>
+            Removed By: ${getFullName(req.admin.employeeInfo)}<br/>
             Date: ${new Date().toLocaleString()}
           `
         });

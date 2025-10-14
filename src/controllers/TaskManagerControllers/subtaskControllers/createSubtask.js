@@ -5,6 +5,7 @@ const { SUBTASK_CREATED } = require("@/config/activity.enums");
 const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const createSubtask = async (req, res) => {
   try {
@@ -64,7 +65,7 @@ const createSubtask = async (req, res) => {
     await subtask.save();
 
     // ✅ 4. Activity Tracker logging
-    await activityTracker({
+    activityTracker({
       userId: req.admin._id,
       companyId: req.admin.companyId,
       plantId: req.admin.plantId || null,
@@ -76,15 +77,18 @@ const createSubtask = async (req, res) => {
       actionDone: ACTIONS.create,
       oldData: null,
       newData: subtask.toObject(),
+      description: `New subtask created by ${getFullName(req.admin.employeeInfo)}`
     });
+
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000/';
+    const subtaskLink = `${baseUrl}projects/${projectId}/subtasks/${subtask._id}`;
 
     // 🔹 Email Notification (if assignedTo exists)
     if (assignedTo) {
       const assignedUser = await User.findById(assignedTo);
       if (assignedUser && assignedUser.email) {
         const emailHtml = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: assignedUser.name,
+          user_name: getFullName(assignedUser.employeeInfo),
           event_name: taskManagerTemplate.subtaskAssignedToEmployee.event_name,
           action: taskManagerTemplate.subtaskAssignedToEmployee.action,
           status: 'Assigned',
@@ -93,12 +97,12 @@ const createSubtask = async (req, res) => {
             Subtask Title: ${subtask.title}<br/>
             Task ID: ${task._id}<br/>
             Project ID: ${projectId}<br/>
-            Assigned By: ${req.admin.name}<br/>
+            Assigned By: ${getFullName(req.admin.employeeInfo)}<br/>
             Due Date: ${subtask.dueDate || 'N/A'}<br/>
           `,
           actionbutton_text: "View Subtask",
-          actionlink: `http://localhost:3000/tasks/${task._id}/subtasks/${subtask._id}`,
-          action_link: `http://localhost:3000/tasks/${task._id}/subtasks/${subtask._id}`
+          actionlink: subtaskLink,
+          action_link: subtaskLink
         });
 
         sendEmail(assignedUser.email, taskManagerTemplate.subtaskAssignedToEmployee.subject, emailHtml);

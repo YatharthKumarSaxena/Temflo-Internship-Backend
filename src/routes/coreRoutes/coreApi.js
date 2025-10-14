@@ -23,7 +23,9 @@ router.route('/setting/CompanyInfo').get(isAdminOrOwner, catchErrors(settingCont
 router.route('/setting/updateCompanyDetails').patch(isAdminOrOwner, catchErrors(settingController.updateCompanyDetails))
 router.route('/setting/updatePassword').patch(catchErrors(settingController.updatePassword))
 router.route('/update-user-password/:id').patch(catchErrors(userControllerInstance.updatePassword))
-
+router.route('/update-user-profile/:id').patch(catchErrors(userControllerInstance.updateProfile))
+router.route('/update-profile-password/:id').patch(catchErrors(userControllerInstance.updateProfilePassword))
+router.route('/read-profile/:id').get(catchErrors(userControllerInstance.read))
 // ------------------------------API to create User in Company---------------------------
 router.route('/employee/create').post(checkPermission("manage_employee"), requireWriteAccess, catchErrors(userController.create));
 router.route('/employee/list').get(catchErrors(userController.paginatedList));

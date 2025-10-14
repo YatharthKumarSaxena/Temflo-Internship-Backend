@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { PROJECT_UPDATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const update = async (req, res) => {
   // params projectId
@@ -19,37 +20,28 @@ const update = async (req, res) => {
       });
     }
 
-    let newData = {};
-    let oldData = {};
+    let oldData = project.toObject();
     
     if (name){
-      oldData.name = project.name;
       project.name = name;
-      newData.name = name;
     } 
     if (description){
-      oldData.description = project.description;
       project.description = description;
-      newData.description = description;
     } 
     if (emoji){
-      oldData.emoji = project.emoji;
       project.emoji = emoji;
-      newData.emoji = emoji;
     } 
     if (links){
-      oldData.links = project.links;
       project.links = links;
-      newData.links = links;
     } 
     if (tags){
-      oldData.tags = project.tags;
       project.tags = tags;
-      newData.tags = tags;
     } 
 
     await project.save();
 
+    const newData = project.toObject();
+    
     // 🔹 Activity Tracker logging
     activityTracker({
       userId: req.admin._id,
@@ -62,7 +54,8 @@ const update = async (req, res) => {
       eventType: PROJECT_UPDATED,
       actionDone: ACTIONS.update,
       oldData: oldData,
-      newData: newData
+      newData: newData,
+      description: `Project updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
     return res.status(200).json({

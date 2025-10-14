@@ -2,6 +2,7 @@ const DirectDeposit = require("../../models/parollModels/DirectDeposit");
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
 const { DIRECT_DEPOSIT_CREATED, DIRECT_DEPOSIT_UPDATED, DIRECT_DEPOSIT_DELETED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 // Get all direct deposits
 exports.getAllDirectDeposits = async (req, res) => {
@@ -30,7 +31,8 @@ exports.createDirectDeposit = async (req, res) => {
       eventType: DIRECT_DEPOSIT_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: deposit.toObject()
+      newData: deposit.toObject(),
+      description: `Direct deposit created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.status(201).json(deposit);
@@ -47,19 +49,6 @@ exports.updateDirectDeposit = async (req, res) => {
 
     const updated = await DirectDeposit.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
-    // 🔹 Extract changed fields
-    const oldData = {};
-    const newData = {};
-    const oldObj = existing.toObject();
-    const newObj = updated.toObject();
-
-    for (let key in newObj) {
-      if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
-        oldData[key] = oldObj[key];
-        newData[key] = newObj[key];
-      }
-    }
-
     // Activity Tracker
     activityTracker({
       userId: req.admin._id,
@@ -71,8 +60,9 @@ exports.updateDirectDeposit = async (req, res) => {
       modelAffected: [MODEL_AFFECTED.model_directDeposit],
       eventType: DIRECT_DEPOSIT_UPDATED,
       actionDone: ACTIONS.update,
-      oldData,
-      newData
+      oldData: existing.toObject(),
+      newData: updated.toObject(),
+      description: `Direct deposit updated by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.json(updated);
@@ -100,7 +90,8 @@ exports.deleteDirectDeposit = async (req, res) => {
       eventType: DIRECT_DEPOSIT_DELETED,
       actionDone: ACTIONS.delete,
       oldData: deleted.toObject(),
-      newData: null
+      newData: null,
+      description: `Direct deposit deleted by ${getFullName(req.admin.employeeInfo)}`
     });
 
     res.sendStatus(204);

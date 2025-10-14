@@ -5,6 +5,7 @@ const { TASK_CREATED } = require("@/config/activity.enums");
 const { taskManagerTemplate } = require("@/config/emailTemplates/taskManagerTemplate");
 const { generateMasterTemplate } = require("@/emailTemplate/masterTemplate");
 const { sendEmail } = require("@/utils/emailSender");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const createTask = async (req, res) => {
   try {
@@ -57,7 +58,7 @@ const createTask = async (req, res) => {
     await task.save();
 
     // 🔹 Activity Tracker logging
-    await activityTracker({
+    activityTracker({
       userId: req.admin._id,
       companyId: req.admin.companyId,
       plantId: plantId || null,
@@ -68,17 +69,18 @@ const createTask = async (req, res) => {
       eventType: TASK_CREATED,
       actionDone: ACTIONS.create,
       oldData: null,
-      newData: task.toObject()
+      newData: task.toObject(),
+      description: `New task created by ${getFullName(req.admin.employeeInfo)}`
     });
 
     // 🔹 Send Email to assigned user if assignedTo exists
     if (assignedTo) {
       const assignedUser = await User.findById(assignedTo);
       if (assignedUser?.email) {
-        const taskLink = `http://localhost:3000/projects/${req.params.projectId}/tasks/${task._id}`;
+        const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000/';
+        const taskLink = `${baseUrl}projects/${req.params.projectId}/tasks/${task._id}`;
         const html = generateMasterTemplate({
-          company_name: req.admin.companyName,
-          user_name: assignedUser.name,
+          user_name: getFullName(assignedUser.employeeInfo),
           event_name: taskManagerTemplate.taskAssignedToEmployee.event_name,
           action: taskManagerTemplate.taskAssignedToEmployee.action,
           status: 'Assigned',
@@ -87,7 +89,7 @@ const createTask = async (req, res) => {
             <b>Task Title:</b> ${task.title}<br/>
             <b>Description:</b> ${task.description || '-'}<br/>
             <b>Due Date:</b> ${dueDate || '-'}<br/>
-            <b>Assigned By:</b> ${req.admin.name}<br/>
+            <b>Assigned By:</b> ${getFullName(req.admin.employeeInfo)}<br/>
             <b>Date:</b> ${new Date().toLocaleString()}
           `,
           actionbutton_text: 'View Task',

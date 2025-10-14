@@ -613,7 +613,7 @@ Employee Name: ${getFullName(effectiveEmployeeInfo)}`;
       modelAffected: [MODEL_AFFECTED.model_userPassword],
       eventType: USER_PASSWORD_UPDATED_BY_ID,
       actionDone: ACTIONS.update,
-      description: `Password updated by ${getFullName(req.admin.employeeInfo)} for ${getFullName(targetUser.employeeInfo)} whose user Id: ${targetUser._id}`,
+      description: `Password updated by ${getFullName(req.admin.employeeInfo)} for ${getFullName(targetUser.employeeInfo)} whose Employee Code: ${targetUser.employeeCode}`,
       oldData: { _id: req.params.id, passwordChanged: false },
       newData: { passwordChanged: true }
     });

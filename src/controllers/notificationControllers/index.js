@@ -312,6 +312,7 @@ class NotificationController {
       activityTracker({
         userId: req.admin._id,
         companyId: req.admin.companyId,
+        actionDone: ACTIONS.delete,
         plantId: req.admin.plantId || null,
         module: MODULE.notification,
         subModuleAffected: null,

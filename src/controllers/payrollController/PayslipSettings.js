@@ -1,7 +1,8 @@
 const PayslipSettings = require("../../models/parollModels/PayslipSettings");
 const { MODEL_AFFECTED, MODULE, ACTIONS, FILE } = require("@/config/structure.config");
 const { activityTracker } = require("@/utils/activityTracker");
-const { PAYSLIP_SETTINGS_UPDATED } = require("@/config/activity.enums");
+const { PAYSLIP_SETTINGS_UPDATED, PAYSLIP_SETTINGS_CREATED } = require("@/config/activity.enums");
+const { getFullName } = require("@/utils/commonFunctions");
 
 const setNoCache = (res) => {
   res.set("Cache-Control", "no-store");
@@ -49,10 +50,11 @@ exports.updateSettings = async (req, res) => {
         subModuleAffected: null,
         fileAffected: FILE.file_payslipSettings,
         modelAffected: [MODEL_AFFECTED.model_payslipSettings],
-        eventType: PAYSLIP_SETTINGS_UPDATED,
+        eventType: PAYSLIP_SETTINGS_CREATED,
         actionDone: ACTIONS.create,
         oldData: null,
-        newData: update
+        newData: settings.toObject(),
+        description: `Payslip settings created by ${getFullName(req.admin.employeeInfo)}`
       });
     } else {
       // Existing settings
@@ -60,16 +62,6 @@ exports.updateSettings = async (req, res) => {
       Object.assign(settings, update);
       await settings.save();
       const newObj = settings.toObject();
-
-      // 🔹 Extract only changed fields
-      const oldData = {};
-      const newData = {};
-      for (const key of allowed) {
-        if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
-          oldData[key] = oldObj[key];
-          newData[key] = newObj[key];
-        }
-      }
 
       // Activity Tracker
       activityTracker({
@@ -82,8 +74,9 @@ exports.updateSettings = async (req, res) => {
         modelAffected: [MODEL_AFFECTED.model_payslipSettings],
         eventType: PAYSLIP_SETTINGS_UPDATED,
         actionDone: ACTIONS.update,
-        oldData,
-        newData
+        oldData: oldObj,
+        newData: newObj,
+        description: `Payslip settings updated by ${getFullName(req.admin.employeeInfo)}`
       });
     }
 

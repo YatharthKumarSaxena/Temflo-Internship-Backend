@@ -616,6 +616,7 @@ exports.claimExpense = async (req, res, next) => {
 
     // Employee Email
     const emailHtmlEmployee = generateMasterTemplate({
+      user_name: getFullName(employeeForEmail?.employeeInfo),
       event_name: expenseTemplate.expenseClaimCreated.event_name,
       action: expenseTemplate.expenseClaimCreated.action,
       message_intro:
@@ -638,6 +639,7 @@ exports.claimExpense = async (req, res, next) => {
     // Admin Email
     if (req.admin.role === 'admin' || req.admin.role === 'owner') {
       const emailHtmlAdmin = generateMasterTemplate({
+        user_name: getFullName(req.admin.employeeInfo),
         event_name: expenseTemplate.expenseClaimCreated.event_name,
         action: expenseTemplate.expenseClaimCreated.action,
         message_intro: `You have submitted an expense claim successfully.`,
@@ -860,7 +862,7 @@ exports.updateExpense = async (req, res) => {
     if (formData) updateFields.formData = typeof formData === 'string' ? JSON.parse(formData) : formData;
 
     const expense = await Expense.findOne({ _id: expenseId, companyId, plantId })
-      .populate({ path: 'employeeId', select: 'employeeCode email name' })
+      .populate({ path: 'employeeId', select: 'employeeCode email name employeeInfo' })
       .session(session);
 
     if (!expense) {
@@ -926,8 +928,7 @@ exports.updateExpense = async (req, res) => {
           if (employeeEmail) {
             const walletLink = `${baseUrl}/dashboard/wallet/${expense._id}`;
             const emailHtmlEmployee = generateMasterTemplate({
-              company_name: req.admin.companyName,
-              user_name: employee.name || employee.employeeCode,
+              user_name: getFullName(employee.employeeInfo),
               event_name: expenseTemplate.walletRefunded.event_name,
               action: expenseTemplate.walletRefunded.action,
               status: expenseTemplate.walletRefunded.status,
@@ -944,6 +945,7 @@ exports.updateExpense = async (req, res) => {
           if (req.admin.email) {
             const walletLink = `${baseUrl}/dashboard/wallet/${expense._id}`;
             const emailHtmlAdmin = generateMasterTemplate({
+              user_name: getFullName(req.admin.employeeInfo),
               event_name: expenseTemplate.walletRefunded.event_name,
               action: expenseTemplate.walletRefunded.action,
               status: expenseTemplate.walletRefunded.status,
@@ -989,6 +991,7 @@ exports.updateExpense = async (req, res) => {
       const employeeEmail = expense.employeeId?.email || '';
       if (employeeEmail) {
         const emailHtml = generateMasterTemplate({
+          user_name: getFullName(expense.employeeId?.employeeInfo),
           event_name: expenseTemplate.expenseFileUploaded.event_name,
           action: expenseTemplate.expenseFileUploaded.action,
           message_intro: 'New file(s) have been uploaded to your expense claim by Admin.',
@@ -1003,6 +1006,7 @@ exports.updateExpense = async (req, res) => {
 
       if (req.admin.email) {
         const emailHtmlAdmin = generateMasterTemplate({
+          user_name: getFullName(req.admin.employeeInfo),
           event_name: expenseTemplate.expenseFileUploaded.event_name,
           action: expenseTemplate.expenseFileUploaded.action,
           message_intro: "You have uploaded new file(s) to an employee's expense claim.",
@@ -1038,6 +1042,7 @@ exports.updateExpense = async (req, res) => {
       if (employeeEmail) {
         const expenseLink = `${baseUrl}/expenses/${expense._id}`;
         const emailHtml = generateMasterTemplate({
+          user_name: getFullName(expense.employeeId?.employeeInfo),
           event_name: expenseTemplate.expenseCommentAdded.event_name,
           action: expenseTemplate.expenseCommentAdded.action,
           message_intro: 'A new comment has been added to your expense claim by Admin.',
@@ -1053,6 +1058,7 @@ exports.updateExpense = async (req, res) => {
       if (req.admin.email) {
         const expenseLink = `${baseUrl}/expenses/${expense._id}`;
         const emailHtmlAdmin = generateMasterTemplate({
+          user_name: getFullName(req.admin.employeeInfo),
           event_name: expenseTemplate.expenseCommentAdded.event_name,
           action: expenseTemplate.expenseCommentAdded.action,
           message_intro: "You have added a new comment to an employee's expense claim.",
@@ -1092,6 +1098,7 @@ exports.updateExpense = async (req, res) => {
     if (expense.employeeId?.email) {
       const expenseLink = `${baseUrl}/expenses/${expense._id}`;
       const emailHtml = generateMasterTemplate({
+        user_name: getFullName(expense.employeeId?.employeeInfo),
         event_name: expenseTemplate.expenseUpdated.event_name,
         action: expenseTemplate.expenseUpdated.action,
         message_intro: 'Your expense has been updated by Admin.',
@@ -1135,7 +1142,7 @@ exports.addComment = async (req, res) => {
     }
 
     const expense = await Expense.findOne({ _id: expenseId, companyId })
-      .populate({ path: 'employeeId', select: 'employeeCode email name' });
+      .populate({ path: 'employeeId', select: 'employeeCode email name ' });
 
     if (!expense) {
       return res.status(404).json({ success: false, message: 'Expense not found or company mismatch' });
@@ -1163,7 +1170,7 @@ exports.addComment = async (req, res) => {
       description: `Comment added to expense by ${getFullName(req.admin.employeeInfo)}`
     });
 
-    const expenseWithEmployee = await expense.populate('employeeId', 'email name employeeCode');
+    const expenseWithEmployee = await expense.populate('employeeId', 'email name employeeCode employeeInfo');
     const employeeEmail = expenseWithEmployee.employeeId?.email || '';
 
     // Define expense link for reuse in comment emails
@@ -1171,6 +1178,7 @@ exports.addComment = async (req, res) => {
 
     if (employeeEmail) {
       const emailHtml = generateMasterTemplate({
+        user_name: getFullName(expenseWithEmployee.employeeId?.employeeInfo),
         event_name: expenseTemplate.expenseCommentAdded.event_name,
         action: expenseTemplate.expenseCommentAdded.action,
         message_intro: 'A new comment has been added to your expense claim by Admin.',
@@ -1187,6 +1195,7 @@ exports.addComment = async (req, res) => {
 
     if (adminEmail) {
       const emailHtmlAdmin = generateMasterTemplate({
+        user_name: getFullName(req.admin.employeeInfo),
         event_name: expenseTemplate.expenseCommentAdded.event_name,
         action: expenseTemplate.expenseCommentAdded.action,
         message_intro: "You have added a new comment to an employee's expense claim.",
