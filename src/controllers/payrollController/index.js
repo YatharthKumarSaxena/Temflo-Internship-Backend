@@ -8,5 +8,6 @@ module.exports = {
   Batches: require('./Batch'),
   Allowances: require('./Allowance'),
   Deductions: require('./Deduction'),
-  Compensations: require('./Compensation')
+  Compensations: require('./Compensation'),
+  AdvanceLoan: require('./advanceLoanController')
 };
