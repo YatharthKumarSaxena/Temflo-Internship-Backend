@@ -1,5 +1,6 @@
+
 const mongoose = require('mongoose');
-const {sendEmail} = require('@/utils/emailSender');
+const { sendEmail } = require('@/utils/emailSender');
 const { emailVerfication } = require('@/emailTemplate/emailVerfication');
 const { CREATED } = require('@/config/httpStatus.config');
 const { USER_REGISTERED } = require('@/config/activity.enums');
@@ -14,16 +15,35 @@ const { activityTracker } = require('@/utils/activityTracker');
 const { generateNanoId } = require('@/utils/idGenerator');
 const { generate: uniqueId } = require('shortid');
 const { ROLE_TYPES } = require('@/config/user.config');
-const { getFullName } = require("@/utils/commonFunctions");
+const { getFullName } = require('@/utils/commonFunctions');
+
+// Import models
+const Company = require('@/models/userModels/User');
+const Plan = require('@/models/BusinessModels/Plan');
+const Subscription = require('@/models/BusinessModels/Subscription');
 
 const signUp = async (req, res, { userModel }) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const Admin = mongoose.model(userModel);
     const AdminPassword = mongoose.model(userModel + 'Password');
 
-    const { email, password, code, name, address, city, state, country, pinCode, phoneNumber } =
-      req.body;
+    const {
+      email,
+      password,
+      code,
+      name,
+      address,
+      city,
+      state,
+      country,
+      pinCode,
+      phoneNumber,
+    } = req.body;
 
+    // ✅ 1. Validation
     if (
       !email ||
       !password ||
@@ -39,7 +59,6 @@ const signUp = async (req, res, { userModel }) => {
       return throwMissingFieldsError(res, 'All fields required');
     }
 
-    // Validate company code: exactly 4 alphanumeric characters (letters and/or digits)
     const isValidCompanyCode = /^[A-Za-z\d]{4}$/.test(code || '');
     if (!isValidCompanyCode) {
       return throwMissingFieldsError(
@@ -48,22 +67,18 @@ const signUp = async (req, res, { userModel }) => {
       );
     }
 
-    // Check if email already exists
     const existingAdmin = await Admin.findOne({ email });
     if (existingAdmin) {
       return throwConflictError(res, 'Email already exists');
     }
 
-    // Create salt and hash password (compatible with existing system)
+    // ✅ 1. Create Admin User
     const salt = uniqueId();
     const newAdminPassword = new AdminPassword();
     const passwordHash = await newAdminPassword.generateHash(salt, password);
-
-    // Generate email verification token
     const token = await generateNanoId();
 
-    // Create admin user
-    const newadmin = {
+    const newAdmin = new Admin({
       email,
       code,
       name,
@@ -73,27 +88,69 @@ const signUp = async (req, res, { userModel }) => {
       country,
       pinCode,
       phoneNumber,
-      enabled: true, // sirf admin block/unblock ke liye
+      enabled: true,
       role: ROLE_TYPES.OWNER,
-    };
-    const adminResult = await new Admin(newadmin).save();
+    });
+    const adminResult = await newAdmin.save({ session });
+    const companyId = adminResult.companyId
+
+    // ✅ 3. Create Trial Plan
+    const trialPlan = await Plan.create(
+      [
+        {
+          companyId,
+          name: 'Trial',
+          durationDays: 45,
+          seatLimit: 10,
+          status: 'trial',
+          includedModules: [
+            { moduleKey: 'leave', plan: 'basic', enabled: true },
+            { moduleKey: 'attendance', plan: 'basic', enabled: true },
+            { moduleKey: 'expense', plan: 'basic', enabled: true },
+            { moduleKey: 'task', plan: 'basic', enabled: true },
+            { moduleKey: 'asset', plan: 'basic', enabled: true },
+          ],
+        },
+      ],
+      { session }
+    );
+    const planId = trialPlan[0]._id;
+
+    // ✅ 4. Create Subscription for 45 days
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 45);
+
+    const subscription = await Subscription.create(
+      [
+        {
+          companyId,
+          planId,
+          startDate: new Date(),
+          endDate,
+          amount: 0,
+          paymentStatus: 'paid',
+        },
+      ],
+      { session }
+    );
+
 
     const emailToken = {
-      token: token,
+      token,
       created: new Date(),
     };
 
-    // Save password in AdminPassword model
     const adminPasswordData = {
       password: passwordHash,
       salt,
-      emailVerified: false, // ✅ user ko verify karna hoga
+      emailVerified: false,
       emailToken,
       user: adminResult._id,
     };
-    await new AdminPassword(adminPasswordData).save();
+    await new AdminPassword(adminPasswordData).save({ session });
 
-    // Send verification email
+
+    // ✅ 8. Send Verification Email
     const baseUrl = process.env.FRONTEND_URL || 'https://erpica.netlify.app/';
     const verificationLink = `${baseUrl}/verify/${adminResult._id}/${emailToken.token}`;
 
@@ -106,42 +163,51 @@ const signUp = async (req, res, { userModel }) => {
 
     const emailSent = await sendEmail(email, 'Verify your email | ERPICA', emailHtml);
 
-    // Activity Tracker logging
+    // ✅ 9. Log Activity
     activityTracker({
-      userId: adminResult._id, // admin ka Mongo ID as userId
-      companyId: adminResult.companyId,
-      plantId: adminResult.plantId || null,
+      userId: adminResult._id,
+      companyId,
       module: MODULE.middlewares,
       subModuleAffected: SUBMODULE.createAuth,
       fileAffected: FILE.file_createAuth_register,
-      modelAffected: [MODEL_AFFECTED.model_user, MODEL_AFFECTED.model_userPassword],
+      modelAffected: [
+        MODEL_AFFECTED.model_user,
+        MODEL_AFFECTED.model_userPassword,
+      ],
       eventType: USER_REGISTERED,
       actionDone: ACTIONS.create,
-      description: `New account registered: ${getFullName(adminResult.employeeInfo)} (${adminResult.email}, Code: ${adminResult.code})`,
+      description: `New account registered: ${getFullName(
+        adminResult.employeeInfo
+      )} (${adminResult.email}, Code: ${adminResult.code})`,
       oldData: null,
       newData: adminResult.toObject(),
     });
 
-    // ✅ Case 1: Email send failed but account created
+    await session.commitTransaction();
+    session.endSession();
+
     if (!emailSent) {
       return res.status(CREATED).json({
         success: true,
         adminId: adminResult._id,
         message:
-          "Account created successfully, but we couldn't send the verification email. Please try resending verification from your profile or contact support.",
+          "Account created successfully, but verification email couldn't be sent. Please try resending verification or contact support.",
       });
     }
 
-    // ✅ Case 2: All good, email sent
-    res.status(CREATED).json({
+    return res.status(CREATED).json({
       success: true,
       adminId: adminResult._id,
-      message: 'Signup successful. Please check your email to verify your account before login.',
+      message:
+        'Signup successful. Please verify your email before logging in.',
     });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     errorMessage(error);
     return throwInternalServerError(res);
   }
 };
 
 module.exports = signUp;
+

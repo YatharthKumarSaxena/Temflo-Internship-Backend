@@ -35380,3 +35380,4 @@
 2025-10-15T07:20:40.068Z [INFO] All security headers present - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
 2025-10-15T07:21:40.092Z [INFO] All security headers present - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
 2025-10-15T07:23:09.655Z [INFO] All security headers present - IP: ::1 - URL: /api/notifications/unread-count - User-Agent: unknown
+2025-10-15T10:47:29.922Z [INFO] All security headers present - IP: ::1 - URL: /api/signup - User-Agent: unknown
