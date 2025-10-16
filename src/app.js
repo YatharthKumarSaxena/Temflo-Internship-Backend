@@ -49,7 +49,7 @@ const taskManagerRouter = require('./routes/taskManagerRoutes/taskManagerApi');
 const isOwner = require('./middlewares/access/Owner')
 const coreNoticeRouter = require('./routes/coreRoutes/coreNotice');
 const coreNotificationRouter = require('./routes/coreRoutes/coreNotification');
-const payrollApiRouter = require('./routes/PayrollRoutes/payrollAPI'); // ✅ payroll import
+// const payrollApiRouter = require('./routes/PayrollRoutes/payrollAPI'); // ✅ payroll import
 const materialManagementRouter = require('./routes/materialRoutes/index'); // Material Management routes
 const assignmentRouter = require('./routes/appRoutes/assignmentRoutes'); // Assignment routes
 const customerRouter = require('./routes/SalesRoutes/customerRoutes'); // Sales Management - Customer routes
@@ -131,7 +131,7 @@ app.use('/api/expenses', adminAuth.isValidAuthToken, ExpenseRouter);
 app.use('/api/task-manager', adminAuth.isValidAuthToken, taskManagerRouter);
 
 
-app.use('/api/payroll', adminAuth.isValidAuthToken, payrollApiRouter); // ✅ payroll route
+// app.use('/api/payroll', adminAuth.isValidAuthToken, payrollApiRouter); // ✅ payroll route
 app.use('/api/assignment', adminAuth.isValidAuthToken, assignmentRouter); // Assignment routes
 app.use('/api/finance', adminAuth.isValidAuthToken, faMasterRoutes);
 // app.use('/api/subscription', adminAuth.isValidAuthToken, isOwner, businessPlanRouter)
