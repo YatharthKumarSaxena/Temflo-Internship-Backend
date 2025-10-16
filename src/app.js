@@ -124,17 +124,17 @@ app.use(
   salesVerificationConfigRouter
 ); // Sales Management - Verification config
 
-app.use('/api/attendance', adminAuth.isValidAuthToken, checkActivePlan("attendance"), AttendanceRouter);
-app.use('/api/leave', adminAuth.isValidAuthToken, checkActivePlan("leave"), LeaveRouter);
-app.use('/api/asset', adminAuth.isValidAuthToken, checkActivePlan("asset"), AssetRouter);
-app.use('/api/expenses', adminAuth.isValidAuthToken, checkActivePlan("expense"), ExpenseRouter);
-app.use('/api/task-manager', adminAuth.isValidAuthToken, checkActivePlan("task"), taskManagerRouter);
+app.use('/api/attendance', adminAuth.isValidAuthToken, AttendanceRouter);
+app.use('/api/leave', adminAuth.isValidAuthToken, LeaveRouter);
+app.use('/api/asset', adminAuth.isValidAuthToken, AssetRouter);
+app.use('/api/expenses', adminAuth.isValidAuthToken, ExpenseRouter);
+app.use('/api/task-manager', adminAuth.isValidAuthToken, taskManagerRouter);
 
 
 app.use('/api/payroll', adminAuth.isValidAuthToken, payrollApiRouter); // ✅ payroll route
 app.use('/api/assignment', adminAuth.isValidAuthToken, assignmentRouter); // Assignment routes
 app.use('/api/finance', adminAuth.isValidAuthToken, faMasterRoutes);
-app.use('/api/subscription', adminAuth.isValidAuthToken, isOwner, businessPlanRouter)
+// app.use('/api/subscription', adminAuth.isValidAuthToken, isOwner, businessPlanRouter)
 // app.use('/download', coreDownloadRouter);
 // app.use('/public', corePublicRouter);
 

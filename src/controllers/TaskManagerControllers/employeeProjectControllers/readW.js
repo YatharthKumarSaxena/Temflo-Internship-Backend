@@ -8,38 +8,34 @@ const readW = async (req, res) => {
     // check if user is employee
     if (req.admin.role === 'employee') {
       // find all project, employee is in
-      const projectIds = Member.distinct('projectId', {
+      const projectIds = await Member.distinct('projectId', {
         userId: req.admin.id,
         workspaceId: req.params.workspaceId,
         companyId: req.admin.companyId,
         removed: false, // Only active memberships
       });
 
+
       if (projectIds.length > 0) {
-        const projects = [];
-        projectIds.map(async (project) => {
-          const projectId = project.projectId;
-          const req = await Project.findOne({
-            _id: projectId,
-            companyId: req.admin.companyId,
-            removed: false,
-          });
-          projects.push(req);
+        const projects = await Project.find({
+          _id: { $in: projectIds },
+          companyId: req.admin.companyId,
+          removed: false,
         });
 
-        if (projects.length == 0) {
+        if (projects.length === 0) {
           return res.status(200).json({
             success: true,
             projects: null,
             message: 'No Projects found',
           });
-        } else {
-          return res.status(200).json({
-            success: true,
-            projects,
-            message: 'We found this Projects',
-          });
         }
+
+        return res.status(200).json({
+          success: true,
+          projects,
+          message: 'We found these Projects',
+        });
       } else {
         return res.status(200).json({
           success: true,
@@ -47,6 +43,7 @@ const readW = async (req, res) => {
           message: 'No Projects found',
         });
       }
+
     } else {
       return res.status(404).json({
         success: false,

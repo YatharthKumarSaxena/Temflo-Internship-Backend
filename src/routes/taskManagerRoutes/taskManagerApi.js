@@ -15,33 +15,33 @@ const employeeTaskController = require('@/controllers/TaskManagerControllers/emp
 const employeeSubtaskController = require('@/controllers/TaskManagerControllers/employeeSubtaskControllers');
 
 // Workspace APIs
-router.route('/workspace/create').post(catchErrors(workspaceController.create)); 
+router.route('/workspace/create').post(catchErrors(workspaceController.create));
 router.route('/workspace/list').get(catchErrors(workspaceController.paginatedList));
 router.route('/workspace/read').get(catchErrors(workspaceController.read));
 router.route('/workspace/read/w/:workspaceId').get(catchErrors(workspaceController.readW));
 router
   .route('/workspace/update/:workspaceId')
-  .put(catchErrors(workspaceController.updateWorkspace)); 
-router.route('/workspace/delete/:workspaceId').patch(catchErrors(workspaceController.remove)); 
+  .put(catchErrors(workspaceController.updateWorkspace));
+router.route('/workspace/delete/:workspaceId').patch(catchErrors(workspaceController.remove));
 
 // Project APIs
 router.route('/project/create/:workspaceId').post(catchErrors(projectController.create));
-router.route('/project/list/:workspaceId').get(catchErrors(projectController.paginatedList)); 
+router.route('/project/list/:workspaceId').get(catchErrors(projectController.paginatedList));
 router.route('/project/read/:plantId').get(catchErrors(projectController.read));
 router.route('/project/read/p/:projectId').get(catchErrors(projectController.readP));
 router.route('/project/read/w/:workspaceId').get(catchErrors(projectController.readW));
-router.route('/project/update/:projectId').put(catchErrors(projectController.updateProject)); 
-router.route('/project/delete/:projectId').patch(catchErrors(projectController.remove)); 
+router.route('/project/update/:projectId').put(catchErrors(projectController.updateProject));
+router.route('/project/delete/:projectId').patch(catchErrors(projectController.remove));
 
 // Task APIs
-router.route('/task/create/:projectId').post(catchErrors(taskController.create)); 
+router.route('/task/create/:projectId').post(catchErrors(taskController.create));
 router.route('/task/list/:projectId').get(catchErrors(taskController.paginatedList));
 router.route('/task/read/:plantId').get(catchErrors(taskController.read));
 router.route('/task/read/w/:workspaceId').get(catchErrors(taskController.readW));
 router.route('/task/read/p/:projectId').get(catchErrors(taskController.readP));
 router.route('/task/read/t/:taskId').get(catchErrors(taskController.readT));
-router.route('/task/update/:taskId').put(catchErrors(taskController.updateTask)); 
-router.route('/task/delete/:taskId').delete(catchErrors(taskController.remove)); 
+router.route('/task/update/:taskId').put(catchErrors(taskController.updateTask));
+router.route('/task/delete/:taskId').delete(catchErrors(taskController.remove));
 router.route('/task/count/:projectId').get(catchErrors(taskController.count));
 
 // Task File Upload APIs
@@ -57,15 +57,15 @@ router.route('/subtask/upload/:subtaskId').post(catchErrors(subtaskController.up
 router.route('/subtask/attachment/:subtaskId/:attachmentId').delete(catchErrors(subtaskController.deleteAttachment));
 
 // Task APIs
-router.route('/subtask/create/:taskId').post(catchErrors(subtaskController.create)); 
+router.route('/subtask/create/:taskId').post(catchErrors(subtaskController.create));
 router.route('/subtask/list/:taskId').get(catchErrors(subtaskController.paginatedList));
 router.route('/subtask/read').get(catchErrors(subtaskController.read));
 router.route('/subtask/read/w/:workspaceId').get(catchErrors(subtaskController.readW));
 router.route('/subtask/read/p/:projectId').get(catchErrors(subtaskController.readP));
 router.route('/subtask/read/t/:taskId').get(catchErrors(subtaskController.readT));
 router.route('/subtask/read/s/:subtaskId').get(catchErrors(subtaskController.readS));
-router.route('/subtask/update/:subtaskId').put(catchErrors(subtaskController.updateTask)); 
-router.route('/subtask/delete/:subtaskId').delete(catchErrors(subtaskController.remove)); 
+router.route('/subtask/update/:subtaskId').put(catchErrors(subtaskController.updateTask));
+router.route('/subtask/delete/:subtaskId').delete(catchErrors(subtaskController.remove));
 router.route('/subtask/count/:taskId').get(catchErrors(subtaskController.count));
 
 
@@ -93,13 +93,13 @@ router.route('/employee/project/read/w/:workspaceId').get(catchErrors(employeePr
 router.route('/employee/task/read').get(catchErrors(employeeTaskController.read));
 router.route('/employee/task/read/p/:projectId').get(catchErrors(employeeTaskController.readP));
 router.route('/employee/task/read/t/:taskId').get(catchErrors(employeeTaskController.readT));
-router.route('/employee/task/update/:taskId').put(catchErrors(employeeTaskController.update)); 
+router.route('/employee/task/update/:taskId').put(catchErrors(employeeTaskController.update));
 
 router.route('/employee/subtask/read').get(catchErrors(employeeSubtaskController.read));
 router.route('/employee/subtask/read/p/:projectId').get(catchErrors(employeeSubtaskController.readP));
 router.route('/employee/subtask/read/t/:taskId').get(catchErrors(employeeSubtaskController.readT));
 router.route('/employee/subtask/read/s/:subtaskId').get(catchErrors(employeeSubtaskController.readS));
-router.route('/employee/subtask/update/:subtaskId').put(catchErrors(employeeSubtaskController.update)); 
-
+router.route('/employee/subtask/update/:subtaskId').put(catchErrors(employeeSubtaskController.update));
+router.route('/employee/project/check-access').post(catchErrors(employeeProjectController.checkAccess))
 
 module.exports = router;
