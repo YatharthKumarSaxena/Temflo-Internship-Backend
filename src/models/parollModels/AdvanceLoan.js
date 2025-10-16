@@ -28,4 +28,4 @@ const AdvanceLoanSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("AdvanceLoan", AdvanceLoanSchema);
+module.exports = mongoose.model("AdvanceLoan", AdvanceLoanSchema);

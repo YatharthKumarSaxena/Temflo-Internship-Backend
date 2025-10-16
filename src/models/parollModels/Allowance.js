@@ -21,4 +21,4 @@ const allowanceSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Allowance", allowanceSchema);
+module.exports = mongoose.model("Allowance", allowanceSchema);
