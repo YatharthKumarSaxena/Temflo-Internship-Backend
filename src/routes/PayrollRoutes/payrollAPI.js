@@ -10,7 +10,7 @@ const payrollApi = require('./../../controllers/payrollController');
 // ========================
 // PAY PERIOD
 // ========================
-router.route('/pay-period')
+router.route('/payperiod')
   .get(catchErrors(payrollApi.PayPeriod.getPayPeriod))
   .post(catchErrors(payrollApi.PayPeriod.create))
   .put(catchErrors(payrollApi.PayPeriod.updatePayPeriod));
@@ -18,21 +18,21 @@ router.route('/pay-period')
 // ========================
 // TDS CONFIG
 // ========================
-router.route('/tds-config')
+router.route('/tds')
   .get(catchErrors(payrollApi.TDSConfig.getTDSConfig))
   .put(catchErrors(payrollApi.TDSConfig.updateTDSConfig));
 
 // ========================
 // PAYSLIP SETTINGS
 // ========================
-router.route('/payslip-settings')
+router.route('/payslipsettings')
   .get(catchErrors(payrollApi.PayslipSettings.getSettings))
   .put(catchErrors(payrollApi.PayslipSettings.updateSettings));
 
 // ========================
 // ROUNDING SETTINGS
 // ========================
-router.route('/rounding-amount')
+router.route('/rounding')
   .get(catchErrors(payrollApi.RoundingSetting.getRoundingSetting))
   .put(catchErrors(payrollApi.RoundingSetting.updateRoundingSetting));
 
@@ -60,19 +60,19 @@ router.route('/users/:id')
 // ========================
 // USER WITH BATCH
 // ========================
-router.route('/user-with-batch/sync')
+router.route('/sync')
   .post(catchErrors(payrollApi.UserWithBatch.syncUsers));
 
-router.route('/user-with-batch/get-active-users-with-batch')
+router.route('/get_active_users_with_batch')
   .get(catchErrors(payrollApi.UserWithBatch.getActiveUsersWithBatch));
 
 
 
-router.route('user-with-batch')
+router.route('/user_with_batch')
   .get(catchErrors(payrollApi.UserWithBatch.getAllUsers))
   .post(catchErrors(payrollApi.UserWithBatch.createUser));
 
-router.route('user-with-batch')
+router.route('/user_with_batch/:id')
   .get(catchErrors(payrollApi.UserWithBatch.getUserById))
   .put(catchErrors(payrollApi.UserWithBatch.updateUser))
   .delete(catchErrors(payrollApi.UserWithBatch.deleteUser));
@@ -145,6 +145,23 @@ router.route('/salary_by_batch')
 // ========================
 router.route('/compensations/:id')
   .get(catchErrors(payrollApi.Compensations.getCompensationById));
+
+
+// ========================
+// ADVANCE / LOAN
+// ========================
+router.route('/advance_loan')
+  .get(catchErrors(payrollApi.AdvanceLoan.getAdvanceLoans))
+  .post(catchErrors(payrollApi.AdvanceLoan.createAdvanceLoan));
+
+router.route('/advance_loan/:id')
+  .get(catchErrors(payrollApi.AdvanceLoan.getAdvanceLoanById))
+  .put(catchErrors(payrollApi.AdvanceLoan.updateAdvanceLoan))
+  .delete(catchErrors(payrollApi.AdvanceLoan.deleteAdvanceLoan));
+
+
+
+
 
 
 

@@ -201,6 +201,7 @@ const getAdminActivities = async (req, res) => {
 
             return {
                 ...topLevel,
+                modelAffected: act.modelAffected,
                 userSnapshot: userSnapshotKeys ? extractSelectedFields(act.userSnapshot, userSnapshotKeys) : act.userSnapshot,
                 oldData: oldKeys ? extractSelectedFields(act.oldData, oldKeys) : act.oldData,
                 newData: newKeys ? extractSelectedFields(act.newData, newKeys) : act.newData,

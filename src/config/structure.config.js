@@ -16,7 +16,7 @@ module.exports = {
     payroll: 'payrollController',
     material: 'MaterialControllers',
     sales: 'SalesControllers',
-    purchase: 'PurchaseControllers'
+    purchase: 'PurchaseControllers',
   }),
 
   SUBMODULE: Object.freeze({

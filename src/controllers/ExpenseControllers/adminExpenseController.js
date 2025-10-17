@@ -1226,19 +1226,12 @@ exports.getEmployeeExpenseSummary = async (req, res) => {
     const companyId = req.admin.companyId;
     const { startDate, endDate } = req.query;
 
-    // Check if user has permission (admin/owner only)
-    if (req.admin.role !== 'admin' && req.admin.role !== 'owner') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only admin or owner can view employee expense summaries',
-      });
-    }
 
     // Get all employees for this plant
     const employees = await User.find({
       companyId,
       plantId,
-      role: 'employee',
+      role: { $in: ['employee', 'admin'] },
       removed: false,
     }).select('name employeeCode walletBalance walletStatus lastWalletUpdate email');
 
@@ -1436,14 +1429,6 @@ exports.exportEmployeeExpenses = async (req, res) => {
     const { startDate, endDate } = req.query;
     const companyId = req.admin.companyId;
 
-    // Check if user has permission (admin/owner only)
-    if (req.admin.role !== 'admin' && req.admin.role !== 'owner') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only admin or owner can export employee expenses',
-      });
-    }
-
     // Get employee details
     const employee = await User.findOne({
       _id: employeeId,
@@ -1586,13 +1571,6 @@ exports.exportDashboardExpenses = async (req, res) => {
     const { startDate, endDate, status, category } = req.query;
     const companyId = req.admin.companyId;
 
-    // Check if user has permission (admin/owner only)
-    if (req.admin.role !== 'admin' && req.admin.role !== 'owner') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only admin or owner can export dashboard expenses',
-      });
-    }
 
     // Build query filters
     const query = { companyId, plantId };

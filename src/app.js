@@ -46,17 +46,18 @@ const errorHandlers = require('./handlers/errorHandlers');
 const erpApiRouter = require('./routes/appRoutes/appApi');
 const isAdminOrOwner = require('./middlewares/access/AdminOwner');
 const taskManagerRouter = require('./routes/taskManagerRoutes/taskManagerApi');
-
+const isOwner = require('./middlewares/access/Owner')
 const coreNoticeRouter = require('./routes/coreRoutes/coreNotice');
 const coreNotificationRouter = require('./routes/coreRoutes/coreNotification');
-const payrollApiRouter = require('./routes/PayrollRoutes/payrollAPI'); // ✅ payroll import
+// const payrollApiRouter = require('./routes/PayrollRoutes/payrollAPI'); // ✅ payroll import
 const materialManagementRouter = require('./routes/materialRoutes/index'); // Material Management routes
 const assignmentRouter = require('./routes/appRoutes/assignmentRoutes'); // Assignment routes
 const customerRouter = require('./routes/SalesRoutes/customerRoutes'); // Sales Management - Customer routes
 const salesOrderRouter = require('./routes/SalesRoutes/salesOrderRoutes'); // Sales Management - Sales Order routes
 const salesVerificationConfigRouter = require('./routes/SalesRoutes/salesVerificationConfigRoutes'); // Sales Management - Verification config routes
 const faMasterRoutes = require('./routes/financeRoutes/faMasterRoutes');
-
+const businessPlanRouter = require('./routes/coreRoutes/businessPlan')
+const checkActivePlan = require('./middlewares/access/checkActivePlan')
 const runCrons = require('./cron');
 
 const fileUpload = require('express-fileupload');
@@ -113,12 +114,7 @@ app.use('/api/permission', adminAuth.isValidAuthToken, isAdminOrOwner, permissio
 app.use('/api', adminAuth.isValidAuthToken, erpApiRouter);
 app.use('/api/policy', adminAuth.isValidAuthToken, corePolicyRouter);
 app.use('/api/notice', adminAuth.isValidAuthToken, coreNoticeRouter);
-app.use('/api/attendance', adminAuth.isValidAuthToken, AttendanceRouter);
-app.use('/api/leave', adminAuth.isValidAuthToken, LeaveRouter);
-app.use('/api/asset', adminAuth.isValidAuthToken, AssetRouter);
-app.use('/api/expenses', adminAuth.isValidAuthToken, ExpenseRouter);
 app.use('/api/notifications', adminAuth.isValidAuthToken, coreNotificationRouter);
-app.use('/api/task-manager', adminAuth.isValidAuthToken, taskManagerRouter);
 app.use('/api/material-management', adminAuth.isValidAuthToken, materialManagementRouter); // Material Management routes
 app.use('/api/sales-management/customers', adminAuth.isValidAuthToken, customerRouter); // Sales Management - Customer routes
 app.use('/api/sales-management/sales-orders', adminAuth.isValidAuthToken, salesOrderRouter); // Sales Management - Sales Order routes
@@ -128,10 +124,17 @@ app.use(
   salesVerificationConfigRouter
 ); // Sales Management - Verification config
 
-app.use('/api/payroll', adminAuth.isValidAuthToken, payrollApiRouter); // ✅ payroll route
+app.use('/api/attendance', adminAuth.isValidAuthToken, AttendanceRouter);
+app.use('/api/leave', adminAuth.isValidAuthToken, LeaveRouter);
+app.use('/api/asset', adminAuth.isValidAuthToken, AssetRouter);
+app.use('/api/expenses', adminAuth.isValidAuthToken, ExpenseRouter);
+app.use('/api/task-manager', adminAuth.isValidAuthToken, taskManagerRouter);
+
+
+// app.use('/api/payroll', adminAuth.isValidAuthToken, payrollApiRouter); // ✅ payroll route
 app.use('/api/assignment', adminAuth.isValidAuthToken, assignmentRouter); // Assignment routes
 app.use('/api/finance', adminAuth.isValidAuthToken, faMasterRoutes);
-
+// app.use('/api/subscription', adminAuth.isValidAuthToken, isOwner, businessPlanRouter)
 // app.use('/download', coreDownloadRouter);
 // app.use('/public', corePublicRouter);
 

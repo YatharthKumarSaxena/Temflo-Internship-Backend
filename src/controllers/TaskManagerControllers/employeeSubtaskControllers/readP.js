@@ -10,7 +10,7 @@ const readP = async (req, res) => {
       // find all task, employee is in
       const response = Member.findOne({
         userId: req.admin.id,
-        projectId,
+        projectId: req.params.projectId,
         companyId: req.admin.companyId,
         removed: false, // Only active memberships
       });

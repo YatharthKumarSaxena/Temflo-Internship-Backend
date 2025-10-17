@@ -1,8 +1,4 @@
 const Batch = require("../../models/parollModels/Batch");
-const { MODEL_AFFECTED, MODULE, SUBMODULE, ACTIONS, FILE } = require("@/config/structure.config");
-const { activityTracker } = require("@/utils/activityTracker");
-const { BATCH_CREATED } = require("@/config/activity.enums");
-const { getFullName } = require("@/utils/commonFunctions");
 
 // Create Batch
 exports.createBatch = async (req, res) => {
@@ -14,23 +10,6 @@ exports.createBatch = async (req, res) => {
   try {
     const batch = new Batch({ name, createdBy });
     const saved = await batch.save();
-    
-    // Activity Tracker
-    activityTracker({
-      userId: req.admin._id,
-      companyId: req.admin.companyId,
-      plantId: req.admin.plantId || null,
-      module: MODULE.payroll,
-      subModuleAffected: null,
-      fileAffected: FILE.file_batch,
-      modelAffected: [MODEL_AFFECTED.model_batch],
-      eventType: BATCH_CREATED,
-      actionDone: ACTIONS.create,
-      oldData: null,
-      newData: saved.toObject(),
-      description: `Batch created by ${getFullName(req.admin.employeeInfo)}`
-    });
-
     res.set("Cache-Control", "no-store");
 
     res.status(201).json(saved);

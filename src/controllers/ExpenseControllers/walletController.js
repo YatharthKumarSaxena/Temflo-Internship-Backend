@@ -35,17 +35,11 @@ exports.addWalletBalance = async (req, res, next) => {
       });
     }
 
-    if (req.admin.role !== 'admin' && req.admin.role !== 'owner') {
-      return res.status(403).json({
-        success: false,
-        message: 'You do not have permission to add wallet balance',
-      });
-    }
 
     const employee = await User.findOne({
       _id: employeeId,
       companyId,
-    }).select('name email employeeCode walletBalance walletStatus employeeInfo').exec();
+    }).select('name email employeeCode walletBalance walletStatus employeeInfo companyId').exec();
 
     if (!employee) {
       return res.status(404).json({
@@ -54,12 +48,19 @@ exports.addWalletBalance = async (req, res, next) => {
       });
     }
 
+    // Fallback fix if companyId missing
+    if (!employee.companyId) {
+      console.warn(`⚠️ Employee ${employeeId} missing companyId. Setting to admin's companyId.`);
+      employee.companyId = companyId;
+    }
+
     const currentBalance = employee.walletBalance || 0;
     const newBalance = currentBalance + parseFloat(amount);
 
     employee.walletBalance = newBalance;
     employee.lastWalletUpdate = new Date();
     await employee.save();
+
 
     const transaction = new WalletTransaction({
       employeeId,
@@ -76,6 +77,7 @@ exports.addWalletBalance = async (req, res, next) => {
     });
 
     await transaction.save();
+
 
     // ---------------- ACTIVITY TRACKER ----------------
     activityTracker({
@@ -183,15 +185,11 @@ exports.getWalletBalance = async (req, res, next) => {
     const { employeeId } = req.params;
     const companyId = req.admin.companyId;
 
-    let targetEmployeeId = employeeId;
 
-    // If no employeeId provided or employee role, use their own ID
-    if (!employeeId || req.admin.role === 'employee') {
-      targetEmployeeId = req.admin._id;
-    }
+
 
     const employee = await User.findOne({
-      _id: targetEmployeeId,
+      _id: employeeId,
       companyId,
       role: 'employee',
       removed: false,
@@ -469,13 +467,6 @@ exports.processBalanceRequest = async (req, res, next) => {
     const { action, adminNotes } = req.body; // action: 'approve' or 'reject'
     const companyId = req.admin.companyId;
 
-    if (req.admin.role !== 'admin' && req.admin.role !== 'owner') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only admin or owner can process balance requests',
-      });
-    }
-
     const transaction = await WalletTransaction.findOne({
       _id: transactionId,
       companyId,
@@ -680,17 +671,9 @@ exports.getAllEmployeeBalances = async (req, res, next) => {
     const { plantId } = req.headers;
     const companyId = req.admin.companyId;
 
-    // Check if user has permission (admin/owner only)
-    if (req.admin.role !== 'admin' && req.admin.role !== 'owner') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only admin or owner can view all employee balances',
-      });
-    }
-
     const query = {
       companyId,
-      role: 'employee',
+      role: { $in: ['employee', 'admin'] },
       removed: false,
     };
 
